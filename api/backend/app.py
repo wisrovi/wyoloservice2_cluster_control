@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend import __version__
 from backend.auth import seed_default_admin
 from backend.routers.auth_router import router as auth_router
 from backend.routers.invokers_router import router as invokers_router
@@ -14,16 +15,16 @@ from backend.routers.tasks_router import router as tasks_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan: seeds admin user in Redis on startup."""
-    print("=== [STARTUP] Starting Cluster Control Backend ===")
+    print("=== [STARTUP] Starting NeuralForge Cluster Admin API ===")
     seed_default_admin()
     yield
-    print("=== [SHUTDOWN] Stopping Cluster Control Backend ===")
+    print("=== [SHUTDOWN] Stopping NeuralForge Cluster Admin API ===")
 
 
 app = FastAPI(
     title="NeuralForge Cluster Admin API",
     description="Centralized Cluster Administration, Storage Volumes, FinOps and Node Governance API",
-    version="1.5.1",
+    version=__version__,
     lifespan=lifespan,
 )
 
@@ -47,7 +48,7 @@ app.include_router(overview_router)
 async def root():
     return {
         "service": "wyoloservice2_cluster_control",
-        "version": "1.3.0",
+        "version": __version__,
         "status": "operational",
         "docs": "/docs",
     }
