@@ -154,3 +154,38 @@ def test_authenticated_cluster_endpoints(client):
     assert "estimated_duration_min" in eta_data
     assert "recommended_gpu" in eta_data
     assert "estimated_throughput_img_s" in eta_data
+
+    # 8. Smart Dispatcher Recommendation
+    resp_rec = client.get("/api/v1/cluster/recommend-node?model=yolov8n-cls.pt", headers=headers)
+    assert resp_rec.status_code == 200, f"Expected 200, got {resp_rec.status_code}"
+    rec_data = resp_rec.json()
+    assert "target_ip" in rec_data
+    assert "hostname" in rec_data
+    assert "score" in rec_data
+    assert "reason" in rec_data
+
+    # 9. GPU Benchmarks & Leaderboard
+    resp_bench = client.get("/api/v1/cluster/gpu-benchmarks", headers=headers)
+    assert resp_bench.status_code == 200, f"Expected 200, got {resp_bench.status_code}"
+    bench_data = resp_bench.json()
+    assert "benchmarks" in bench_data
+    assert len(bench_data["benchmarks"]) > 0
+    assert "avg_throughput_img_s" in bench_data["benchmarks"][0]
+
+    # 10. Housekeeping Preview & Purge
+    resp_hk_prev = client.get("/api/v1/cluster/housekeeping/preview", headers=headers)
+    assert resp_hk_prev.status_code == 200, f"Expected 200, got {resp_hk_prev.status_code}"
+    hk_data = resp_hk_prev.json()
+    assert "stale_failed_studies_count" in hk_data
+    assert "redis_memory_human" in hk_data
+
+    resp_hk_purge = client.post("/api/v1/cluster/housekeeping/purge", headers=headers)
+    assert resp_hk_purge.status_code == 200, f"Expected 200, got {resp_hk_purge.status_code}"
+    assert resp_hk_purge.json().get("status") == "success"
+
+    # 11. Workload Trends
+    resp_trends = client.get("/api/v1/cluster/trends", headers=headers)
+    assert resp_trends.status_code == 200, f"Expected 200, got {resp_trends.status_code}"
+    trends_data = resp_trends.json()
+    assert "hourly_distribution" in trends_data
+    assert "busiest_hour" in trends_data
