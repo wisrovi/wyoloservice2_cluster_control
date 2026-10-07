@@ -92,3 +92,42 @@ def render_settings(api_client: ClusterApiClient, token: str):
                     st.info(res_test.get("message", "Prueba enviada."))
                 except Exception as te:
                     st.error(f"Error probando Webhook: {te}")
+
+    st.markdown("---")
+    with st.container(border=True):
+        st.subheader("🧹 Saneamiento y Mantenimiento de Redis (Cluster Housekeeping)")
+        st.caption("Inspecciona y purga estudios fallidos, cancelados o claves temporales obsoletas para optimizar la memoria de Redis.")
+
+        try:
+            hk_preview = api_client.get_housekeeping_preview(token)
+            stale_count = hk_preview.get("stale_failed_studies_count", 0)
+            stale_ids = hk_preview.get("stale_study_ids", [])
+            mem_human = hk_preview.get("redis_memory_human", "N/A")
+            reclaimed_kb = hk_preview.get("estimated_reclaimed_kb", 0)
+
+            col_hk1, col_hk2, col_hk3 = st.columns([1.5, 1.5, 2], gap="medium")
+            with col_hk1:
+                st.metric(label="💾 Memoria en Uso (Redis)", value=mem_human)
+            with col_hk2:
+                st.metric(
+                    label="🗑️ Estudios Obsoletos Detectados",
+                    value=stale_count,
+                    delta=f"~{reclaimed_kb} KB recuperables",
+                    delta_color="inverse" if stale_count > 0 else "off",
+                )
+            with col_hk3:
+                st.write(" ")
+                if st.button("🧹 Purgar Estudios Obsoletos Ahora", type="secondary", use_container_width=True, disabled=(stale_count == 0)):
+                    try:
+                        res_purge = api_client.purge_housekeeping(token)
+                        st.success(res_purge.get("message", "Purgado completado."))
+                        st.rerun()
+                    except Exception as pe:
+                        st.error(f"Error en purgado: {pe}")
+
+            if stale_ids:
+                with st.expander(f"Ver lista de {len(stale_ids)} estudios marcados para saneamiento"):
+                    for sid in stale_ids:
+                        st.write(f"• `{sid}` (failed / cancelled)")
+        except Exception as he:
+            st.caption(f"No se pudo cargar el asistente de mantenimiento: {he}")
