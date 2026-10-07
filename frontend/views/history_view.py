@@ -8,67 +8,67 @@ from frontend.api_client import ClusterApiClient
 
 def render_history(api_client: ClusterApiClient, token: str):
     """Renders historical study browser, Optuna trial curves, and 1-click report export."""
-    st.title("📈 Historial, Métricas y Reportes de Estudios")
-    st.caption("Búsqueda avanzada, curvas de aprendizaje de Optuna y exportación de informes de experimentos.")
+    st.title("📈 Study History, Metrics & Reports")
+    st.caption("Advanced search, Optuna learning curves, and experiment report export.")
 
     current_user = st.session_state.get("username", "wisrovi")
 
     tab_history, tab_metrics, tab_compare, tab_export = st.tabs([
-        "📜 Historial y Búsqueda",
-        "📈 Curvas de Aprendizaje (Optuna)",
-        "🔬 Comparador Head-to-Head",
-        "📥 Exportador de Reportes",
+        "📜 History & Search",
+        "📈 Learning Curves (Optuna)",
+        "🔬 Head-to-Head Comparison",
+        "📥 Report Exporter",
     ])
 
     # Fetch history
     try:
         raw_history = api_client.list_task_history(token, limit=100)
     except Exception as he:
-        st.error(f"Error cargando historial de estudios: {he}")
+        st.error(f"Failed to load study history: {he}")
         raw_history = []
 
     # --- TAB 1: History Search and Filters ---
     with tab_history:
-        st.markdown("#### 🔍 Filtros de Búsqueda")
+        st.markdown("#### 🔍 Search Filters")
 
         col_s1, col_s2 = st.columns([3, 1])
         with col_s1:
             search_query = st.text_input(
-                "Buscador",
-                placeholder="Busca por Nombre de Estudio, Study ID, Dataset o Modelo...",
+                "Search",
+                placeholder="Search by study name, study ID, dataset, or model...",
                 key="hist_search_input",
                 label_visibility="collapsed",
             )
         with col_s2:
-            only_mine = st.checkbox("👤 Solo mis estudios", value=False, key="hist_cb_only_mine")
+            only_mine = st.checkbox("👤 My studies only", value=False, key="hist_cb_only_mine")
 
-        all_authors = sorted(list({h.get("author", "Desconocido") for h in raw_history if h.get("author")}))
-        author_options = ["Todos"] + all_authors
+        all_authors = sorted(list({h.get("author", "Unknown") for h in raw_history if h.get("author")}))
+        author_options = ["All"] + all_authors
 
         all_nodes = sorted(list({h.get("destination_node", "N/A") for h in raw_history if h.get("destination_node")}))
-        node_options = ["Todos"] + all_nodes
+        node_options = ["All"] + all_nodes
 
         col_f1, col_f2, col_f3, col_f4 = st.columns(4)
         with col_f1:
-            sel_author = st.selectbox("Remitente / Autor", options=author_options, key="hist_filter_author")
+            sel_author = st.selectbox("Submitter / Author", options=author_options, key="hist_filter_author")
         with col_f2:
-            sel_node = st.selectbox("Nodo Asignado", options=node_options, key="hist_filter_node")
+            sel_node = st.selectbox("Assigned Node", options=node_options, key="hist_filter_node")
         with col_f3:
-            sel_status = st.selectbox("Estado", options=["Todos", "completed", "running", "failed"], key="hist_filter_status")
+            sel_status = st.selectbox("Status", options=["All", "completed", "running", "failed"], key="hist_filter_status")
         with col_f4:
-            limit_val = st.selectbox("Límite de Registros", options=[20, 50, 100], index=1, key="hist_filter_limit")
+            limit_val = st.selectbox("Record Limit", options=[20, 50, 100], index=1, key="hist_filter_limit")
 
         # Filtering logic
         filtered = raw_history
         if only_mine:
             filtered = [h for h in filtered if current_user.lower() in str(h.get("author", "")).lower()]
-        elif sel_author != "Todos":
+        elif sel_author != "All":
             filtered = [h for h in filtered if sel_author.lower() in str(h.get("author", "")).lower()]
 
-        if sel_node != "Todos":
+        if sel_node != "All":
             filtered = [h for h in filtered if sel_node.lower() in str(h.get("destination_node", "")).lower()]
 
-        if sel_status != "Todos":
+        if sel_status != "All":
             filtered = [h for h in filtered if h.get("status") == sel_status]
 
         if search_query:
@@ -82,74 +82,74 @@ def render_history(api_client: ClusterApiClient, token: str):
             ]
 
         filtered = filtered[:limit_val]
-        st.caption(f"Mostrando {len(filtered)} de {len(raw_history)} estudios registrados:")
+        st.caption(f"Showing {len(filtered)} of {len(raw_history)} recorded studies:")
 
         if not filtered:
-            st.info("No se encontraron estudios que coincidan con los criterios de búsqueda.")
+            st.info("No studies match the search criteria.")
         else:
             table_data = []
             for h in filtered:
                 st_icon = "🟢" if h.get("status") == "completed" else ("⚡" if h.get("status") == "running" else "🔴")
                 table_data.append({
-                    "Estado": f"{st_icon} {h.get('status')}",
-                    "Nombre del Estudio": h.get("study_name", h.get("study_id")),
-                    "Remitente": h.get("author", "Desconocido"),
-                    "Nodo Destino": h.get("destination_node", "wyolo_gpu_queue"),
-                    "Modelo": h.get("model", "N/A"),
+                    "Status": f"{st_icon} {h.get('status')}",
+                    "Study Name": h.get("study_name", h.get("study_id")),
+                    "Submitter": h.get("author", "Unknown"),
+                    "Target Node": h.get("destination_node", "wyolo_gpu_queue"),
+                    "Model": h.get("model", "N/A"),
                     "Dataset": h.get("dataset", "N/A"),
-                    "Iniciado": h.get("start_time", "N/A"),
+                    "Started": h.get("start_time", "N/A"),
                     "Study ID": h.get("study_id"),
                 })
 
             st.dataframe(pd.DataFrame(table_data), use_container_width=True, hide_index=True)
 
             # Details inspector
-            st.markdown("##### 🔍 Inspeccionar Detalle del Estudio")
+            st.markdown("##### 🔍 Inspect Study Details")
             study_choices = [f"{h.get('study_name', h.get('study_id'))} ({h.get('study_id')[:8]})" for h in filtered]
-            selected_inspect = st.selectbox("Selecciona un estudio para ver su configuración completa:", options=study_choices, key="hist_inspect_sel")
+            selected_inspect = st.selectbox("Select a study to view its full configuration:", options=study_choices, key="hist_inspect_sel")
             if selected_inspect:
                 sel_idx = study_choices.index(selected_inspect)
                 target_study = filtered[sel_idx]
                 col_d1, col_d2 = st.columns(2)
                 with col_d1:
-                    st.write(f"• **Study ID Completo:** `{target_study.get('study_id')}`")
-                    st.write(f"• **Autor / Remitente:** `{target_study.get('author')}`")
-                    st.write(f"• **Nodo / Host:** `{target_study.get('destination_node')}`")
+                    st.write(f"• **Full Study ID:** `{target_study.get('study_id')}`")
+                    st.write(f"• **Author / Submitter:** `{target_study.get('author')}`")
+                    st.write(f"• **Node / Host:** `{target_study.get('destination_node')}`")
                     st.write(f"• **Dataset:** `{target_study.get('dataset')}`")
                 with col_d2:
-                    st.write(f"• **Modelo:** `{target_study.get('model')}`")
-                    st.write(f"• **Estado:** `{target_study.get('status')}`")
-                    st.write(f"• **Fecha de Inicio:** `{target_study.get('start_time')}`")
+                    st.write(f"• **Model:** `{target_study.get('model')}`")
+                    st.write(f"• **Status:** `{target_study.get('status')}`")
+                    st.write(f"• **Start Date:** `{target_study.get('start_time')}`")
                     if target_study.get("error"):
-                        st.error(f"Error registrado: {target_study.get('error')}")
+                        st.error(f"Recorded error: {target_study.get('error')}")
 
                 # Reproducibility Manifest
-                with st.expander("📋 Manifiesto de Reproducción (Docker Run & YAML)", expanded=False):
+                with st.expander("📋 Reproducibility Manifest (Docker Run & YAML)", expanded=False):
                     try:
                         repro = api_client.get_study_reproducibility(token, target_study.get("study_id"))
-                        st.caption(f"Fingerprint SHA256: `{repro.get('sha256_fingerprint')}` | Generado: `{repro.get('generated_at')}`")
-                        st.markdown("**Comando Docker de Reproducción Directa:**")
+                        st.caption(f"SHA256 Fingerprint: `{repro.get('sha256_fingerprint')}` | Generated: `{repro.get('generated_at')}`")
+                        st.markdown("**Direct Reproduction Docker Command:**")
                         st.code(repro.get("docker_run_command"), language="bash")
-                        st.markdown("**Manifiesto de Configuración YAML:**")
+                        st.markdown("**YAML Configuration Manifest:**")
                         st.code(repro.get("training_yaml"), language="yaml")
                     except Exception as rpe:
-                        st.warning(f"No se pudo generar manifiesto de reproducción: {rpe}")
+                        st.warning(f"Could not generate the reproducibility manifest: {rpe}")
 
 
     # --- TAB 2: Optuna Learning Curves ---
     with tab_metrics:
-        st.markdown("#### 📈 Evolución de Trials y Métrica Objetivo (Optuna)")
-        st.caption("Visualiza el progreso de fitness / accuracy / mAP a lo largo de las iteraciones.")
+        st.markdown("#### 📈 Trial Progress & Objective Metric (Optuna)")
+        st.caption("Track fitness / accuracy / mAP progress across iterations.")
 
         if not raw_history:
-            st.info("No hay estudios registrados para graficar métricas.")
+            st.info("No recorded studies available to chart metrics.")
         else:
             study_metric_choices = {
                 f"{h.get('study_name', h.get('study_id'))} [{h.get('status')}]": h.get("study_id")
                 for h in raw_history
             }
             selected_metric_label = st.selectbox(
-                "Selecciona el estudio a analizar:",
+                "Select the study to analyze:",
                 options=list(study_metric_choices.keys()),
                 key="sel_study_metric_tab",
             )
@@ -158,11 +158,11 @@ def render_history(api_client: ClusterApiClient, token: str):
             try:
                 metrics_points = api_client.get_study_metrics(token, selected_metric_id)
             except Exception as me:
-                st.error(f"Error obteniendo métricas de Optuna: {me}")
+                st.error(f"Failed to retrieve Optuna metrics: {me}")
                 metrics_points = []
 
             if not metrics_points:
-                st.info(f"El estudio `{selected_metric_id}` aún no ha registrado puntos de métricas en Redis.")
+                st.info(f"Study `{selected_metric_id}` has not recorded any metric points in Redis yet.")
             else:
                 df_metrics = pd.DataFrame(metrics_points)
                 best_val = df_metrics["fitness"].max()
@@ -170,22 +170,22 @@ def render_history(api_client: ClusterApiClient, token: str):
 
                 col_m1, col_m2 = st.columns([1, 3])
                 with col_m1:
-                    st.metric(label="🏆 Mejor Valor (Fitness)", value=f"{best_val:.4f}")
-                    st.write(f"• **Mejor Trial:** `#{int(best_trial_row['trial'])}`")
+                    st.metric(label="🏆 Best Value (Fitness)", value=f"{best_val:.4f}")
+                    st.write(f"• **Best Trial:** `#{int(best_trial_row['trial'])}`")
                     st.write(f"• **Total Trials:** `{len(df_metrics)}`")
                 with col_m2:
                     st.line_chart(df_metrics.set_index("trial")["fitness"])
 
-                with st.expander("📊 Ver Tabla Completa de Trials y Parámetros"):
+                with st.expander("📊 View Full Trials & Parameters Table"):
                     st.dataframe(df_metrics, use_container_width=True, hide_index=True)
 
     # --- TAB 3: Head-to-Head Comparison ---
     with tab_compare:
-        st.markdown("#### 🔬 Comparativa Head-to-Head de Estudios")
-        st.caption("Selecciona de 2 a 5 estudios para contrastar parámetros, arquitecturas y métricas de rendimiento lado a lado.")
+        st.markdown("#### 🔬 Head-to-Head Study Comparison")
+        st.caption("Select 2 to 5 studies to compare parameters, architectures, and performance metrics side by side.")
 
         if not raw_history or len(raw_history) < 2:
-            st.info("Se necesitan al menos 2 estudios registrados para realizar una comparativa.")
+            st.info("At least 2 recorded studies are required to run a comparison.")
         else:
             study_map = {
                 f"{h.get('study_name', h.get('study_id'))} [{h.get('model', 'N/A')}] ({h.get('study_id')[:8]})": h.get("study_id")
@@ -193,7 +193,7 @@ def render_history(api_client: ClusterApiClient, token: str):
             }
             default_selection = list(study_map.keys())[:2]
             selected_labels = st.multiselect(
-                "Selecciona los estudios a contrastar (2 a 5):",
+                "Select the studies to compare (2 to 5):",
                 options=list(study_map.keys()),
                 default=default_selection,
                 key="multisel_compare_studies",
@@ -201,12 +201,12 @@ def render_history(api_client: ClusterApiClient, token: str):
 
             selected_ids = [study_map[lbl] for lbl in selected_labels if lbl in study_map]
 
-            if st.button("🔬 Comparar Estudios Seleccionados", type="primary", use_container_width=True, disabled=(len(selected_ids) < 2 or len(selected_ids) > 5)):
+            if st.button("🔬 Compare Selected Studies", type="primary", use_container_width=True, disabled=(len(selected_ids) < 2 or len(selected_ids) > 5)):
                 try:
                     comp_res = api_client.compare_studies(token, selected_ids)
                     st.session_state["active_comparison_result"] = comp_res
                 except Exception as ce:
-                    st.error(f"Error comparando estudios: {ce}")
+                    st.error(f"Failed to compare studies: {ce}")
 
             if "active_comparison_result" in st.session_state:
                 res = st.session_state["active_comparison_result"]
@@ -218,17 +218,17 @@ def render_history(api_client: ClusterApiClient, token: str):
 
     # --- TAB 4: Report Exporter ---
     with tab_export:
-        st.markdown("#### 📥 Generador y Descarga de Reportes de Estudio")
-        st.caption("Descarga un informe técnico en formato Markdown o CSV para adjuntar a documentación técnica.")
+        st.markdown("#### 📥 Study Report Generator & Download")
+        st.caption("Download a technical report in Markdown or CSV format to attach to technical documentation.")
 
         if not raw_history:
-            st.info("No hay estudios para exportar.")
+            st.info("No studies available to export.")
         else:
             export_choices = {
                 f"{h.get('study_name', h.get('study_id'))} ({h.get('study_id')[:8]})": h
                 for h in raw_history
             }
-            sel_export_label = st.selectbox("Selecciona el estudio a exportar:", options=list(export_choices.keys()), key="sel_export_target")
+            sel_export_label = st.selectbox("Select the study to export:", options=list(export_choices.keys()), key="sel_export_target")
             selected_study = export_choices[sel_export_label]
             sid = selected_study.get("study_id")
 
@@ -240,35 +240,35 @@ def render_history(api_client: ClusterApiClient, token: str):
 
             # Generate Markdown report
             md_lines = [
-                f"# Informe de Estudio NeuralForge: {selected_study.get('study_name', sid)}",
+                f"# NeuralForge Study Report: {selected_study.get('study_name', sid)}",
                 "",
                 f"- **Study ID:** `{sid}`",
-                f"- **Autor:** {selected_study.get('author', 'Desconocido')}",
-                f"- **Nodo Asignado:** {selected_study.get('destination_node', 'N/A')}",
-                f"- **Modelo:** `{selected_study.get('model', 'N/A')}`",
+                f"- **Author:** {selected_study.get('author', 'Unknown')}",
+                f"- **Assigned Node:** {selected_study.get('destination_node', 'N/A')}",
+                f"- **Model:** `{selected_study.get('model', 'N/A')}`",
                 f"- **Dataset:** `{selected_study.get('dataset', 'N/A')}`",
-                f"- **Estado:** {selected_study.get('status')}",
-                f"- **Fecha de Inicio:** {selected_study.get('start_time', 'N/A')}",
+                f"- **Status:** {selected_study.get('status')}",
+                f"- **Start Date:** {selected_study.get('start_time', 'N/A')}",
                 "",
-                "## Resultados de Optimización (Optuna)",
+                "## Optimization Results (Optuna)",
             ]
             if trials_data:
                 df_t = pd.DataFrame(trials_data)
                 best_t = df_t.sort_values(by="fitness", ascending=False).iloc[0]
-                md_lines.append(f"- **Mejor Fitness:** `{best_t['fitness']:.4f}` (Trial #{int(best_t['trial'])})")
-                md_lines.append(f"- **Total de Trials Ejecutados:** {len(trials_data)}")
+                md_lines.append(f"- **Best Fitness:** `{best_t['fitness']:.4f}` (Trial #{int(best_t['trial'])})")
+                md_lines.append(f"- **Total Trials Executed:** {len(trials_data)}")
                 md_lines.append("")
-                md_lines.append("### Tabla de Trials")
+                md_lines.append("### Trials Table")
                 md_lines.append(df_t.to_markdown(index=False))
             else:
-                md_lines.append("No se registraron trials de métricas detallados.")
+                md_lines.append("No detailed trial metrics were recorded.")
 
             markdown_report = "\n".join(md_lines)
 
             col_exp1, col_exp2 = st.columns(2)
             with col_exp1:
                 st.download_button(
-                    label="📄 Descargar Reporte en Markdown (.md)",
+                    label="📄 Download Markdown Report (.md)",
                     data=markdown_report,
                     file_name=f"report_{selected_study.get('study_name', sid)[:20]}.md",
                     mime="text/markdown",
@@ -282,12 +282,12 @@ def render_history(api_client: ClusterApiClient, token: str):
                     csv_data = pd.DataFrame([selected_study]).to_csv(index=False)
 
                 st.download_button(
-                    label="📊 Descargar Datos en CSV (.csv)",
+                    label="📊 Download CSV Data (.csv)",
                     data=csv_data,
                     file_name=f"data_{selected_study.get('study_name', sid)[:20]}.csv",
                     mime="text/csv",
                     use_container_width=True,
                 )
 
-            st.markdown("##### Previsualización del Informe:")
+            st.markdown("##### Report Preview:")
             st.code(markdown_report, language="markdown")
