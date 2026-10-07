@@ -115,6 +115,31 @@ def render_overview(api_client: ClusterApiClient, token: str):
     except Exception as te:
         st.caption(f"No se pudieron calcular tendencias de carga: {te}")
 
+    # --- Green AI & Carbon Footprint Section ---
+    try:
+        green = api_client.get_green_ai_metrics(token)
+        st.divider()
+        st.subheader("🌿 Eficiencia Energética y Huella de Carbono (Green AI)")
+        st.caption("Estimación acumulada de consumo energético y emisiones basada en TDP de hardware y horas de cómputo.")
+
+        col_g1, col_g2, col_g3, col_g4 = st.columns(4)
+        with col_g1:
+            st.metric("⚡ Energía Consumida", f"{green.get('estimated_kwh', 0.0)} kWh")
+        with col_g2:
+            st.metric("🌱 Emisiones CO₂e", f"{green.get('estimated_co2_kg', 0.0)} kg")
+        with col_g3:
+            st.metric("🌳 Árboles Equivalentes", f"{green.get('trees_offset_equivalent', 0.0)} comp.")
+        with col_g4:
+            st.metric("🚀 Eficiencia Media", f"{green.get('avg_efficiency_img_per_watt', 0.45)} img/W")
+
+        with st.expander("📊 Ver Desglose de Consumo por Modelo de GPU"):
+            gpu_breakdown = green.get("gpu_breakdown", [])
+            if gpu_breakdown:
+                st.dataframe(pd.DataFrame(gpu_breakdown), use_container_width=True, hide_index=True)
+            st.caption(f"Factor de cálculo: {green.get('calculation_basis')}")
+    except Exception as ge:
+        st.caption(f"No se pudieron calcular métricas Green AI: {ge}")
+
     st.divider()
 
     # --- Invoker Distribution Section ---
