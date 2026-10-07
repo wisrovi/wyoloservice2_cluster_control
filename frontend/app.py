@@ -42,28 +42,28 @@ else:
                 <span style="font-size: 2.2em; margin-right: 10px;">🧠</span>
                 <div>
                     <h3 style="margin: 0; padding: 0;">NeuralForge</h3>
-                    <p style="color: #6c757d; margin: 0; font-size: 0.85em;">Cluster Admin Platform <span style="background-color: #3b82f6; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: bold;">v1.5.0</span></p>
+                    <p style="color: #6c757d; margin: 0; font-size: 0.85em;">Cluster Admin Platform <span style="background-color: #3b82f6; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: bold;">v1.5.1</span></p>
                 </div>
             </div>
             """,
             unsafe_allow_html=True,
         )
 
-        st.caption(f"👤 Conectado como: **{username}** (Admin)")
+        st.caption(f"👤 Signed in as: **{username}** (Admin)")
 
         page = st.radio(
-            "Navegación:",
+            "Navigation:",
             [
-                "📊 Centro de Operaciones",
-                "⚙️ Nodos e Invokers",
-                "🚀 Despacho & Scheduler",
-                "📁 Almacenamiento y Volúmenes",
-                "📈 Historial de Trabajos",
-                "🏆 Benchmarks de GPUs",
-                "🌿 FinOps y Energía (Green AI)",
-                "🔬 Capacidades del Clúster",
-                "📜 Auditoría y Seguridad",
-                "🛠️ Mantenimiento y Ajustes",
+                "📊 Operations Center",
+                "⚙️ Nodes & Invokers",
+                "🚀 Dispatch & Scheduler",
+                "📁 Storage & Volumes",
+                "📈 Job History",
+                "🏆 GPU Benchmarks",
+                "🌿 FinOps & Energy (Green AI)",
+                "🔬 Cluster Capabilities",
+                "📜 Audit & Security",
+                "🛠️ Maintenance & Settings",
             ],
             index=0,
             label_visibility="collapsed",
@@ -71,30 +71,30 @@ else:
 
         st.divider()
 
-        if st.button("🚪 Cerrar Sesión", use_container_width=True, type="secondary"):
+        if st.button("🚪 Sign Out", use_container_width=True, type="secondary"):
             st.session_state["authenticated"] = False
             st.session_state["token"] = None
             st.session_state["username"] = None
             st.rerun()
 
     # Route to selected page
-    if page == "📊 Centro de Operaciones":
+    if page == "📊 Operations Center":
         render_overview(api_client, token)
-    elif page == "⚙️ Nodos e Invokers":
+    elif page == "⚙️ Nodes & Invokers":
         render_invokers(api_client, token)
-    elif page == "🚀 Despacho & Scheduler":
+    elif page == "🚀 Dispatch & Scheduler":
         render_dispatch(api_client, token)
-    elif page == "📁 Almacenamiento y Volúmenes":
+    elif page == "📁 Storage & Volumes":
         render_storage(api_client, token)
-    elif page == "📈 Historial de Trabajos":
+    elif page == "📈 Job History":
         render_history(api_client, token)
-    elif page == "🏆 Benchmarks de GPUs":
+    elif page == "🏆 GPU Benchmarks":
         render_benchmarks(api_client, token)
-    elif page == "🌿 FinOps y Energía (Green AI)":
+    elif page == "🌿 FinOps & Energy (Green AI)":
         render_finops(api_client, token)
-    elif page == "🔬 Capacidades del Clúster":
+    elif page == "🔬 Cluster Capabilities":
         render_capabilities(api_client, token)
-    elif page == "📜 Auditoría y Seguridad":
+    elif page == "📜 Audit & Security":
         render_audit(api_client, token)
-    elif page == "🛠️ Mantenimiento y Ajustes":
+    elif page == "🛠️ Maintenance & Settings":
         render_settings(api_client, token)
