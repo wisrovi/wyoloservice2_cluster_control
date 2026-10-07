@@ -1,6 +1,6 @@
 # 🎛️ NeuralForge Cluster Control (`wyoloservice2_cluster_control`)
 
-![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 ![Python](https://img.shields.io/badge/python-3.10-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker)
@@ -155,6 +155,11 @@ Cumpliendo con los estándares de calidad del ecosistema, todas las pruebas unit
 | `POST` | `/api/v1/cluster/webhook` | Guarda URL de Webhook y estado activo | Sí |
 | `POST` | `/api/v1/cluster/webhook/test` | Emite notificación de prueba vía Webhook | Sí |
 | `GET` | `/api/v1/cluster/estimate-duration` | Estimador dinámico de duración y throughput (ETA) | Sí |
+| `GET` | `/api/v1/cluster/recommend-node` | Smart Dispatcher: recomendación inteligente de nodo óptimo | Sí |
+| `GET` | `/api/v1/cluster/gpu-benchmarks` | Leaderboard de rendimiento de GPUs y throughput empírico | Sí |
+| `GET` | `/api/v1/cluster/trends` | Distribución horaria y diaria de carga de trabajo (Workload Trends) | Sí |
+| `GET` | `/api/v1/cluster/housekeeping/preview` | Inspección de memoria Redis y conteo de estudios fallidos obsoletos | Sí |
+| `POST` | `/api/v1/cluster/housekeeping/purge` | Purga segura de estudios y claves efímeras huérfanas en Redis | Sí |
 | `GET` | `/api/v1/invokers` | Lista invokers con hardware y límites | Sí |
 | `GET` | `/api/v1/invokers/{ip}` | Detalle completo de un invoker | Sí |
 | `PUT` | `/api/v1/invokers/{ip}/limits` | Modifica `max_gpu_percent`, `max_ram` y `max_cpu_cores` | Sí |
@@ -179,6 +184,15 @@ Cumpliendo con los estándares de calidad del ecosistema, todas las pruebas unit
 
 ## 📝 Changelog
 
+*   **v1.3.0 (2026-10-07):**
+    *   **Arquitectura de Navegación Descongestionada en 6 Vistas:** Desacoplamiento de la interfaz previa de 4 pestañas hacia 6 vistas independientes y reactivas: `📊 Centro de Operaciones`, `⚙️ Nodos Invoker`, `🚀 Despacho y Tareas`, `📈 Historial y Optuna`, `🏆 Rendimiento de GPUs` y `🛠️ Mantenimiento y Ajustes`.
+    *   **Despacho Inteligente de Tareas (Smart Dispatcher):** Endpoint `/recommend-node` y selector asistido "🪄 Recomendar Mejor Nodo" basado en requerimientos de VRAM del modelo YOLO seleccionado, carga actual del nodo y heurística de balance para no saturar GPUs de alta gama.
+    *   **Leaderboard de Rendimiento de GPUs:** Endpoint `/gpu-benchmarks` y panel visual con throughput empírico (img/s) y tiempo estimado por 100 épocas en GPUs RTX 4090, 4060, 3060, 3050 OEM y GTX 1650.
+    *   **Tendencias de Carga de Trabajo (Workload Trends):** Gráficos horarios interactivos en Vega/Altair que identifican horas pico y valles de entrenamiento en el clúster.
+    *   **Cluster Housekeeping & Purga de Redis:** Inspección de memoria usada de Redis y eliminación segura de estudios fallidos o huérfanos con liberación estimada de memoria.
+    *   **Exportador de Informes de Estudios (1-Click Exporter):** Generación y descarga directa en formatos Markdown estructurado (`.md`) y tabla plana (`.csv`) desde la vista de Historial y Optuna.
+    *   **Estética Cyber / Operations Deck:** Inyección de tipografías monospace, bordes con sutil resplandor cian y acentos oscuros de centro de operaciones.
+    *   Tests unitarios en Docker pasando al 100% y 72% de cobertura de código.
 *   **v1.2.0 (2026-10-07):**
     *   **Watchdog Basado en Celery en Vivo:** Inspección activa mediante `active_queues()` de Celery que reporta con precisión milimétrica los 12 invokers saludables en línea y detecta de inmediato el único nodo desconectado (`192.168.1.77`), erradicando falsos positivos de nodos zombies.
     *   **Monitoreo de Almacenamiento:** Integración de tarjetas de estado para Samba CIFS y MinIO S3 dentro del Watchdog de Salud.
