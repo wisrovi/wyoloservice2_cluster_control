@@ -6,58 +6,58 @@ from frontend.api_client import ClusterApiClient
 
 def render_settings(api_client: ClusterApiClient, token: str):
     """Renders global cluster batch controls and user account settings."""
-    st.title("🛠️ Configuración Global del Cluster y Cuenta")
+    st.title("🛠️ Global Cluster & Account Settings")
 
     col_batch, col_account = st.columns(2, gap="large")
 
     with col_batch:
         with st.container(border=True):
-            st.subheader("🌐 Ajuste Masivo de Límites (Cluster-Wide)")
-            st.caption("Aplica un porcentaje uniforme de MAX_GPU a todos los nodos invoker del cluster.")
+            st.subheader("🌐 Bulk Limit Adjustment (Cluster-Wide)")
+            st.caption("Apply a uniform MAX_GPU percentage to every invoker node in the cluster.")
 
-            batch_gpu = st.slider("MAX_GPU Global para todos los nodos (%)", min_value=10, max_value=100, value=30, step=5)
-            batch_ram = st.text_input("RAM por defecto para todos los nodos", value="16g")
+            batch_gpu = st.slider("Global MAX_GPU for all nodes (%)", min_value=10, max_value=100, value=30, step=5)
+            batch_ram = st.text_input("Default RAM for all nodes", value="16g")
 
-            if st.button("🚀 Aplicar a Todo el Cluster", type="primary"):
+            if st.button("🚀 Apply to Entire Cluster", type="primary"):
                 try:
                     res = api_client.batch_update_limits(
                         token=token,
                         max_gpu_percent=float(batch_gpu),
                         max_ram=batch_ram,
                     )
-                    st.success(res.get("message", "Límites aplicados al cluster"))
+                    st.success(res.get("message", "Limits applied to the cluster."))
                 except Exception as be:
-                    st.error(f"Error en actualización masiva: {be}")
+                    st.error(f"Bulk update failed: {be}")
 
     with col_account:
         with st.container(border=True):
-            st.subheader("🔒 Cambiar Contraseña")
-            st.caption(f"Usuario actual: **{st.session_state.get('username', 'wisrovi')}**")
+            st.subheader("🔒 Change Password")
+            st.caption(f"Current user: **{st.session_state.get('username', 'wisrovi')}**")
 
             with st.form("change_pwd_form"):
-                current_pwd = st.text_input("Contraseña Actual", type="password")
-                new_pwd = st.text_input("Nueva Contraseña", type="password")
-                confirm_pwd = st.text_input("Confirmar Nueva Contraseña", type="password")
-                submit_pwd = st.form_submit_button("Actualizar Contraseña")
+                current_pwd = st.text_input("Current Password", type="password")
+                new_pwd = st.text_input("New Password", type="password")
+                confirm_pwd = st.text_input("Confirm New Password", type="password")
+                submit_pwd = st.form_submit_button("Update Password")
 
                 if submit_pwd:
                     if not current_pwd or not new_pwd:
-                        st.error("Rellena todos los campos.")
+                        st.error("Please fill in all fields.")
                     elif new_pwd != confirm_pwd:
-                        st.error("Las contraseñas nuevas no coinciden.")
+                        st.error("The new passwords do not match.")
                     elif len(new_pwd) < 6:
-                        st.error("La nueva contraseña debe tener al menos 6 caracteres.")
+                        st.error("The new password must be at least 6 characters long.")
                     else:
                         try:
                             api_client.change_password(token, current_pwd, new_pwd)
-                            st.success("✅ Contraseña actualizada exitosamente en Redis.")
+                            st.success("✅ Password successfully updated in Redis.")
                         except Exception as ce:
                             st.error(f"Error: {ce}")
 
     st.markdown("---")
     with st.container(border=True):
-        st.subheader("🔔 Notificaciones Webhook (Discord / Slack / Telegram)")
-        st.caption("Recibe alertas automáticas en canales externos cuando un nodo falle, se desconecte o un entrenamiento termine.")
+        st.subheader("🔔 Webhook Notifications (Discord / Slack / Telegram)")
+        st.caption("Receive automatic alerts on external channels when a node fails, goes offline, or a training run finishes.")
 
         # Load current webhook config
         try:
@@ -68,48 +68,48 @@ def render_settings(api_client: ClusterApiClient, token: str):
         col_wh1, col_wh2 = st.columns([3, 1], gap="medium")
         with col_wh1:
             wh_url = st.text_input(
-                "URL del Webhook (Discord / Slack / Telegram HTTP POST)",
+                "Webhook URL (Discord / Slack / Telegram HTTP POST)",
                 value=current_wh.get("webhook_url", ""),
-                placeholder="https://discord.com/api/webhooks/... o https://hooks.slack.com/services/...",
+                placeholder="https://discord.com/api/webhooks/... or https://hooks.slack.com/services/...",
             )
             wh_enabled = st.checkbox(
-                "Activar alertas automáticas de eventos del clúster",
+                "Enable automatic cluster event alerts",
                 value=current_wh.get("enabled", False),
             )
         with col_wh2:
             st.write(" ")
             st.write(" ")
-            if st.button("💾 Guardar Webhook", type="primary", use_container_width=True):
+            if st.button("💾 Save Webhook", type="primary", use_container_width=True):
                 try:
                     res = api_client.save_webhook_config(token, webhook_url=wh_url, enabled=wh_enabled)
-                    st.success(res.get("message", "Configuración de Webhook guardada exitosamente."))
+                    st.success(res.get("message", "Webhook configuration saved successfully."))
                 except Exception as we:
-                    st.error(f"Error guardando Webhook: {we}")
+                    st.error(f"Failed to save webhook: {we}")
 
-            if st.button("🔔 Enviar Notificación de Prueba", use_container_width=True):
+            if st.button("🔔 Send Test Notification", use_container_width=True):
                 try:
                     res_test = api_client.test_webhook(token)
-                    st.info(res_test.get("message", "Prueba enviada."))
+                    st.info(res_test.get("message", "Test notification sent."))
                 except Exception as te:
-                    st.error(f"Error probando Webhook: {te}")
+                    st.error(f"Webhook test failed: {te}")
 
-            if st.button("⚡ Ejecutar Watchdog y Alertar Ahora", use_container_width=True, help="Escanea salud del clúster y envía alertas si hay fallos"):
+            if st.button("⚡ Run Watchdog & Alert Now", use_container_width=True, help="Scan cluster health and send alerts if any failures are found"):
                 try:
                     res_wd = api_client.trigger_watchdog_alert(token)
                     alerts = res_wd.get("alerts_detected", [])
                     if alerts:
-                        st.warning(f"⚠️ Alertas detectadas ({len(alerts)}): {'; '.join(alerts)}")
+                        st.warning(f"⚠️ Alerts detected ({len(alerts)}): {'; '.join(alerts)}")
                         if res_wd.get("webhook_sent"):
-                            st.success("Notificación enviada al webhook configurado.")
+                            st.success("Notification sent to the configured webhook.")
                     else:
-                        st.success("🟢 Clúster totalmente saludable. Sin alertas pendientes.")
+                        st.success("🟢 Cluster fully healthy. No pending alerts.")
                 except Exception as wde:
-                    st.error(f"Error ejecutando watchdog: {wde}")
+                    st.error(f"Watchdog run failed: {wde}")
 
     st.markdown("---")
     with st.container(border=True):
-        st.subheader("🧹 Saneamiento y Mantenimiento de Redis (Cluster Housekeeping)")
-        st.caption("Inspecciona y purga estudios fallidos, cancelados o claves temporales obsoletas para optimizar la memoria de Redis.")
+        st.subheader("🧹 Redis Cleanup & Maintenance (Cluster Housekeeping)")
+        st.caption("Inspect and purge failed or cancelled studies and stale temporary keys to optimize Redis memory usage.")
 
         try:
             hk_preview = api_client.get_housekeeping_preview(token)
@@ -120,27 +120,27 @@ def render_settings(api_client: ClusterApiClient, token: str):
 
             col_hk1, col_hk2, col_hk3 = st.columns([1.5, 1.5, 2], gap="medium")
             with col_hk1:
-                st.metric(label="💾 Memoria en Uso (Redis)", value=mem_human)
+                st.metric(label="💾 Memory in Use (Redis)", value=mem_human)
             with col_hk2:
                 st.metric(
-                    label="🗑️ Estudios Obsoletos Detectados",
+                    label="🗑️ Stale Studies Detected",
                     value=stale_count,
-                    delta=f"~{reclaimed_kb} KB recuperables",
+                    delta=f"~{reclaimed_kb} KB reclaimable",
                     delta_color="inverse" if stale_count > 0 else "off",
                 )
             with col_hk3:
                 st.write(" ")
-                if st.button("🧹 Purgar Estudios Obsoletos Ahora", type="secondary", use_container_width=True, disabled=(stale_count == 0)):
+                if st.button("🧹 Purge Stale Studies Now", type="secondary", use_container_width=True, disabled=(stale_count == 0)):
                     try:
                         res_purge = api_client.purge_housekeeping(token)
-                        st.success(res_purge.get("message", "Purgado completado."))
+                        st.success(res_purge.get("message", "Purge completed."))
                         st.rerun()
                     except Exception as pe:
-                        st.error(f"Error en purgado: {pe}")
+                        st.error(f"Purge failed: {pe}")
 
             if stale_ids:
-                with st.expander(f"Ver lista de {len(stale_ids)} estudios marcados para saneamiento"):
+                with st.expander(f"View the {len(stale_ids)} studies flagged for cleanup"):
                     for sid in stale_ids:
                         st.write(f"• `{sid}` (failed / cancelled)")
         except Exception as he:
-            st.caption(f"No se pudo cargar el asistente de mantenimiento: {he}")
+            st.caption(f"Could not load the maintenance assistant: {he}")
