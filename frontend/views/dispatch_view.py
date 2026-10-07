@@ -71,13 +71,22 @@ def render_dispatch(api_client: ClusterApiClient, token: str):
                 except Exception as re:
                     st.warning(f"No se pudo calcular recomendación: {re}")
 
-        with col_queue:
+        col_target, col_prio = st.columns([2.5, 1.5])
+        with col_target:
             target_selection = st.selectbox(
                 "Nodo / Cola de Destino",
                 options=inv_options,
                 index=inv_options.index(st.session_state["recommended_target"]) if st.session_state["recommended_target"] in inv_options else 0,
                 key="dispatch_target_queue_sel",
             )
+        with col_prio:
+            priority_label = st.selectbox(
+                "Prioridad de Ejecución",
+                options=["⚡ NORMAL", "🔥 URGENTE", "📦 BATCH"],
+                index=0,
+                key="dispatch_priority_sel",
+            )
+            priority_val = priority_label.split(" ")[-1]
 
         # Parse target IP
         target_ip = None
@@ -90,7 +99,7 @@ def render_dispatch(api_client: ClusterApiClient, token: str):
             est_min = eta.get("estimated_duration_min", 0.0)
             rec_gpu = eta.get("recommended_gpu", "GPU")
             tput = eta.get("estimated_throughput_img_s", 0)
-            st.info(f"⏱️ **Estimación de Duración (ETA):** ~**{est_min:.1f} min** ({est_min/60:.2f}h) | Throughput estimado: ~{tput} img/s | GPU sugerida: `{rec_gpu}`")
+            st.info(f"⏱️ **Estimación de Duración (ETA):** ~**{est_min:.1f} min** ({est_min/60:.2f}h) | Throughput estimado: ~{tput} img/s | GPU sugerida: `{rec_gpu}` | Prioridad: `{priority_val}`")
         except Exception:
             pass
 
@@ -103,10 +112,11 @@ def render_dispatch(api_client: ClusterApiClient, token: str):
                     model=selected_model,
                     dataset=dataset_path,
                     epochs=int(epochs),
+                    priority=priority_val,
                 )
                 study_created = res.get("data", {}).get("study_name", "Nuevo Estudio")
                 target_q = res.get("data", {}).get("target_queue", "wyolo_gpu_queue")
-                st.success(f"✅ ¡Estudio '{study_created}' despachado exitosamente a la cola '{target_q}'!")
+                st.success(f"✅ ¡Estudio '{study_created}' [{priority_val}] despachado exitosamente a la cola '{target_q}'!")
                 st.rerun()
             except Exception as qe:
                 st.error(f"Error despachando estudio: {qe}")
