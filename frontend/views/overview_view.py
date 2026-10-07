@@ -26,51 +26,51 @@ def render_overview(api_client: ClusterApiClient, token: str):
         unsafe_allow_html=True,
     )
 
-    st.title("📊 Centro de Operaciones y Topología")
-    st.caption("Visión general en tiempo real del clúster: telemetría, salud de nodos, almacenamiento y tendencias de carga.")
+    st.title("📊 Operations Center & Topology")
+    st.caption("Real-time cluster overview: telemetry, node health, storage, and workload trends.")
 
     try:
         data = api_client.get_overview(token)
     except Exception as e:
-        st.error(f"Error cargando el resumen del cluster: {e}")
+        st.error(f"Failed to load cluster overview: {e}")
         return
 
     # Top KPI Metrics Cards
     col1, col2, col3, col4, col5 = st.columns(5)
     with col1:
-        st.metric(label="🖥️ Nodos Totales", value=data.get("total_nodes", 0))
+        st.metric(label="🖥️ Total Nodes", value=data.get("total_nodes", 0))
     with col2:
-        st.metric(label="🟢 Nodos Activos", value=data.get("active_nodes", 0))
+        st.metric(label="🟢 Active Nodes", value=data.get("active_nodes", 0))
     with col3:
-        st.metric(label="⏸️ Nodos en Pausa", value=data.get("paused_nodes", 0))
+        st.metric(label="⏸️ Paused Nodes", value=data.get("paused_nodes", 0))
     with col4:
-        st.metric(label="⚡ GPUs Totales", value=data.get("total_gpus", 0))
+        st.metric(label="⚡ Total GPUs", value=data.get("total_gpus", 0))
     with col5:
-        st.metric(label="🚀 Tareas Activas", value=data.get("active_trials_count", 0))
+        st.metric(label="🚀 Active Tasks", value=data.get("active_trials_count", 0))
 
     st.divider()
 
     # --- Cluster Health & Watchdog Section ---
-    st.subheader("🚨 Monitor de Salud y Watchdog del Clúster")
+    st.subheader("🚨 Cluster Health Monitor & Watchdog")
     try:
         health = api_client.get_cluster_health(token)
         col_h1, col_h2, col_h3, col_h4, col_h5 = st.columns(5)
         with col_h1:
             st.metric(
-                label="📡 Broker Redis",
+                label="📡 Redis Broker",
                 value="OK" if health.get("redis_status") == "healthy" else "ERROR",
-                delta=f"{health.get('redis_latency_ms', 0)} ms latencia",
+                delta=f"{health.get('redis_latency_ms', 0)} ms latency",
                 delta_color="normal" if health.get("redis_status") == "healthy" else "inverse",
             )
         with col_h2:
             st.metric(
-                label="🩺 Nodos Saludables",
+                label="🩺 Healthy Nodes",
                 value=f"{health.get('healthy_nodes', 0)} / {health.get('total_nodes', 0)}",
             )
         with col_h3:
             zombies = health.get("zombie_nodes", [])
             st.metric(
-                label="⚠️ Nodos Desconectados",
+                label="⚠️ Disconnected Nodes",
                 value=len(zombies),
                 delta_color="inverse" if zombies else "normal",
             )
@@ -86,17 +86,17 @@ def render_overview(api_client: ClusterApiClient, token: str):
             )
 
         if zombies:
-            st.warning(f"⚠️ Nodos no respondiendo a Celery broadcast: {', '.join(zombies)}")
+            st.warning(f"⚠️ Nodes not responding to Celery broadcast: {', '.join(zombies)}")
         else:
-            st.success("✅ Todos los invokers reportan latidos periódicos y colas Celery activas.")
+            st.success("✅ All invokers are reporting periodic heartbeats and active Celery queues.")
     except Exception as he:
-        st.caption(f"No se pudo cargar el watchdog de salud: {he}")
+        st.caption(f"Unable to load the health watchdog: {he}")
 
     st.divider()
 
-    # --- Cluster Workload Trends (Propuesta 4) ---
-    st.subheader("📈 Distribución y Tendencias de Carga (Workload Trends)")
-    st.caption("Frecuencia horaria de entrenamientos despachados en el ecosistema.")
+    # --- Cluster Workload Trends (Proposal 4) ---
+    st.subheader("📈 Workload Distribution & Trends")
+    st.caption("Hourly frequency of training jobs dispatched across the ecosystem.")
     try:
         trends = api_client.get_workload_trends(token)
         hourly = trends.get("hourly_distribution", {})
@@ -105,51 +105,51 @@ def render_overview(api_client: ClusterApiClient, token: str):
 
         col_tr1, col_tr2 = st.columns([1, 3], gap="medium")
         with col_tr1:
-            st.metric(label="🔥 Hora Pico del Clúster", value=busiest)
-            st.write(f"• **Estudios Procesados:** `{total_runs}`")
-            st.caption("Recomendación: Lanza barridos masivos de Optuna durante horas valle para optimizar tiempos.")
+            st.metric(label="🔥 Cluster Peak Hour", value=busiest)
+            st.write(f"• **Studies Processed:** `{total_runs}`")
+            st.caption("Recommendation: schedule large Optuna sweeps during off-peak hours to reduce turnaround time.")
         with col_tr2:
             if hourly:
-                df_trends = pd.DataFrame(list(hourly.items()), columns=["Hora", "Estudios"]).set_index("Hora")
+                df_trends = pd.DataFrame(list(hourly.items()), columns=["Hour", "Studies"]).set_index("Hour")
                 st.bar_chart(df_trends, height=180)
     except Exception as te:
-        st.caption(f"No se pudieron calcular tendencias de carga: {te}")
+        st.caption(f"Unable to compute workload trends: {te}")
 
     # --- Green AI & Carbon Footprint Section ---
     try:
         green = api_client.get_green_ai_metrics(token)
         st.divider()
-        st.subheader("🌿 Eficiencia Energética y Huella de Carbono (Green AI)")
-        st.caption("Estimación acumulada de consumo energético y emisiones basada en TDP de hardware y horas de cómputo.")
+        st.subheader("🌿 Energy Efficiency & Carbon Footprint (Green AI)")
+        st.caption("Cumulative estimate of energy consumption and emissions based on hardware TDP and compute hours.")
 
         col_g1, col_g2, col_g3, col_g4 = st.columns(4)
         with col_g1:
-            st.metric("⚡ Energía Consumida", f"{green.get('estimated_kwh', 0.0)} kWh")
+            st.metric("⚡ Energy Consumed", f"{green.get('estimated_kwh', 0.0)} kWh")
         with col_g2:
-            st.metric("🌱 Emisiones CO₂e", f"{green.get('estimated_co2_kg', 0.0)} kg")
+            st.metric("🌱 CO₂e Emissions", f"{green.get('estimated_co2_kg', 0.0)} kg")
         with col_g3:
-            st.metric("🌳 Árboles Equivalentes", f"{green.get('trees_offset_equivalent', 0.0)} comp.")
+            st.metric("🌳 Equivalent Trees", f"{green.get('trees_offset_equivalent', 0.0)} offset")
         with col_g4:
-            st.metric("🚀 Eficiencia Media", f"{green.get('avg_efficiency_img_per_watt', 0.45)} img/W")
+            st.metric("🚀 Average Efficiency", f"{green.get('avg_efficiency_img_per_watt', 0.45)} img/W")
 
-        with st.expander("📊 Ver Desglose de Consumo por Modelo de GPU"):
+        with st.expander("📊 View Energy Breakdown by GPU Model"):
             gpu_breakdown = green.get("gpu_breakdown", [])
             if gpu_breakdown:
                 st.dataframe(pd.DataFrame(gpu_breakdown), use_container_width=True, hide_index=True)
-            st.caption(f"Factor de cálculo: {green.get('calculation_basis')}")
+            st.caption(f"Calculation basis: {green.get('calculation_basis')}")
     except Exception as ge:
-        st.caption(f"No se pudieron calcular métricas Green AI: {ge}")
+        st.caption(f"Unable to compute Green AI metrics: {ge}")
 
     st.divider()
 
     # --- Invoker Distribution Section ---
     col_v1, col_v2 = st.columns([2, 1])
     with col_v1:
-        st.subheader("🖥️ Distribución de Nodos Invoker")
+        st.subheader("🖥️ Invoker Node Distribution")
     with col_v2:
         view_mode = st.radio(
-            "Modo de vista:",
-            options=["📋 Tabla Resumen", "🗺️ Cuadrícula de Servidores (Rack Grid)"],
+            "View mode:",
+            options=["📋 Summary Table", "🗺️ Server Rack Grid"],
             horizontal=True,
             label_visibility="collapsed",
             key="overview_view_mode",
@@ -157,10 +157,10 @@ def render_overview(api_client: ClusterApiClient, token: str):
 
     invokers = data.get("invokers", [])
     if not invokers:
-        st.info("No se han detectado invokers registrados en Redis todavía.")
+        st.info("No registered invokers have been detected in Redis yet.")
         return
 
-    if view_mode == "📋 Tabla Resumen":
+    if view_mode == "📋 Summary Table":
         table_data = []
         for inv in invokers:
             ip = inv.get("worker_ip", "unknown")
@@ -171,23 +171,23 @@ def render_overview(api_client: ClusterApiClient, token: str):
             max_ram = inv.get("limits", {}).get("max_ram", "N/A")
             max_cpu = f"{inv.get('limits', {}).get('max_cpu_cores', 'N/A')} cores"
             state = inv.get("pause_state", "active")
-            badge = "🟢 Activo" if state == "active" else f"⏸️ {state}"
+            badge = "🟢 Active" if state == "active" else f"⏸️ {state}"
 
             table_data.append({
-                "IP Worker": ip,
+                "Worker IP": ip,
                 "Hostname": hostname,
-                "Modelo GPU": gpu_info,
-                "VRAM Total": vram_info,
-                "MAX_GPU Asignado": max_gpu,
-                "RAM Asignada": max_ram,
-                "CPU Asignado": max_cpu,
-                "Estado Colas": badge,
+                "GPU Model": gpu_info,
+                "Total VRAM": vram_info,
+                "Allocated MAX_GPU": max_gpu,
+                "Allocated RAM": max_ram,
+                "Allocated CPU": max_cpu,
+                "Queue Status": badge,
             })
         st.dataframe(table_data, use_container_width=True, hide_index=True)
 
     else:
         # Rack Grid View
-        st.caption("Topología visual del clúster con carga asignada:")
+        st.caption("Visual cluster topology with allocated load:")
         cols = st.columns(3)
         for idx, inv in enumerate(invokers):
             with cols[idx % 3]:
@@ -205,5 +205,5 @@ def render_overview(api_client: ClusterApiClient, token: str):
                     st.markdown(f"##### {icon} `{hostname}`")
                     st.caption(f"IP: `{ip}` | {gpu_model}")
                     st.write(f"• **VRAM:** `{vram_total}`")
-                    st.progress(min(max_gpu_pct / 100.0, 1.0), text=f"VRAM Límite: {int(max_gpu_pct)}%")
+                    st.progress(min(max_gpu_pct / 100.0, 1.0), text=f"VRAM Limit: {int(max_gpu_pct)}%")
                     st.write(f"• **RAM:** `{max_ram}` | **CPU:** `{max_cpu} cores`")
