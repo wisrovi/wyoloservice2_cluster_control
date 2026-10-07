@@ -93,6 +93,19 @@ def render_settings(api_client: ClusterApiClient, token: str):
                 except Exception as te:
                     st.error(f"Error probando Webhook: {te}")
 
+            if st.button("⚡ Ejecutar Watchdog y Alertar Ahora", use_container_width=True, help="Escanea salud del clúster y envía alertas si hay fallos"):
+                try:
+                    res_wd = api_client.trigger_watchdog_alert(token)
+                    alerts = res_wd.get("alerts_detected", [])
+                    if alerts:
+                        st.warning(f"⚠️ Alertas detectadas ({len(alerts)}): {'; '.join(alerts)}")
+                        if res_wd.get("webhook_sent"):
+                            st.success("Notificación enviada al webhook configurado.")
+                    else:
+                        st.success("🟢 Clúster totalmente saludable. Sin alertas pendientes.")
+                except Exception as wde:
+                    st.error(f"Error ejecutando watchdog: {wde}")
+
     st.markdown("---")
     with st.container(border=True):
         st.subheader("🧹 Saneamiento y Mantenimiento de Redis (Cluster Housekeeping)")
