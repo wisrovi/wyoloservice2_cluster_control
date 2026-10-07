@@ -1,0 +1,13 @@
+.git
+.codegraph
+graphify-out
+old
+screenshots
+tests
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.coverage
+htmlcov
+control_host.env
+.env
