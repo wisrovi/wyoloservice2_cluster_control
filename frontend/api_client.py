@@ -182,14 +182,16 @@ class ClusterApiClient:
         model: str = "yolov8n-cls.pt",
         dataset: str = "/examples/colorball.v8i.multiclass/",
         epochs: int = 1,
+        priority: str = "NORMAL",
     ) -> Dict[str, Any]:
-        """Dispatches a quick 1-trial verification task."""
+        """Dispatches a quick 1-trial verification task with priority."""
         url = f"{self.base_url}/api/v1/tasks/quick-launch"
         payload = {
             "worker_ip": worker_ip,
             "model": model,
             "dataset": dataset,
             "epochs": epochs,
+            "priority": priority.upper(),
         }
         resp = requests.post(url, headers=self._headers(token), json=payload, timeout=5)
         if resp.status_code == 200:
@@ -285,3 +287,46 @@ class ClusterApiClient:
         if resp.status_code == 200:
             return resp.json()
         raise ValueError(resp.json().get("detail", "Error getting workload trends"))
+
+    # --- v1.4.0 Optimization Client Methods ---
+
+    def diagnose_invoker(self, token: str, worker_ip: str) -> Dict[str, Any]:
+        """Performs deep socket and Celery connectivity diagnostic on invoker node."""
+        url = f"{self.base_url}/api/v1/invokers/{worker_ip}/diagnose"
+        resp = requests.get(url, headers=self._headers(token), timeout=5)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", f"Error diagnosing invoker {worker_ip}"))
+
+    def get_green_ai_metrics(self, token: str) -> Dict[str, Any]:
+        """Fetches Green AI energy consumption (kWh) and CO2e metrics."""
+        url = f"{self.base_url}/api/v1/cluster/green-ai"
+        resp = requests.get(url, headers=self._headers(token), timeout=5)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", "Error getting Green AI metrics"))
+
+    def trigger_watchdog_alert(self, token: str) -> Dict[str, Any]:
+        """Runs on-demand watchdog scan and triggers alert notifications."""
+        url = f"{self.base_url}/api/v1/cluster/watchdog/check-and-alert"
+        resp = requests.post(url, headers=self._headers(token), timeout=5)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", "Error triggering watchdog check"))
+
+    def compare_studies(self, token: str, study_ids: List[str]) -> Dict[str, Any]:
+        """Performs head-to-head comparison between 2 to 5 studies."""
+        url = f"{self.base_url}/api/v1/tasks/compare"
+        resp = requests.post(url, headers=self._headers(token), json={"study_ids": study_ids}, timeout=5)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", "Error comparing studies"))
+
+    def get_study_reproducibility(self, token: str, study_id: str) -> Dict[str, Any]:
+        """Fetches reproducible Docker command and YAML manifest for study."""
+        url = f"{self.base_url}/api/v1/tasks/{study_id}/reproducibility"
+        resp = requests.get(url, headers=self._headers(token), timeout=5)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", f"Error getting reproducibility manifest for {study_id}"))
+
