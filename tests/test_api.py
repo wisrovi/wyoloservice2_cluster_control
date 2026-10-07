@@ -239,3 +239,36 @@ def test_authenticated_cluster_endpoints(client):
     assert "studies" in comp_data
     assert "comparison_summary" in comp_data
 
+    # 18. v1.5.0 Cluster Storage Admin
+    resp_storage = client.get("/api/v1/cluster/storage/inspect", headers=headers)
+    assert resp_storage.status_code == 200, f"Expected 200, got {resp_storage.status_code}"
+    storage_data = resp_storage.json()
+    assert "volumes" in storage_data
+    assert "minio_buckets" in storage_data
+
+    # 19. v1.5.0 FinOps Report & Electricity Rate
+    resp_finops = client.get("/api/v1/cluster/finops", headers=headers)
+    assert resp_finops.status_code == 200, f"Expected 200, got {resp_finops.status_code}"
+    finops_data = resp_finops.json()
+    assert "total_cost_eur" in finops_data
+    assert "rate_eur_per_kwh" in finops_data
+
+    resp_rate = client.post("/api/v1/cluster/finops/rate", headers=headers, json={"rate_eur_per_kwh": 0.22})
+    assert resp_rate.status_code == 200, f"Expected 200, got {resp_rate.status_code}"
+    assert resp_rate.json()["rate_eur_per_kwh"] == 0.22
+
+    # 20. v1.5.0 Audit Logs
+    resp_audit = client.get("/api/v1/cluster/audit/logs?limit=10", headers=headers)
+    assert resp_audit.status_code == 200, f"Expected 200, got {resp_audit.status_code}"
+    audit_data = resp_audit.json()
+    assert "logs" in audit_data
+    assert len(audit_data["logs"]) > 0
+
+    # 21. v1.5.0 Capabilities Catalog
+    resp_caps = client.get("/api/v1/cluster/capabilities", headers=headers)
+    assert resp_caps.status_code == 200, f"Expected 200, got {resp_caps.status_code}"
+    caps_data = resp_caps.json()
+    assert "modules" in caps_data
+    assert caps_data["total_modules"] >= 5
+
+
