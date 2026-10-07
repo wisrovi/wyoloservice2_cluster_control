@@ -1,16 +1,197 @@
 """Tasks and trials monitoring view for Streamlit application."""
 
+import pandas as pd
 import streamlit as st
 from frontend.api_client import ClusterApiClient
 
 
 def render_tasks(api_client: ClusterApiClient, token: str):
-    """Renders active training trials and historical studies."""
+    """Renders active training trials, filtered historical studies, and Optuna metrics."""
     st.title("🚀 Monitoreo de Entrenamientos y Tareas")
-    st.caption("Visualiza los trials que se están ejecutando en los invokers en tiempo real.")
+    st.caption("Supervisa entrenamientos en tiempo real, filtra por remitente/nodo y analiza trials de Optuna.")
 
-    tab_active, tab_history = st.tabs(["⚡ Tareas Activas en Ejecución", "📜 Historial de Estudios"])
+    current_user = st.session_state.get("username", "wisrovi")
 
+    # --- Quick Job Dispatcher Expander ---
+    with st.expander("⚡ Lanzador Rápido de Pruebas de Verificación (1-Click Test)", expanded=False):
+        st.write("Despacha un entrenamiento mínimo (1-5 épocas) para validar la conectividad, GPU, Samba y MinIO de un nodo.")
+        col_q1, col_q2, col_q3, col_q4 = st.columns([1.5, 1.2, 2, 1])
+
+        # Get invoker list for destination queue selection
+        try:
+            invokers_list = api_client.list_invokers(token)
+            inv_options = ["wyolo_gpu_queue (Cola Pública Global)"] + [f"{i['worker_ip']} ({i['hostname']})" for i in invokers_list]
+        except Exception:
+            inv_options = ["wyolo_gpu_queue (Cola Pública Global)"]
+
+        with col_q1:
+            selected_dest = st.selectbox("Nodo / Cola de Destino", options=inv_options, key="quick_target_queue")
+            # Parse IP if specific node
+            target_ip = None
+            if "(" in selected_dest:
+                target_ip = selected_dest.split(" ")[0].strip()
+
+        with col_q2:
+            quick_model = st.selectbox("Modelo Base YOLO", options=["yolov8n-cls.pt", "yolo26n-cls.pt", "yolov8s-cls.pt"], key="quick_model_sel")
+
+        with col_q3:
+            quick_dataset = st.text_input("Ruta Dataset (Samba)", value="/examples/colorball.v8i.multiclass/", key="quick_data_input")
+
+        with col_q4:
+            quick_epochs = st.number_input("Épocas", min_value=1, max_value=5, value=1, step=1, key="quick_epochs_input")
+
+        if st.button("🚀 Despachar Prueba Inmediata", type="primary", use_container_width=True):
+            try:
+                res = api_client.quick_launch_task(
+                    token=token,
+                    worker_ip=target_ip,
+                    model=quick_model,
+                    dataset=quick_dataset,
+                    epochs=int(quick_epochs),
+                )
+                st.success(f"✅ ¡Prueba '{res['data']['study_name']}' enviada con éxito a la cola '{res['data']['target_queue']}'!")
+                st.rerun()
+            except Exception as qe:
+                st.error(f"Error despachando prueba: {qe}")
+
+    tab_history, tab_active, tab_metrics = st.tabs([
+        "📜 Historial y Búsqueda de Estudios",
+        "⚡ Tareas Activas en Ejecución",
+        "📈 Métricas y Curvas de Aprendizaje (Optuna)",
+    ])
+
+    # --- TAB 1: Historical Studies with Advanced Filters ---
+    with tab_history:
+        st.markdown("#### 🔍 Filtros Avanzados de Búsqueda")
+
+        # Row 1: Search query & quick 'Only My Studies' toggle
+        col_s1, col_s2 = st.columns([3, 1])
+        with col_s1:
+            search_query = st.text_input(
+                "Buscador de texto",
+                placeholder="Busca por Nombre de Estudio, Study ID, Dataset o Modelo...",
+                key="tasks_search_input",
+                label_visibility="collapsed",
+            )
+        with col_s2:
+            only_mine = st.checkbox("👤 Solo mis estudios", value=False, key="cb_only_mine", help="Muestra únicamente tareas enviadas por ti")
+
+        # Retrieve a broad set of studies to extract filter choices dynamically
+        try:
+            raw_history = api_client.list_task_history(token, limit=100)
+        except Exception as he:
+            st.error(f"Error cargando historial de estudios: {he}")
+            raw_history = []
+
+        # Extract available authors and destination nodes
+        all_authors = sorted(list({h.get("author", "Desconocido") for h in raw_history if h.get("author")}))
+        author_options = ["Todos"] + all_authors
+
+        all_nodes = sorted(list({h.get("destination_node", "N/A") for h in raw_history if h.get("destination_node")}))
+        node_options = ["Todos"] + all_nodes
+
+        # Row 2: Secondary filter dropdowns
+        col_f1, col_f2, col_f3, col_f4 = st.columns(4)
+        with col_f1:
+            sel_author = st.selectbox("Remitente / Autor", options=author_options, key="filter_author")
+        with col_f2:
+            sel_node = st.selectbox("Nodo Asignado (Dónde cayó)", options=node_options, key="filter_node")
+        with col_f3:
+            sel_status = st.selectbox("Estado", options=["Todos", "running", "completed", "failed"], key="filter_status")
+        with col_f4:
+            limit_val = st.selectbox("Límite de Registros", options=[20, 50, 100], index=1, key="filter_limit")
+
+        # Apply client-side filters
+        filtered_history = raw_history
+
+        if only_mine:
+            filtered_history = [
+                h for h in filtered_history
+                if current_user.lower() in str(h.get("author", "")).lower()
+            ]
+        elif sel_author != "Todos":
+            filtered_history = [
+                h for h in filtered_history
+                if sel_author.lower() in str(h.get("author", "")).lower()
+            ]
+
+        if sel_node != "Todos":
+            filtered_history = [
+                h for h in filtered_history
+                if sel_node.lower() in str(h.get("destination_node", "")).lower()
+            ]
+
+        if sel_status != "Todos":
+            filtered_history = [
+                h for h in filtered_history
+                if h.get("status") == sel_status
+            ]
+
+        if search_query:
+            sq = search_query.lower().strip()
+            filtered_history = [
+                h for h in filtered_history
+                if sq in str(h.get("study_name", "")).lower()
+                or sq in str(h.get("study_id", "")).lower()
+                or sq in str(h.get("dataset", "")).lower()
+                or sq in str(h.get("model", "")).lower()
+            ]
+
+        filtered_history = filtered_history[:limit_val]
+
+        st.caption(f"Mostrando {len(filtered_history)} de {len(raw_history)} estudios registrados en Redis:")
+
+        if not filtered_history:
+            st.info("No se encontraron estudios que coincidan con los criterios de búsqueda.")
+        else:
+            table_data = []
+            for h in filtered_history:
+                st_icon = "🟢" if h.get("status") == "completed" else ("⚡" if h.get("status") == "running" else "🔴")
+                table_data.append({
+                    "Estado": f"{st_icon} {h.get('status')}",
+                    "Nombre del Estudio": h.get("study_name", h.get("study_id")),
+                    "Remitente (Quién lo envió)": h.get("author", "Desconocido"),
+                    "Nodo Destino (Dónde cayó)": h.get("destination_node", "wyolo_gpu_queue"),
+                    "Modelo": h.get("model", "N/A"),
+                    "Dataset": h.get("dataset", "N/A"),
+                    "Iniciado": h.get("start_time", "N/A"),
+                    "Study ID": h.get("study_id"),
+                })
+
+            st.dataframe(
+                pd.DataFrame(table_data),
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Nombre del Estudio": st.column_config.TextColumn(width="medium"),
+                    "Remitente (Quién lo envió)": st.column_config.TextColumn(width="medium"),
+                    "Nodo Destino (Dónde cayó)": st.column_config.TextColumn(width="medium"),
+                    "Dataset": st.column_config.TextColumn(width="large"),
+                }
+            )
+
+            # Detail inspect box
+            st.markdown("##### 🔍 Inspeccionar Detalle del Estudio")
+            study_choices = [f"{h.get('study_name')} ({h.get('study_id')[:8]})" for h in filtered_history]
+            selected_inspect = st.selectbox("Selecciona un estudio para ver su configuración completa:", options=study_choices)
+            if selected_inspect:
+                # Find corresponding study
+                selected_idx = study_choices.index(selected_inspect)
+                target_study = filtered_history[selected_idx]
+                col_d1, col_d2 = st.columns([1, 1])
+                with col_d1:
+                    st.write(f"• **Study ID Completo:** `{target_study.get('study_id')}`")
+                    st.write(f"• **Autor / Remitente:** `{target_study.get('author')}`")
+                    st.write(f"• **Nodo / Host:** `{target_study.get('destination_node')}`")
+                    st.write(f"• **Dataset:** `{target_study.get('dataset')}`")
+                with col_d2:
+                    st.write(f"• **Modelo:** `{target_study.get('model')}`")
+                    st.write(f"• **Estado:** `{target_study.get('status')}`")
+                    st.write(f"• **Fecha de Inicio:** `{target_study.get('start_time')}`")
+                    if target_study.get("error"):
+                        st.error(f"Error registrado: {target_study.get('error')}")
+
+    # --- TAB 2: Active Tasks in Progress ---
     with tab_active:
         try:
             active_tasks = api_client.list_active_tasks(token)
@@ -23,8 +204,10 @@ def render_tasks(api_client: ClusterApiClient, token: str):
         else:
             for task in active_tasks:
                 study_id = task.get("study_id")
+                study_name = task.get("study_name", study_id)
+                author = task.get("author", "Desconocido")
+                dest_node = task.get("destination_node", task.get("invoker", "wyolo_gpu_queue"))
                 model = task.get("model", "N/A")
-                invoker = task.get("invoker", "N/A")
                 start_time = task.get("start_time", "N/A")
                 progress = task.get("progress", {})
                 completed_trials = progress.get("completed_trials", 0)
@@ -33,10 +216,10 @@ def render_tasks(api_client: ClusterApiClient, token: str):
                 with st.container(border=True):
                     col_t1, col_t2 = st.columns([3, 1])
                     with col_t1:
-                        st.markdown(f"### 🎯 Estudio: `{study_id}`")
-                        st.write(f"• **Modelo:** `{model}` | **Tipo:** `{task.get('task_type', 'N/A')}`")
-                        st.write(f"• **Invoker Asignado:** `{invoker}`")
-                        st.write(f"• **Iniciado:** `{start_time}`")
+                        st.markdown(f"### 🎯 Estudio: `{study_name}`")
+                        st.write(f"• **Remitente:** `{author}` | **Nodo Asignado:** `{dest_node}`")
+                        st.write(f"• **Modelo:** `{model}` | **Dataset:** `{task.get('dataset', 'N/A')}`")
+                        st.write(f"• **Iniciado:** `{start_time}` | **Study ID:** `{study_id}`")
 
                         if total_trials > 0:
                             pct = min(completed_trials / total_trials, 1.0)
@@ -52,22 +235,45 @@ def render_tasks(api_client: ClusterApiClient, token: str):
                             except Exception as ce:
                                 st.error(f"Error cancelando: {ce}")
 
-    with tab_history:
-        st.caption("Últimos estudios registrados en Redis:")
-        try:
-            history = api_client.list_task_history(token, limit=30)
-            if not history:
-                st.info("No hay historial disponible.")
+    # --- TAB 3: Optuna Metrics & Learning Curves ---
+    with tab_metrics:
+        st.markdown("#### 📈 Curvas de Aprendizaje y Evolución de Trials (Optuna)")
+        st.caption("Visualiza el rendimiento de la métrica objetivo (Accuracy / Fitness / mAP50) a lo largo de los trials.")
+
+        if not raw_history:
+            st.info("No hay estudios disponibles para graficar métricas.")
+        else:
+            study_metric_choices = {
+                f"{h.get('study_name', h.get('study_id'))} [{h.get('status')}]": h.get("study_id")
+                for h in raw_history
+            }
+            selected_metric_label = st.selectbox(
+                "Selecciona el estudio a analizar:",
+                options=list(study_metric_choices.keys()),
+                key="sel_study_metric",
+            )
+            selected_metric_id = study_metric_choices[selected_metric_label]
+
+            try:
+                metrics_points = api_client.get_study_metrics(token, selected_metric_id)
+            except Exception as me:
+                st.error(f"Error obteniendo métricas de Optuna: {me}")
+                metrics_points = []
+
+            if not metrics_points:
+                st.info(f"El estudio `{selected_metric_id}` aún no ha registrado puntos de métricas en Redis.")
             else:
-                table_hist = []
-                for h in history:
-                    table_hist.append({
-                        "Study ID": h.get("study_id"),
-                        "Modelo": h.get("model"),
-                        "Estado": h.get("status"),
-                        "Invoker": h.get("invoker"),
-                        "Iniciado": h.get("start_time", "N/A"),
-                    })
-                st.dataframe(table_hist, use_container_width=True, hide_index=True)
-        except Exception as he:
-            st.error(f"Error cargando historial: {he}")
+                df_metrics = pd.DataFrame(metrics_points)
+                best_val = df_metrics["fitness"].max()
+                best_trial_row = df_metrics[df_metrics["fitness"] == best_val].iloc[0]
+
+                col_m1, col_m2 = st.columns([1, 3])
+                with col_m1:
+                    st.metric(label="🏆 Mejor Valor (Fitness / Acc)", value=f"{best_val:.4f}")
+                    st.write(f"• **Mejor Trial:** `#{int(best_trial_row['trial'])}`")
+                    st.write(f"• **Total Trials Registrados:** `{len(df_metrics)}`")
+                with col_m2:
+                    st.line_chart(df_metrics.set_index("trial")["fitness"])
+
+                with st.expander("📊 Ver Tabla Completa de Trials y Parámetros"):
+                    st.dataframe(df_metrics, use_container_width=True, hide_index=True)
