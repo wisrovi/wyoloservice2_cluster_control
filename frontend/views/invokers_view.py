@@ -62,9 +62,19 @@ def render_invokers(api_client: ClusterApiClient, token: str):
                     st.write(f"• **Pausa Temporal Hasta:** `{inv.get('pause_until')}`")
                 st.caption(f"Última sincronización: {inv.get('updated_at', 'N/A')}")
 
-                # Pause & Resume quick action buttons
-                st.markdown("##### ⏯️ Control de Colas Públicas")
-                col_p1, col_p2, col_p3 = st.columns(3)
+                # Pause & Resume quick action buttons and prominent status banner
+                st.markdown("##### ⏯️ Control y Estado de Colas Públicas")
+
+                if pause_state == "active":
+                    st.success("🟢 **COLA PÚBLICA ACTIVA** — Consumiendo tareas de la cola global `wyolo_gpu_queue` y su cola privada.")
+                elif pause_state in ("paused_temporal", "paused") and inv.get("pause_until"):
+                    st.warning(f"🟡 **PAUSA TEMPORAL** — Cola pública pausada hasta `{inv.get('pause_until')}`. Solo atiende su cola privada.")
+                elif pause_state == "draining":
+                    st.info("🛡️ **MODO DRENADO (DRAINING)** — Esperando a finalizar la tarea en curso para pausar la cola pública de forma segura.")
+                else:
+                    st.error("🔴 **PAUSA INDEFINIDA** — Cola pública desactivada permanentemente. Solo atiende su cola privada.")
+
+                col_p1, col_p2, col_p3, col_p4 = st.columns(4)
                 with col_p1:
                     if st.button("▶️ Reanudar", key=f"btn_res_{worker_ip}", use_container_width=True):
                         try:
@@ -82,13 +92,21 @@ def render_invokers(api_client: ClusterApiClient, token: str):
                         except Exception as pe:
                             st.error(f"Error: {pe}")
                 with col_p3:
-                    if st.button("⏹️ Pausa Indefinida", key=f"btn_pind_{worker_ip}", use_container_width=True):
+                    if st.button("⏹️ Pausa Indef.", key=f"btn_pind_{worker_ip}", use_container_width=True):
                         try:
                             api_client.set_pause(token, worker_ip, action="pause", mode="perpetual")
                             st.warning(f"Nodo {worker_ip} pausado indefinidamente.")
                             st.rerun()
                         except Exception as pe:
                             st.error(f"Error: {pe}")
+                with col_p4:
+                    if st.button("🛡️ Drenar", key=f"btn_drain_{worker_ip}", use_container_width=True, help="Termina la tarea activa y entra en pausa"):
+                        try:
+                            api_client.drain_invoker(token, worker_ip, reason="Manual graceful drain")
+                            st.info(f"Nodo {worker_ip} puesto en modo drenado.")
+                            st.rerun()
+                        except Exception as de:
+                            st.error(f"Error drenando nodo: {de}")
 
             with col_controls:
                 st.markdown("#### ⚡ Límites Asignados para Entrenamientos")
