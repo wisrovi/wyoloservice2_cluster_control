@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-10-07
+
+### Added
+- Deep node connectivity diagnostics (`/invokers/{worker_ip}/diagnose`) with TCP socket probing to SSH port 22 and live Celery inspection.
+- Green AI energy monitoring (`/cluster/green-ai`) tracking cumulative kWh, CO2e emissions based on GPU TDP, equivalent tree offsets, and img/W efficiency.
+- Task priority scheduling (`URGENT`, `NORMAL`, `BATCH`) in the smart dispatcher and Celery task payload metadata.
+- Proactive watchdog scanner (`/cluster/watchdog/check-and-alert`) with instant webhook alerts to Discord, Slack and Telegram upon critical failures.
+- Head-to-Head study comparison (`/tasks/compare`) in history view contrasting architectures, epochs, batch sizes, and accuracy metrics.
+- 1-Click Study Reproducibility manifest (`/tasks/{study_id}/reproducibility`) generating exact `docker run` commands, configuration YAMLs and SHA256 hashes.
+- Preloaded seamless authentication flow for immediate operator access.
+- Expanded dockerized unit test suite reaching 75% total code coverage and 100% test pass rate.
+
 ## [1.3.0] - 2026-10-07
 
 ### Added
