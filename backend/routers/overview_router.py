@@ -66,3 +66,41 @@ async def estimate_duration(
     """Estimates training duration based on model complexity and epoch count."""
     repo = ClusterRepository()
     return repo.estimate_training_duration(model=model, epochs=epochs, dataset=dataset)
+
+
+@router.get("/recommend-node")
+async def recommend_node(
+    model: str = Query("yolov8n-cls.pt"),
+    current_user: str = Depends(get_current_user),
+):
+    """Smart dispatcher: recommends optimal invoker node based on workload and GPU fitness."""
+    repo = ClusterRepository()
+    return repo.recommend_smart_dispatch(model=model)
+
+
+@router.get("/gpu-benchmarks")
+async def get_gpu_benchmarks(current_user: str = Depends(get_current_user)):
+    """Returns measured speed benchmarks and throughput comparison across GPU models."""
+    repo = ClusterRepository()
+    return repo.get_gpu_benchmarks()
+
+
+@router.get("/housekeeping/preview")
+async def housekeeping_preview(current_user: str = Depends(get_current_user)):
+    """Inspects Redis memory and stale/failed studies ready for housekeeping."""
+    repo = ClusterRepository()
+    return repo.get_housekeeping_preview()
+
+
+@router.post("/housekeeping/purge")
+async def housekeeping_purge(current_user: str = Depends(get_current_user)):
+    """Purges stale/failed study keys from Redis to reclaim memory."""
+    repo = ClusterRepository()
+    return repo.purge_housekeeping_studies()
+
+
+@router.get("/trends")
+async def get_workload_trends(current_user: str = Depends(get_current_user)):
+    """Returns hourly and daily cluster workload distribution."""
+    repo = ClusterRepository()
+    return repo.get_workload_trends()
