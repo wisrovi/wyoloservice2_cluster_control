@@ -23,7 +23,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="wyoloservice2_cluster_control API",
     description="Centralized Cluster Management and Dynamic Resource Allocation API",
-    version="1.3.0",
+    version="1.4.0",
     lifespan=lifespan,
 )
 
