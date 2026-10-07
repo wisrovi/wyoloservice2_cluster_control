@@ -93,6 +93,8 @@ def test_authenticated_cluster_endpoints(client):
     assert "redis_latency_ms" in health_data
     assert "healthy_nodes" in health_data
     assert "zombie_nodes" in health_data
+    assert "storage_samba" in health_data
+    assert "storage_minio" in health_data
 
     # 2. Cluster Overview
     resp_overview = client.get("/api/v1/cluster/overview", headers=headers)
@@ -126,3 +128,29 @@ def test_authenticated_cluster_endpoints(client):
     resp_metrics = client.get(f"/api/v1/tasks/{created_study_id}/metrics", headers=headers)
     assert resp_metrics.status_code == 200, f"Expected 200, got {resp_metrics.status_code}"
     assert isinstance(resp_metrics.json(), list)
+
+    # 6. Webhook Configuration & Testing
+    resp_wh_get = client.get("/api/v1/cluster/webhook", headers=headers)
+    assert resp_wh_get.status_code == 200, f"Expected 200, got {resp_wh_get.status_code}"
+    assert "webhook_url" in resp_wh_get.json()
+
+    resp_wh_post = client.post(
+        "/api/v1/cluster/webhook",
+        headers=headers,
+        json={"webhook_url": "https://discord.com/api/webhooks/test", "enabled": True},
+    )
+    assert resp_wh_post.status_code == 200
+    assert resp_wh_post.json().get("webhook_url") == "https://discord.com/api/webhooks/test"
+    assert resp_wh_post.json().get("enabled") is True
+
+    resp_wh_test = client.post("/api/v1/cluster/webhook/test", headers=headers)
+    assert resp_wh_test.status_code == 200
+    assert "status" in resp_wh_test.json()
+
+    # 7. Training Duration Estimator (ETA)
+    resp_eta = client.get("/api/v1/cluster/estimate-duration?model=yolov8n-cls.pt&epochs=2&dataset_size=500", headers=headers)
+    assert resp_eta.status_code == 200, f"Expected 200, got {resp_eta.status_code}"
+    eta_data = resp_eta.json()
+    assert "estimated_duration_min" in eta_data
+    assert "recommended_gpu" in eta_data
+    assert "estimated_throughput_img_s" in eta_data
