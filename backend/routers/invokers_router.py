@@ -7,6 +7,7 @@ from backend.auth import get_current_user
 from backend.redis_client import ClusterRepository, get_redis_client
 from backend.schemas import (
     BatchLimitsUpdate,
+    DrainRequest,
     InvokerDetailResponse,
     InvokerLimitsUpdate,
     InvokerPauseRequest,
@@ -88,6 +89,29 @@ async def pause_or_resume(
     return {
         "status": "success",
         "message": f"Executed '{payload.action}' on invoker {worker_ip}",
+        "data": updated,
+    }
+
+
+@router.post("/{worker_ip}/drain")
+async def drain_invoker(
+    worker_ip: str,
+    payload: DrainRequest = DrainRequest(),
+    current_user: str = Depends(get_current_user),
+):
+    """Puts an invoker node in graceful drain mode: finishes active tasks and halts public consumption."""
+    repo = ClusterRepository()
+    existing = repo.get_invoker(worker_ip)
+    if not existing:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Invoker {worker_ip} not found",
+        )
+
+    updated = repo.set_invoker_drain(worker_ip=worker_ip, reason=payload.reason or "Maintenance")
+    return {
+        "status": "success",
+        "message": f"Invoker {worker_ip} is now draining (Reason: {payload.reason})",
         "data": updated,
     }
 
