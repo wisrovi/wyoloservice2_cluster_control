@@ -4,6 +4,7 @@ from datetime import datetime
 import json
 import time
 from typing import Any, Dict, List, Optional
+import uuid
 from celery import Celery
 import redis
 
@@ -86,6 +87,34 @@ class ClusterRepository:
         gpu_model = res.get("physical_gpu_model") or ver_data.get("worker_gpu_model") or "unknown"
         gpu_count = int(res.get("physical_gpu_count") or ver_data.get("worker_gpu_count") or 0)
         gpu_mem = res.get("physical_gpu_memory_total") or ver_data.get("worker_gpu_memory") or "unknown"
+        # Smart GPU Memory resolution if unknown or missing
+        known_gpu_vram = {
+            "3060": "12288 MiB (12.0 GB)",
+            "3070": "8192 MiB (8.0 GB)",
+            "3080": "10240 MiB (10.0 GB)",
+            "3090": "24576 MiB (24.0 GB)",
+            "4060": "8192 MiB (8.0 GB)",
+            "4070": "12288 MiB (12.0 GB)",
+            "4080": "16384 MiB (16.0 GB)",
+            "4090": "24576 MiB (24.0 GB)",
+            "a100": "81920 MiB (80.0 GB)",
+            "v100": "32768 MiB (32.0 GB)",
+            "t4": "15360 MiB (15.0 GB)",
+        }
+        if gpu_mem in ("unknown", "", "0", None):
+            model_lower = str(gpu_model).lower()
+            for k_model, v_mem in known_gpu_vram.items():
+                if k_model in model_lower:
+                    gpu_mem = v_mem
+                    break
+        elif "mib" in str(gpu_mem).lower() and "(" not in str(gpu_mem):
+            try:
+                val_mib = float(str(gpu_mem).lower().replace("mib", "").strip())
+                val_gb = val_mib / 1024.0
+                gpu_mem = f"{int(val_mib)} MiB ({val_gb:.1f} GB)"
+            except Exception:
+                pass
+
         ram_total = res.get("physical_ram_total") or ver_data.get("executor_allocated_ram") or "unknown"
         cpu_cores = res.get("physical_cpu_cores") or ver_data.get("worker_cpu_cores") or "unknown"
 
@@ -182,6 +211,28 @@ class ClusterRepository:
 
         return self.get_invoker(worker_ip) or {}
 
+    def set_invoker_drain(self, worker_ip: str, reason: str = "Maintenance") -> Dict[str, Any]:
+        """Marks an invoker node in draining mode: finishes active tasks and halts public consumption."""
+        res_key = f"invoker:{worker_ip}:resources"
+        state_key = f"invoker:{worker_ip}:pause_state"
+        drain_key = f"invoker:{worker_ip}:drain"
+
+        self.client.set(state_key, "draining")
+        self.client.set(drain_key, json.dumps({"draining": True, "reason": reason, "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}))
+        self.client.hset(res_key, mapping={"pause_state": "draining", "drain_reason": reason})
+
+        # Cancel Celery consumer on public queues immediately so no new tasks are accepted
+        try:
+            app = get_celery_app()
+            node_name = f"celery@wyolo_invoker_{worker_ip}"
+            public_queues = ["gpus_high", "gpus_medium", "gpus_low", "wyolo_gpu_queue"]
+            for q in public_queues:
+                app.control.cancel_consumer(q, destination=[node_name], timeout=1.0)
+        except Exception as e:
+            print(f"[CELERY SIGNAL] Warning: Failed to cancel consumers for drain on {worker_ip}: {e}")
+
+        return self.get_invoker(worker_ip) or {}
+
     # --- Tasks Management ---
 
     def list_active_tasks(self) -> List[Dict[str, Any]]:
@@ -197,19 +248,59 @@ class ClusterRepository:
                     tasks.append(task_data)
         return tasks
 
-    def list_all_studies(self, limit: int = 50) -> List[Dict[str, Any]]:
-        """Retrieves recent studies from Redis."""
+    def list_all_studies(
+        self,
+        limit: int = 50,
+        search: Optional[str] = None,
+        author: Optional[str] = None,
+        worker_ip: Optional[str] = None,
+        status: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """Retrieves recent studies from Redis with search and author/node filtering."""
         config_keys = [k.decode("utf-8") for k in self.client.keys("study:*:config")]
         studies = []
-        for key in config_keys[:limit]:
+        for key in config_keys:
             study_id = key.split(":")[1]
             details = self.get_study_details(study_id)
-            if details:
-                studies.append(details)
+            if not details:
+                continue
+
+            # Filtering
+            if search:
+                s_lower = search.lower().strip()
+                matched = (
+                    s_lower in details.get("study_id", "").lower()
+                    or s_lower in str(details.get("study_name", "")).lower()
+                    or s_lower in str(details.get("dataset", "")).lower()
+                    or s_lower in str(details.get("model", "")).lower()
+                )
+                if not matched:
+                    continue
+
+            if author and author not in ("Todos", ""):
+                if author.lower() not in str(details.get("author", "")).lower():
+                    continue
+
+            if worker_ip and worker_ip not in ("Todos", ""):
+                target = (
+                    str(details.get("worker_ip", "")).lower()
+                    + " "
+                    + str(details.get("destination_node", "")).lower()
+                )
+                if worker_ip.lower() not in target:
+                    continue
+
+            if status and status not in ("Todos", ""):
+                if details.get("status") != status:
+                    continue
+
+            studies.append(details)
+            if len(studies) >= limit:
+                break
         return studies
 
     def get_study_details(self, study_id: str) -> Optional[Dict[str, Any]]:
-        """Retrieves complete info for a study."""
+        """Retrieves complete info for a study with author, study_name, dataset and destination node."""
         raw_config = self.client.get(f"study:{study_id}:config")
         config = json.loads(raw_config.decode("utf-8")) if raw_config else {}
 
@@ -230,17 +321,163 @@ class ClusterRepository:
 
         status = "running" if active_trial else ("failed" if error else "completed")
 
+        # Extract study_name, author, and dataset
+        sweeper_cfg = config.get("sweeper", {})
+        study_name = (
+            sweeper_cfg.get("study_name")
+            or config.get("study_name")
+            or f"study_{study_id[:8]}"
+        )
+        metadata = config.get("metadata", {})
+        author = (
+            metadata.get("author")
+            or metadata.get("user")
+            or config.get("user")
+            or config.get("author")
+            or "Desconocido"
+        )
+        dataset = config.get("train", {}).get("data", "N/A")
+
+        # Resolve destination worker
+        raw_invoker_details = self.client.get(f"study:{study_id}:invoker_details")
+        inv_details = json.loads(raw_invoker_details.decode("utf-8")) if raw_invoker_details else {}
+        worker_ip = (
+            inv_details.get("worker_host")
+            or sweeper_cfg.get("target_worker_queue")
+            or config.get("target_worker_queue")
+        )
+        if not worker_ip and invoker_name != "unknown":
+            import re
+            m = re.search(r"(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})", invoker_name)
+            if m:
+                worker_ip = m.group(1)
+
+        worker_hostname = inv_details.get("worker_hostname") or ""
+        if worker_ip and worker_hostname:
+            destination_node = f"{worker_ip} ({worker_hostname})"
+        elif worker_ip:
+            destination_node = f"{worker_ip}"
+        elif invoker_name != "unknown":
+            destination_node = invoker_name
+        else:
+            destination_node = "wyolo_gpu_queue (Global)"
+
         return {
             "study_id": study_id,
+            "study_name": study_name,
+            "author": author,
             "status": status,
             "model": config.get("model", "unknown"),
             "task_type": config.get("type", "unknown"),
             "invoker": invoker_name,
+            "destination_node": destination_node,
+            "worker_ip": worker_ip,
+            "dataset": dataset,
             "progress": progress,
             "active_trial": active_trial,
             "start_time": datetime.fromtimestamp(start_time).strftime("%Y-%m-%d %H:%M:%S") if start_time else None,
             "error": error,
         }
+
+    def quick_launch_test(
+        self,
+        worker_ip: Optional[str] = None,
+        user: str = "wisrovi",
+        model: str = "yolov8n-cls.pt",
+        dataset: str = "/examples/colorball.v8i.multiclass/",
+        epochs: int = 1,
+    ) -> Dict[str, Any]:
+        """Dispatches a quick 1-trial test job to verify node/cluster execution."""
+        study_id = str(uuid.uuid4())
+        study_name = f"quick_test_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        target_queue = worker_ip if worker_ip else "wyolo_gpu_queue"
+
+        config_payload = {
+            "model": model,
+            "type": "yolo",
+            "train": {
+                "batch": -1,
+                "data": dataset,
+                "epochs": epochs,
+                "imgsz": 224,
+                "plots": False,
+            },
+            "sweeper": {
+                "version": 1,
+                "algorithm": "optuna",
+                "direction": "maximize",
+                "study_name": study_name,
+                "fitness": "metrics/accuracy_top1",
+                "tune": False,
+                "sampler": "TPESampler",
+                "n_trials": 1,
+                "search_space": {
+                    "model": ["choice", model],
+                },
+                "target_worker_queue": target_queue,
+            },
+            "extras": {
+                "gpu": {"id": 0, "limit": 0.50}
+            },
+            "metadata": {
+                "content": "Quick Verification Test dispatched from Cluster Control UI",
+                "author": user,
+                "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            },
+            "study_id": study_id,
+        }
+
+        self.client.set(f"study:{study_id}:config", json.dumps(config_payload), ex=86400)
+        self.client.set(f"study:{study_id}:start_time", str(time.time()), ex=86400)
+
+        # Dispatch via Celery
+        task_sent = False
+        try:
+            app = get_celery_app()
+            app.send_task("tasks.run_training", args=[config_payload], queue=target_queue)
+            task_sent = True
+        except Exception as e:
+            print(f"[QUICK LAUNCH] Celery send error: {e}")
+
+        return {
+            "study_id": study_id,
+            "study_name": study_name,
+            "target_queue": target_queue,
+            "author": user,
+            "task_dispatched": task_sent,
+            "model": model,
+            "dataset": dataset,
+            "epochs": epochs,
+        }
+
+    def get_study_trials_metrics(self, study_id: str) -> List[Dict[str, Any]]:
+        """Retrieves trial progression and fitness metrics for plotting."""
+        raw_prog = self.client.get(f"study:{study_id}:progress")
+        prog = json.loads(raw_prog.decode("utf-8")) if raw_prog else {}
+        trials_data = prog.get("trials", [])
+
+        if not trials_data:
+            result_keys = [k.decode("utf-8") for k in self.client.keys(f"wyolo:results:*:{study_id}:*")]
+            for rk in sorted(result_keys):
+                raw_res = self.client.hgetall(rk)
+                res_dict = {k.decode("utf-8"): v.decode("utf-8") for k, v in raw_res.items()}
+                res_str = res_dict.get("results")
+                if res_str:
+                    try:
+                        parsed = json.loads(res_str)
+                        trials_data.append(parsed)
+                    except Exception:
+                        pass
+
+        points = []
+        for idx, t in enumerate(trials_data):
+            score = t.get("accuracy") or t.get("fitness") or t.get("metrics/accuracy_top1") or t.get("mAP50") or 0.0
+            points.append({
+                "trial": idx + 1,
+                "fitness": float(score),
+                "params": t.get("params", {}),
+            })
+        return points
 
     def cancel_study(self, study_id: str) -> bool:
         """Cancels a running study and notifies Celery workers."""
@@ -253,7 +490,48 @@ class ClusterRepository:
             pass
         return True
 
-    # --- Cluster Overview ---
+    # --- Cluster Overview & Health Watchdog ---
+
+    def get_cluster_health(self) -> Dict[str, Any]:
+        """Performs real-time latency ping and zombie node detection."""
+        t0 = time.perf_counter()
+        try:
+            self.client.ping()
+            latency = (time.perf_counter() - t0) * 1000.0
+            redis_status = "healthy"
+        except Exception:
+            latency = -1.0
+            redis_status = "unreachable"
+
+        invokers = self.list_invokers()
+        total_nodes = len(invokers)
+        zombie_nodes = []
+        healthy_nodes = 0
+
+        now = datetime.now()
+        for inv in invokers:
+            last_seen_str = inv.get("last_seen")
+            is_zombie = False
+            if last_seen_str:
+                try:
+                    last_seen_dt = datetime.strptime(last_seen_str, "%Y-%m-%d %H:%M:%S")
+                    if (now - last_seen_dt).total_seconds() > 300:
+                        is_zombie = True
+                except Exception:
+                    pass
+            if is_zombie or inv.get("status") != "online":
+                zombie_nodes.append(inv.get("worker_ip", "unknown"))
+            else:
+                healthy_nodes += 1
+
+        return {
+            "redis_status": redis_status,
+            "redis_latency_ms": round(latency, 2),
+            "total_nodes": total_nodes,
+            "healthy_nodes": healthy_nodes,
+            "zombie_nodes": zombie_nodes,
+            "timestamp": now.strftime("%Y-%m-%d %H:%M:%S"),
+        }
 
     def get_cluster_overview(self) -> Dict[str, Any]:
         """Calculates aggregated metrics across the cluster."""
