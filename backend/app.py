@@ -23,7 +23,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="NeuralForge Cluster Admin API",
     description="Centralized Cluster Administration, Storage Volumes, FinOps and Node Governance API",
-    version="1.5.0",
+    version="1.5.1",
     lifespan=lifespan,
 )
 
