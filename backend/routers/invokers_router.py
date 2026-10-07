@@ -11,6 +11,7 @@ from backend.schemas import (
     InvokerDetailResponse,
     InvokerLimitsUpdate,
     InvokerPauseRequest,
+    NodeDiagnosticResponse,
 )
 
 
@@ -141,3 +142,14 @@ async def batch_update_limits(
         "message": f"Successfully updated limits on {updated_count} invoker nodes",
         "target_ips": target_ips,
     }
+
+
+@router.get("/{worker_ip}/diagnose", response_model=NodeDiagnosticResponse)
+async def diagnose_invoker_node(
+    worker_ip: str,
+    current_user: str = Depends(get_current_user),
+):
+    """Performs deep socket and Celery connectivity probe to diagnose node status."""
+    repo = ClusterRepository()
+    return repo.diagnose_node(worker_ip)
+
