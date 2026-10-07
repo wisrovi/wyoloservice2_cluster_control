@@ -1,11 +1,11 @@
-# 🎛️ NeuralForge Cluster Control (`wyoloservice2_cluster_control`)
+# 🎛️ NeuralForge Cluster Admin (`wyoloservice2_cluster_control`)
 
-![Version](https://img.shields.io/badge/version-1.4.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.5.0-blue.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 ![Python](https://img.shields.io/badge/python-3.10-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker)
 
-> Centralized cluster administration, live telemetry dashboard, and dynamic hardware resource allocation platform (FastAPI + Streamlit) for the `train_service2` ecosystem.
+> Enterprise-grade centralized cluster administration, live telemetry dashboard, and dynamic hardware resource allocation platform (FastAPI + Streamlit) for the `train_service2` ecosystem.
 
 ---
 
@@ -168,7 +168,11 @@ Cumpliendo con los estándares de calidad del ecosistema, todas las pruebas unit
 | `PUT` | `/api/v1/invokers/{ip}/limits` | Modifica `max_gpu_percent`, `max_ram` y `max_cpu_cores` | Sí |
 | `POST` | `/api/v1/invokers/{ip}/pause` | Pausa o reanuda la cola pública de un invoker | Sí |
 | `POST` | `/api/v1/invokers/{ip}/drain` | Pone el nodo en modo drenado (finaliza tareas y pausa) | Sí |
-| `POST` | `/api/v1/invokers/batch-limits` | Actualiza límites en lote en todo el cluster | Sí |
+| `GET` | `/api/v1/cluster/storage/inspect` | Inspección profunda de almacenamiento: CIFS/Samba, MinIO S3 y latencias I/O | Sí |
+| `GET` | `/api/v1/cluster/finops` | Análisis FinOps de costes eléctricos reales (€), kWh por GPU y proyecciones | Sí |
+| `POST` | `/api/v1/cluster/finops/rate` | Configuración de tarifa eléctrica dinámica (€/kWh) con registro de auditoría | Sí |
+| `GET` | `/api/v1/cluster/audit/logs` | Registro inmutable de auditoría administrativa (`cluster:audit:logs`) | Sí |
+| `GET` | `/api/v1/cluster/capabilities` | Catálogo de capacidades del clúster y los 12 módulos de I+D (XAI, CVPR, NeurIPS) | Sí |
 | `GET` | `/api/v1/tasks/active` | Lista entrenamientos en ejecución en tiempo real | Sí |
 | `GET` | `/api/v1/tasks/history` | Historial de estudios con filtros (search, autor, nodo, status) | Sí |
 | `POST` | `/api/v1/tasks/compare` | Comparador Head-to-Head directo entre 2 a 5 estudios | Sí |
@@ -189,6 +193,13 @@ Cumpliendo con los estándares de calidad del ecosistema, todas las pruebas unit
 
 ## 📝 Changelog
 
+*   **v1.5.0 (2026-10-07):**
+    *   **Evolución a NeuralForge Cluster Admin:** Reestructuración de la suite bajo el principio de responsabilidad única (Single Responsibility Principle) en 10 vistas operativas dedicadas.
+    *   **Almacenamiento y Volúmenes (`/cluster/storage/inspect`):** Monitoreo integral de montajes Samba CIFS para datasets, cuotas y métricas de objetos en buckets de MinIO S3, y pruebas dinámicas de latencia I/O.
+    *   **FinOps y Energía - Green AI (`/cluster/finops`, `/cluster/finops/rate`):** Seguimiento de gasto en EUR por modelo de GPU según tarifas configurables (€/kWh), proyección mensual y certificado de neutralidad de carbono.
+    *   **Auditoría y Seguridad Administrativa (`/cluster/audit/logs`):** Registro inmutable en Redis con trazabilidad de cambios de límites, pausas, drenados, despachos y sesiones, exportable a CSV.
+    *   **Catálogo de Capacidades del Clúster (`/cluster/capabilities`):** Gobernanza y estado de los 12 módulos de I+D del ecosistema (XAI Grad-CAM/Eigen-CAM, ataques adversariales, cuantificación de incertidumbre, generalización de dominio) vinculados a papers científicos.
+    *   Tests contenerizados en Docker con 100% de éxito y 77% de cobertura de código.
 *   **v1.4.0 (2026-10-07):**
     *   **Diagnóstico Profundo de Nodos:** Endpoint `/invokers/{ip}/diagnose` y botón interactivo `🔍 Diagnosticar` que verifica socket SSH en puerto 22, presencia activa en Celery y provee sugerencias de auto-healing.
     *   **Green AI & Eficiencia Energética:** Endpoint `/cluster/green-ai` que cuantifica kWh consumidos, emisiones de CO₂e según TDP de GPU, árboles equivalentes compensados y velocidad por vatio (`img/W`).
