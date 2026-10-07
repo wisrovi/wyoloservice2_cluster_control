@@ -5,7 +5,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from backend.auth import get_current_user
 from backend.redis_client import ClusterRepository
-from backend.schemas import QuickLaunchRequest
+from backend.schemas import (
+    QuickLaunchRequest,
+    ReproducibilityResponse,
+    StudyCompareRequest,
+    StudyCompareResponse,
+)
 
 
 router = APIRouter(prefix="/api/v1/tasks", tags=["Tasks"])
@@ -38,6 +43,26 @@ async def get_task_history(
     )
 
 
+@router.post("/compare", response_model=StudyCompareResponse)
+async def compare_studies(
+    payload: StudyCompareRequest,
+    current_user: str = Depends(get_current_user),
+):
+    """Performs side-by-side head-to-head comparison of multiple training studies."""
+    repo = ClusterRepository()
+    return repo.compare_studies(payload.study_ids)
+
+
+@router.get("/{study_id}/reproducibility", response_model=ReproducibilityResponse)
+async def get_study_reproducibility(
+    study_id: str,
+    current_user: str = Depends(get_current_user),
+):
+    """Returns reproducible docker run command and YAML manifest for study."""
+    repo = ClusterRepository()
+    return repo.get_study_reproducibility(study_id)
+
+
 @router.get("/{study_id}/metrics", response_model=List[Dict[str, Any]])
 async def get_study_metrics(
     study_id: str,
@@ -61,10 +86,11 @@ async def quick_launch_task(
         model=payload.model,
         dataset=payload.dataset,
         epochs=payload.epochs,
+        priority=payload.priority,
     )
     return {
         "status": "success",
-        "message": f"Quick test '{result['study_name']}' dispatched to queue '{result['target_queue']}'",
+        "message": f"Quick test '{result['study_name']}' [{payload.priority.upper()}] dispatched to queue '{result['target_queue']}'",
         "data": result,
     }
 
