@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-10-07
+
+### Added
+- Rebranded and reorganized the suite as **NeuralForge Cluster Admin** implementing Single Responsibility Principle across 10 dedicated operational views.
+- Deep Storage & Volume Inspector (`/cluster/storage/inspect`) auditing shared Samba CIFS dataset volumes, MinIO S3 bucket quotas, and dynamic I/O latency metrics.
+- FinOps & Energy Management (`/cluster/finops`, `/cluster/finops/rate`) with real-time electricity expense tracking in EUR by GPU model, configurable tariffs, and Green AI carbon certificates.
+- Administrative Security & Audit Logging (`/cluster/audit/logs`) establishing an immutable Redis audit trail for limit adjustments, node state changes, dispatches, and operator sessions with CSV export.
+- Cluster Capabilities & Scientific Catalog (`/cluster/capabilities`) providing governance for the 12 post-training R&D modules (Grad-CAM, Adversarial Attacks, Uncertainty Quantification, UMAP) mapped to peer-reviewed paper submissions.
+- Dockerized unit test suite passing 100% with 77% total code coverage.
+
 ## [1.4.0] - 2026-10-07
 
 ### Added
