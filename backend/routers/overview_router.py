@@ -5,8 +5,13 @@ from fastapi import APIRouter, Depends, Query
 from backend.auth import get_current_user
 from backend.redis_client import ClusterRepository
 from backend.schemas import (
+    AuditLogResponse,
+    ClusterCapabilitiesResponse,
     ClusterHealthResponse,
     ClusterOverviewResponse,
+    ClusterStorageResponse,
+    ElectricityRateUpdate,
+    FinOpsReportResponse,
     GreenAiMetricsResponse,
     WatchdogAlertResponse,
     WebhookConfigRequest,
@@ -124,4 +129,49 @@ async def check_and_alert_watchdog(current_user: str = Depends(get_current_user)
     """Runs proactive health check and fires webhook notifications if critical alerts detected."""
     repo = ClusterRepository()
     return repo.check_and_trigger_watchdog_alerts()
+
+
+# --- Cluster Admin Endpoints ---
+
+@router.get("/storage/inspect", response_model=ClusterStorageResponse)
+async def get_cluster_storage_admin(current_user: str = Depends(get_current_user)):
+    """Admin inspect of cluster storage volumes, disk capacity and MinIO S3 buckets."""
+    repo = ClusterRepository()
+    return repo.get_cluster_storage_admin()
+
+
+@router.get("/finops", response_model=FinOpsReportResponse)
+async def get_cluster_finops_report(current_user: str = Depends(get_current_user)):
+    """Cluster FinOps report calculating electricity costs in EUR and projected expenses."""
+    repo = ClusterRepository()
+    return repo.get_cluster_finops()
+
+
+@router.post("/finops/rate")
+async def update_electricity_rate(
+    payload: ElectricityRateUpdate,
+    current_user: str = Depends(get_current_user),
+):
+    """Updates the electricity billing rate per kWh in Redis."""
+    repo = ClusterRepository()
+    return repo.set_electricity_rate(rate_eur_per_kwh=payload.rate_eur_per_kwh, user=current_user)
+
+
+@router.get("/audit/logs", response_model=AuditLogResponse)
+async def get_audit_logs(
+    limit: int = Query(50, ge=1, le=200),
+    current_user: str = Depends(get_current_user),
+):
+    """Retrieves chronological audit trail of all cluster administrative operations."""
+    repo = ClusterRepository()
+    logs = repo.get_admin_audit_logs(limit=limit)
+    return {"logs": logs, "total_events": len(logs)}
+
+
+@router.get("/capabilities", response_model=ClusterCapabilitiesResponse)
+async def get_cluster_capabilities(current_user: str = Depends(get_current_user)):
+    """Admin catalog of official R&D modules, execution engines and extension tiers."""
+    repo = ClusterRepository()
+    return repo.get_cluster_capabilities()
+
 
