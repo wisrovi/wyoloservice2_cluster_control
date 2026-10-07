@@ -13,9 +13,10 @@ def render_history(api_client: ClusterApiClient, token: str):
 
     current_user = st.session_state.get("username", "wisrovi")
 
-    tab_history, tab_metrics, tab_export = st.tabs([
+    tab_history, tab_metrics, tab_compare, tab_export = st.tabs([
         "📜 Historial y Búsqueda",
         "📈 Curvas de Aprendizaje (Optuna)",
+        "🔬 Comparador Head-to-Head",
         "📥 Exportador de Reportes",
     ])
 
@@ -122,6 +123,19 @@ def render_history(api_client: ClusterApiClient, token: str):
                     if target_study.get("error"):
                         st.error(f"Error registrado: {target_study.get('error')}")
 
+                # Reproducibility Manifest
+                with st.expander("📋 Manifiesto de Reproducción (Docker Run & YAML)", expanded=False):
+                    try:
+                        repro = api_client.get_study_reproducibility(token, target_study.get("study_id"))
+                        st.caption(f"Fingerprint SHA256: `{repro.get('sha256_fingerprint')}` | Generado: `{repro.get('generated_at')}`")
+                        st.markdown("**Comando Docker de Reproducción Directa:**")
+                        st.code(repro.get("docker_run_command"), language="bash")
+                        st.markdown("**Manifiesto de Configuración YAML:**")
+                        st.code(repro.get("training_yaml"), language="yaml")
+                    except Exception as rpe:
+                        st.warning(f"No se pudo generar manifiesto de reproducción: {rpe}")
+
+
     # --- TAB 2: Optuna Learning Curves ---
     with tab_metrics:
         st.markdown("#### 📈 Evolución de Trials y Métrica Objetivo (Optuna)")
@@ -165,7 +179,44 @@ def render_history(api_client: ClusterApiClient, token: str):
                 with st.expander("📊 Ver Tabla Completa de Trials y Parámetros"):
                     st.dataframe(df_metrics, use_container_width=True, hide_index=True)
 
-    # --- TAB 3: Report Exporter ---
+    # --- TAB 3: Head-to-Head Comparison ---
+    with tab_compare:
+        st.markdown("#### 🔬 Comparativa Head-to-Head de Estudios")
+        st.caption("Selecciona de 2 a 5 estudios para contrastar parámetros, arquitecturas y métricas de rendimiento lado a lado.")
+
+        if not raw_history or len(raw_history) < 2:
+            st.info("Se necesitan al menos 2 estudios registrados para realizar una comparativa.")
+        else:
+            study_map = {
+                f"{h.get('study_name', h.get('study_id'))} [{h.get('model', 'N/A')}] ({h.get('study_id')[:8]})": h.get("study_id")
+                for h in raw_history
+            }
+            default_selection = list(study_map.keys())[:2]
+            selected_labels = st.multiselect(
+                "Selecciona los estudios a contrastar (2 a 5):",
+                options=list(study_map.keys()),
+                default=default_selection,
+                key="multisel_compare_studies",
+            )
+
+            selected_ids = [study_map[lbl] for lbl in selected_labels if lbl in study_map]
+
+            if st.button("🔬 Comparar Estudios Seleccionados", type="primary", use_container_width=True, disabled=(len(selected_ids) < 2 or len(selected_ids) > 5)):
+                try:
+                    comp_res = api_client.compare_studies(token, selected_ids)
+                    st.session_state["active_comparison_result"] = comp_res
+                except Exception as ce:
+                    st.error(f"Error comparando estudios: {ce}")
+
+            if "active_comparison_result" in st.session_state:
+                res = st.session_state["active_comparison_result"]
+                st.success(f"💡 {res.get('comparison_summary')}")
+                comp_studies = res.get("studies", [])
+                if comp_studies:
+                    df_comp = pd.DataFrame(comp_studies)
+                    st.dataframe(df_comp, use_container_width=True, hide_index=True)
+
+    # --- TAB 4: Report Exporter ---
     with tab_export:
         st.markdown("#### 📥 Generador y Descarga de Reportes de Estudio")
         st.caption("Descarga un informe técnico en formato Markdown o CSV para adjuntar a documentación técnica.")
