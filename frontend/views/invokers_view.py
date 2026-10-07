@@ -177,7 +177,7 @@ def render_invokers(api_client: ClusterApiClient, token: str):
                     st.error("🔴 **PAUSA INDEFINIDA** — Cola pública desactivada. Solo atiende cola privada.")
 
                 # Action Buttons
-                col_p1, col_p2, col_p3, col_p4 = st.columns(4)
+                col_p1, col_p2, col_p3, col_p4, col_p5 = st.columns(5)
                 with col_p1:
                     if st.button("▶️ Reanudar", key=f"btn_res_{worker_ip}", use_container_width=True):
                         try:
@@ -187,7 +187,7 @@ def render_invokers(api_client: ClusterApiClient, token: str):
                         except Exception as pe:
                             st.error(f"Error: {pe}")
                 with col_p2:
-                    if st.button("⏸️ Pausa 4h", key=f"btn_p4_{worker_ip}", use_container_width=True):
+                    if st.button("⏸️ 4h", key=f"btn_p4_{worker_ip}", use_container_width=True):
                         try:
                             api_client.set_pause(token, worker_ip, action="pause", mode="temporal", hours=4.0)
                             st.success(f"Nodo {worker_ip} pausado por 4 horas.")
@@ -195,7 +195,7 @@ def render_invokers(api_client: ClusterApiClient, token: str):
                         except Exception as pe:
                             st.error(f"Error: {pe}")
                 with col_p3:
-                    if st.button("⏹️ Indefinida", key=f"btn_pind_{worker_ip}", use_container_width=True):
+                    if st.button("⏹️ Indef", key=f"btn_pind_{worker_ip}", use_container_width=True):
                         try:
                             api_client.set_pause(token, worker_ip, action="pause", mode="perpetual")
                             st.warning(f"Nodo {worker_ip} pausado indefinidamente.")
@@ -210,6 +210,25 @@ def render_invokers(api_client: ClusterApiClient, token: str):
                             st.rerun()
                         except Exception as de:
                             st.error(f"Error drenando: {de}")
+                with col_p5:
+                    if st.button("🔍 Diagnosticar", key=f"btn_diag_{worker_ip}", use_container_width=True, help="Test de socket SSH y presencia en Celery"):
+                        try:
+                            diag = api_client.diagnose_invoker(token, worker_ip)
+                            st.session_state[f"diag_res_{worker_ip}"] = diag
+                            st.rerun()
+                        except Exception as dge:
+                            st.error(f"Error en diagnóstico: {dge}")
+
+                if f"diag_res_{worker_ip}" in st.session_state:
+                    diag = st.session_state[f"diag_res_{worker_ip}"]
+                    status_badge = "🟢 SALUDABLE" if diag["status"] == "healthy" else ("🟡 CELERY CAÍDO" if diag["status"] == "celery_offline" else "🔴 INALCANZABLE")
+                    with st.expander(f"🩺 Informe de Diagnóstico: {status_badge} (Latencia: {diag.get('latency_ms', 'N/A')} ms)", expanded=True):
+                        st.markdown(f"**Estado General:** `{diag['status'].upper()}` | **SSH Port 22:** `{'Abierto ✅' if diag['ssh_port_open'] else 'Cerrado ❌'}` | **Celery Queue:** `{'Activa ✅' if diag['celery_active'] else 'Sin respuesta ❌'}`")
+                        st.info(f"📝 {diag['diagnostic_summary']}")
+                        if diag.get("suggested_actions"):
+                            st.markdown("**Acciones Sugeridas:**")
+                            for act in diag["suggested_actions"]:
+                                st.markdown(f"- `{act}`")
 
             with col_controls:
                 st.markdown("#### ⚡ Asignación de Recursos Dinámicos")
