@@ -230,3 +230,78 @@ class ReproducibilityResponse(BaseModel):
     training_yaml: str
     sha256_fingerprint: str
     generated_at: str
+
+
+# --- Cluster Admin v1.5.0 Schemas ---
+
+class StorageVolumeInfo(BaseModel):
+    name: str
+    mount_path: str
+    status: str
+    total_gb: float
+    used_gb: float
+    free_gb: float
+    percent_used: float
+    latency_ms: Optional[float]
+    permissions: str = "read/write"
+
+
+class MinioBucketInfo(BaseModel):
+    name: str
+    objects_count: int
+    size_mb: float
+    status: str
+
+
+class ClusterStorageResponse(BaseModel):
+    volumes: List[StorageVolumeInfo]
+    minio_buckets: List[MinioBucketInfo]
+    overall_status: str
+    last_checked: str
+
+
+class ElectricityRateUpdate(BaseModel):
+    rate_eur_per_kwh: float = Field(0.18, ge=0.01, le=2.0, description="Cost in EUR per kWh")
+    currency: str = Field("EUR", description="Currency symbol")
+
+
+class FinOpsReportResponse(BaseModel):
+    total_kwh: float
+    rate_eur_per_kwh: float
+    total_cost_eur: float
+    currency: str
+    gpu_cost_breakdown: List[Dict[str, Any]]
+    projected_monthly_cost_eur: float
+    timestamp: str
+
+
+class AuditLogEntry(BaseModel):
+    event_id: str
+    timestamp: str
+    user: str
+    action: str
+    target: str
+    details: str
+    status: str = "success"
+
+
+class AuditLogResponse(BaseModel):
+    logs: List[AuditLogEntry]
+    total_events: int
+
+
+class ClusterCapabilityModule(BaseModel):
+    module_id: str
+    name: str
+    category: str
+    description: str
+    enabled: bool
+    research_tier: str
+
+
+class ClusterCapabilitiesResponse(BaseModel):
+    modules: List[ClusterCapabilityModule]
+    docker_image: str
+    total_modules: int
+    active_modules: int
+
