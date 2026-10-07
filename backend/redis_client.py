@@ -306,11 +306,11 @@ class ClusterRepository:
                 if not matched:
                     continue
 
-            if author and author not in ("Todos", ""):
+            if author and author not in ("All", "Todos", ""):
                 if author.lower() not in str(details.get("author", "")).lower():
                     continue
 
-            if worker_ip and worker_ip not in ("Todos", ""):
+            if worker_ip and worker_ip not in ("All", "Todos", ""):
                 target = (
                     str(details.get("worker_ip", "")).lower()
                     + " "
@@ -319,7 +319,7 @@ class ClusterRepository:
                 if worker_ip.lower() not in target:
                     continue
 
-            if status and status not in ("Todos", ""):
+            if status and status not in ("All", "Todos", ""):
                 if details.get("status") != status:
                     continue
 
@@ -363,7 +363,7 @@ class ClusterRepository:
             or metadata.get("user")
             or config.get("user")
             or config.get("author")
-            or "Desconocido"
+            or "Unknown"
         )
         dataset = config.get("train", {}).get("data", "N/A")
 
@@ -662,7 +662,7 @@ class ClusterRepository:
             "estimated_duration_min": minutes,
             "estimated_throughput_img_s": throughput,
             "recommended_gpu": rec_gpu,
-            "description": f"~{minutes} minutos ({est_seconds}s)",
+            "description": f"~{minutes} minutes ({est_seconds}s)",
         }
 
     def get_cluster_overview(self) -> Dict[str, Any]:
@@ -713,7 +713,7 @@ class ClusterRepository:
                 "gpu_model": "Auto-dispatch",
                 "vram_total": "Auto",
                 "score": 50.0,
-                "reason": "Todos los nodos están en pausa o fuera de línea. Se usará la cola pública.",
+                "reason": "All nodes are paused or offline. The public queue will be used instead.",
             }
 
         candidates = []
@@ -734,26 +734,26 @@ class ClusterRepository:
             if is_heavy:
                 if "4090" in gpu_lower:
                     score += 40.0
-                    reason = "GPU de máxima potencia (RTX 4090 24GB) idónea para modelos grandes."
+                    reason = "Top-tier GPU (RTX 4090 24GB), ideal for large models."
                 elif "4060 ti" in gpu_lower or "3060" in gpu_lower:
                     score += 20.0
-                    reason = "GPU con suficiente VRAM para cargas medias/pesadas."
+                    reason = "GPU with sufficient VRAM for medium/heavy workloads."
                 else:
                     score -= 15.0
-                    reason = "GPU compacta; podría experimentar mayor tiempo de entrenamiento."
+                    reason = "Compact GPU; training may take longer."
             else:
                 # Nano or small model
                 if "4060 ti" in gpu_lower or "3060" in gpu_lower:
                     score += 35.0
-                    reason = "Balance óptimo de VRAM y throughput sin monopolizar la RTX 4090."
+                    reason = "Optimal balance of VRAM and throughput without monopolizing the RTX 4090."
                 elif "3050" in gpu_lower or "1650" in gpu_lower:
                     score += 25.0
-                    reason = "Nodo ligero idóneo para validaciones rápidas y modelos nano."
+                    reason = "Lightweight node, ideal for quick validations and nano models."
                 elif "4090" in gpu_lower:
                     score += 10.0
-                    reason = "GPU potente disponible, aunque excede los requisitos del modelo."
+                    reason = "Powerful GPU available, although it exceeds the model's requirements."
                 else:
-                    reason = "Nodo en línea con GPU compatible."
+                    reason = "Online node with a compatible GPU."
 
             candidates.append({
                 "target_ip": ip,
@@ -880,7 +880,7 @@ class ClusterRepository:
         return {
             "purged_studies_count": purged,
             "status": "success",
-            "message": f"Se han purgado {purged} estudios fallidos u obsoletos en Redis.",
+            "message": f"Purged {purged} failed or stale studies from Redis.",
         }
 
     # --- Workload & Utilization Trends ---
@@ -959,18 +959,18 @@ class ClusterRepository:
         suggested_actions = []
         if celery_active and ssh_port_open:
             status = "healthy"
-            summary = "Nodo plenamente operativo, interfaz SSH accesible y Celery escuchando tareas activamente."
-            suggested_actions.append("No se requiere ninguna acción correctiva.")
+            summary = "Node fully operational: SSH interface reachable and Celery actively listening for tasks."
+            suggested_actions.append("No corrective action required.")
         elif ssh_port_open and not celery_active:
             status = "celery_offline"
-            summary = "El host responde a SSH en la red física, pero el contenedor Celery Invoker no responde en la cola."
-            suggested_actions.append(f"Reiniciar contenedor invoker: ssh root@{worker_ip} 'docker restart wyoloservice2_invoker'")
-            suggested_actions.append("Verificar logs del contenedor: docker logs --tail 50 wyoloservice2_invoker")
+            summary = "The host responds to SSH on the physical network, but the Celery Invoker container is not responding on its queue."
+            suggested_actions.append(f"Restart the invoker container: ssh root@{worker_ip} 'docker restart wyoloservice2_invoker'")
+            suggested_actions.append("Check the container logs: docker logs --tail 50 wyoloservice2_invoker")
         else:
             status = "unreachable"
-            summary = "Host inalcanzable. No responde a sockets de red ni a Celery."
-            suggested_actions.append("Comprobar alimentación eléctrica del equipo y switch Ethernet.")
-            suggested_actions.append("Verificar asignación de IP fija en router/DHCP para esta MAC.")
+            summary = "Host unreachable. It does not respond to network sockets or Celery."
+            suggested_actions.append("Check the machine's power supply and the Ethernet switch.")
+            suggested_actions.append("Verify the static IP assignment on the router/DHCP server for this MAC address.")
 
         return {
             "worker_ip": worker_ip,
@@ -1059,20 +1059,20 @@ class ClusterRepository:
         alerts = []
 
         if health.get("redis_status") != "healthy":
-            alerts.append(f"🚨 Broker Redis no saludable (Estado: {health.get('redis_status')})")
+            alerts.append(f"🚨 Redis broker unhealthy (Status: {health.get('redis_status')})")
 
         if health.get("redis_latency_ms", 0) > 15.0:
-            alerts.append(f"⚠️ Alta latencia en Redis: {health.get('redis_latency_ms')} ms")
+            alerts.append(f"⚠️ High Redis latency: {health.get('redis_latency_ms')} ms")
 
         zombies = health.get("zombie_nodes", [])
         if zombies:
-            alerts.append(f"🧟 Nodos desconectados detectados: {', '.join(zombies)}")
+            alerts.append(f"🧟 Disconnected nodes detected: {', '.join(zombies)}")
 
         webhook_sent = False
         if alerts:
             message = "\n".join([f"• {a}" for a in alerts])
             webhook_sent = self.send_webhook_notification(
-                title="🚨 Alerta Proactiva de Watchdog del Clúster",
+                title="🚨 Proactive Cluster Watchdog Alert",
                 message=message,
                 level="warning" if not zombies else "error",
             )
@@ -1129,12 +1129,12 @@ class ClusterRepository:
             }
             compared_studies.append(item)
 
-        common_model = list(models_seen)[0] if len(models_seen) == 1 else "Varios"
-        summary = f"Comparativa de {len(compared_studies)} estudios. "
+        common_model = list(models_seen)[0] if len(models_seen) == 1 else "Multiple"
+        summary = f"Comparison of {len(compared_studies)} studies. "
         if best_id:
-            summary += f"El estudio con mejor rendimiento es '{best_id[:8]}' con precisión {round(best_acc, 4)}."
+            summary += f"The best-performing study is '{best_id[:8]}' with an accuracy of {round(best_acc, 4)}."
         else:
-            summary += "Todos los estudios evaluados presentan métricas similares o preliminares."
+            summary += "All evaluated studies show similar or preliminary metrics."
 
         return {
             "studies": compared_studies,
@@ -1393,12 +1393,12 @@ class ClusterRepository:
             user=user,
             action="UPDATE_ELECTRICITY_RATE",
             target="cluster:finops:rate_eur",
-            details=f"Tarifa eléctrica ajustada a {rate_eur_per_kwh:.3f} EUR/kWh",
+            details=f"Electricity rate set to {rate_eur_per_kwh:.3f} EUR/kWh",
         )
         return {
             "status": "success",
             "rate_eur_per_kwh": rate_eur_per_kwh,
-            "message": f"Tarifa actualizada a {rate_eur_per_kwh:.3f} EUR/kWh",
+            "message": f"Electricity rate updated to {rate_eur_per_kwh:.3f} EUR/kWh",
         }
 
     def get_cluster_capabilities(self) -> Dict[str, Any]:
