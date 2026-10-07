@@ -218,3 +218,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# CodeGraph and Graphify
+.codegraph/
+graphify-out/
