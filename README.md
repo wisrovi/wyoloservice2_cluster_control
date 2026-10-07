@@ -1,6 +1,6 @@
 # 🎛️ NeuralForge Cluster Admin (`wyoloservice2_cluster_control`)
 
-![Version](https://img.shields.io/badge/version-1.5.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.5.1-blue.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 ![Python](https://img.shields.io/badge/python-3.10-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker)
@@ -32,7 +32,7 @@ flowchart TD
         Login[🔐 Login View] --> Dashboard[📊 Cluster Overview & Rack Grid]
         Dashboard --> InvokerView[⚙️ Nodos Invoker & Presets]
         Dashboard --> TasksView[🚀 Monitor de Entrenamientos & ETA]
-        Dashboard --> SettingsView[🛠️ Configuración Global, Password & Webhooks]
+        Dashboard --> SettingsView[🛠️ Maintenance & Settings, Password & Webhooks]
     end
 
     subgraph API_Layer [API Gateway - FastAPI :8001]
@@ -88,7 +88,7 @@ El sistema cuenta con autenticación obligatoria tanto en la API como en Streaml
     *   **Contraseña:** `wyoloservice`
 *   **Persistencia:** Las credenciales se guardan con hash criptográfico y sal única (`salt$sha256`) en la clave de Redis `cluster:auth:users`.
 *   **Tokens:** Al iniciar sesión se emite un token JWT con validez de 24 horas.
-*   **Cambio de Contraseña:** El usuario puede actualizar su contraseña directamente desde la pestaña de **Configuración Global** de la interfaz.
+*   **Cambio de Contraseña:** El usuario puede actualizar su contraseña directamente desde la vista **🛠️ Maintenance & Settings** de la interfaz.
 
 ---
 
@@ -193,6 +193,11 @@ Cumpliendo con los estándares de calidad del ecosistema, todas las pruebas unit
 
 ## 📝 Changelog
 
+*   **v1.5.1 (2026-10-07):**
+    *   **Interfaz 100% en inglés profesional:** Traducción completa de las 10 vistas (navegación, login, títulos, métricas, tablas, botones, mensajes y reportes exportados) y de los mensajes del backend mostrados en la UI (alertas del watchdog, razones del Smart Dispatcher, diagnósticos, auditoría FinOps, webhooks).
+    *   **Corrección de prioridad en despacho:** La etiqueta `🔥 URGENT` ahora envía `URGENT` al API (antes enviaba `URGENTE`, no reconocido por el esquema).
+    *   Filtros de historial aceptan el centinela `All` (compatibilidad retroactiva con `Todos`).
+    *   Tests contenerizados en Docker: 7/7 pasando.
 *   **v1.5.0 (2026-10-07):**
     *   **Evolución a NeuralForge Cluster Admin:** Reestructuración de la suite bajo el principio de responsabilidad única (Single Responsibility Principle) en 10 vistas operativas dedicadas.
     *   **Almacenamiento y Volúmenes (`/cluster/storage/inspect`):** Monitoreo integral de montajes Samba CIFS para datasets, cuotas y métricas de objetos en buckets de MinIO S3, y pruebas dinámicas de latencia I/O.
