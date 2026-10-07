@@ -61,3 +61,37 @@ def render_overview(api_client: ClusterApiClient, token: str):
         })
 
     st.dataframe(table_data, use_container_width=True, hide_index=True)
+
+    st.divider()
+
+    # --- Cluster Health & Watchdog Section ---
+    st.subheader("🚨 Monitor de Salud y Watchdog del Clúster")
+    try:
+        health = api_client.get_cluster_health(token)
+        col_h1, col_h2, col_h3 = st.columns(3)
+        with col_h1:
+            st.metric(
+                label="📡 Broker Redis",
+                value="OK" if health.get("redis_status") == "healthy" else "ERROR",
+                delta=f"{health.get('redis_latency_ms', 0)} ms latencia",
+                delta_color="normal" if health.get("redis_status") == "healthy" else "inverse",
+            )
+        with col_h2:
+            st.metric(
+                label="🩺 Nodos Saludables",
+                value=f"{health.get('healthy_nodes', 0)} / {health.get('total_nodes', 0)}",
+            )
+        with col_h3:
+            zombies = health.get("zombie_nodes", [])
+            st.metric(
+                label="🧟 Nodos Zombies (>3m inactivos)",
+                value=len(zombies),
+                delta_color="inverse" if zombies else "normal",
+            )
+
+        if zombies:
+            st.warning(f"⚠️ Atención: Los siguientes nodos no han reportado latido en más de 3 minutos: {', '.join(zombies)}")
+        else:
+            st.success("✅ Todos los invokers reportan latidos periódicos y conectividad estable.")
+    except Exception as he:
+        st.caption(f"No se pudo cargar el watchdog de salud: {he}")
