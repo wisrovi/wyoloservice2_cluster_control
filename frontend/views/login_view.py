@@ -12,7 +12,7 @@ def render_login(api_client: ClusterApiClient):
         st.markdown(
             """
             <div style="text-align: center; margin-top: 50px; margin-bottom: 30px;">
-                <h1>🧠 NeuralForge Cluster Control</h1>
+                <h1>🧠 NeuralForge Cluster Admin</h1>
                 <p style="color: #6c757d; font-size: 1.1em;">
                     Distributed Invoker Orchestration & Dynamic Resource Manager
                 </p>
@@ -22,24 +22,24 @@ def render_login(api_client: ClusterApiClient):
         )
 
         with st.container(border=True):
-            st.subheader("🔐 Iniciar Sesión")
-            st.caption("Introduce tus credenciales de acceso al cluster.")
+            st.subheader("🔐 Sign In")
+            st.caption("Enter your cluster access credentials.")
 
             with st.form("login_form", clear_on_submit=False):
                 username = st.text_input(
-                    "Usuario",
+                    "Username",
                     value=st.session_state.get("login_user_input", "wisrovi"),
-                    placeholder="Introduce tu usuario",
+                    placeholder="Enter your username",
                     key="login_user_input",
                 )
                 password = st.text_input(
-                    "Contraseña",
+                    "Password",
                     type="password",
                     value=st.session_state.get("login_pass_input", "wyoloservice"),
                     placeholder="••••••••",
                     key="login_pass_input",
                 )
-                submitted = st.form_submit_button("🚀 Entrar al Panel", use_container_width=True)
+                submitted = st.form_submit_button("🚀 Access Dashboard", use_container_width=True)
 
                 if submitted:
                     user_val = username.strip() if username else "wisrovi"
@@ -49,7 +49,7 @@ def render_login(api_client: ClusterApiClient):
                         st.session_state["authenticated"] = True
                         st.session_state["token"] = res["access_token"]
                         st.session_state["username"] = res["username"]
-                        st.success(f"¡Bienvenido {res['username']}! Cargando panel...")
+                        st.success(f"Welcome, {res['username']}! Loading dashboard...")
                         st.rerun()
                     except Exception as e:
-                        st.error(f"Error de autenticación: {e}")
+                        st.error(f"Authentication failed: {e}")
