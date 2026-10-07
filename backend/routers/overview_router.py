@@ -4,7 +4,13 @@ from fastapi import APIRouter, Depends, Query
 
 from backend.auth import get_current_user
 from backend.redis_client import ClusterRepository
-from backend.schemas import ClusterHealthResponse, ClusterOverviewResponse, WebhookConfigRequest
+from backend.schemas import (
+    ClusterHealthResponse,
+    ClusterOverviewResponse,
+    GreenAiMetricsResponse,
+    WatchdogAlertResponse,
+    WebhookConfigRequest,
+)
 
 
 router = APIRouter(prefix="/api/v1/cluster", tags=["Cluster"])
@@ -104,3 +110,18 @@ async def get_workload_trends(current_user: str = Depends(get_current_user)):
     """Returns hourly and daily cluster workload distribution."""
     repo = ClusterRepository()
     return repo.get_workload_trends()
+
+
+@router.get("/green-ai", response_model=GreenAiMetricsResponse)
+async def get_green_ai_metrics(current_user: str = Depends(get_current_user)):
+    """Calculates cluster carbon footprint (kg CO2e) and cumulative energy consumption (kWh)."""
+    repo = ClusterRepository()
+    return repo.get_green_ai_metrics()
+
+
+@router.post("/watchdog/check-and-alert", response_model=WatchdogAlertResponse)
+async def check_and_alert_watchdog(current_user: str = Depends(get_current_user)):
+    """Runs proactive health check and fires webhook notifications if critical alerts detected."""
+    repo = ClusterRepository()
+    return repo.check_and_trigger_watchdog_alerts()
+
