@@ -1,6 +1,6 @@
 # 🎛️ NeuralForge Cluster Control (`wyoloservice2_cluster_control`)
 
-![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 ![Python](https://img.shields.io/badge/python-3.10-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker)
@@ -15,10 +15,10 @@ Este microservicio combina un backend API de alto rendimiento con una interfaz g
 
 *   **FastAPI (v0.110+):** Framework asíncrono para el API Gateway RESTful con documentación interactiva Swagger/OpenAPI (`/docs`).
 *   **Streamlit (v1.32+):** Framework frontend en Python para la interfaz visual de monitoreo, controles por nodo (sliders de VRAM, RAM, CPU) y gestión en tiempo real.
-*   **Redis (v5.0+):** Almacén de datos persistente en memoria para la telemetría física (`physical_*`), límites asignados (`limits_*`) y credenciales seguras de operadores (`cluster:auth:users`).
-*   **Celery (v5.3+):** Protocolo de comunicación y emisión de señales (`cancel_consumer`, `add_consumer`, `stop_study`) hacia los invokers y managers.
+*   **Redis (v5.0+):** Almacén de datos persistente en memoria para la telemetría física (`physical_*`), límites asignados (`limits_*`), credenciales seguras de operadores (`cluster:auth:users`) y configuración de alertas webhook.
+*   **Celery (v5.3+):** Protocolo de comunicación para inspección en tiempo real de colas activas (`active_queues`) y emisión de señales (`cancel_consumer`, `add_consumer`, `stop_study`) hacia los invokers y managers.
 *   **PyJWT & Cryptography:** Generación, firma y verificación de tokens de acceso Bearer JWT para proteger las operaciones del cluster.
-*   **Pydantic (v2.6+):** Validación estricta de esquemas de datos y serialización de modelos de hardware y tareas.
+*   **Pydantic (v2.6+):** Validación estricta de esquemas de datos y serialización de modelos de hardware, tareas y webhooks.
 *   **Pytest & Pytest-Cov:** Suite de pruebas unitarias automatizadas y cálculo de cobertura de código ejecutadas dentro de contenedores Docker.
 *   **Uvicorn:** Servidor ASGI de nivel de producción para el backend FastAPI.
 
@@ -29,13 +29,13 @@ Este microservicio combina un backend API de alto rendimiento con una interfaz g
 ```mermaid
 flowchart TD
     subgraph UI_Layer [Frontend Layer - Streamlit :8501]
-        Login[🔐 Login View] --> Dashboard[📊 Cluster Overview]
-        Dashboard --> InvokerView[⚙️ Nodos Invoker]
-        Dashboard --> TasksView[🚀 Monitor de Entrenamientos]
-        Dashboard --> SettingsView[🛠️ Configuración Global & Password]
+        Login[🔐 Login View] --> Dashboard[📊 Cluster Overview & Rack Grid]
+        Dashboard --> InvokerView[⚙️ Nodos Invoker & Presets]
+        Dashboard --> TasksView[🚀 Monitor de Entrenamientos & ETA]
+        Dashboard --> SettingsView[🛠️ Configuración Global, Password & Webhooks]
     end
 
-    subgraph API_Layer [API Gateway - FastAPI :8000]
+    subgraph API_Layer [API Gateway - FastAPI :8001]
         AuthRouter["/api/v1/auth/*"]
         InvokersRouter["/api/v1/invokers/*"]
         TasksRouter["/api/v1/tasks/*"]
@@ -45,6 +45,8 @@ flowchart TD
     subgraph Data_Layer [Master Control Host 192.168.10.252]
         R[(Redis :23437)]
         CB[Celery Broker]
+        Samba[(📂 Samba CIFS)]
+        MinIO[(🪣 MinIO S3)]
     end
 
     subgraph Workers_Layer [Distributed Invoker Workers]
@@ -57,11 +59,17 @@ flowchart TD
     InvokerView -.->|PUT /invokers/{ip}/limits| InvokersRouter
     InvokerView -.->|POST /invokers/{ip}/pause| InvokersRouter
     TasksView -.->|GET /tasks/active| TasksRouter
+    TasksView -.->|GET /cluster/estimate-duration| OverviewRouter
     Dashboard -.->|GET /cluster/overview| OverviewRouter
+    Dashboard -.->|GET /cluster/health| OverviewRouter
+    SettingsView -.->|POST /cluster/webhook| OverviewRouter
 
     AuthRouter <-->|cluster:auth:users| R
     InvokersRouter <-->|invoker:IP:resources| R
-    InvokersRouter -.->|cancel_consumer / add_consumer| CB
+    InvokersRouter -.->|Celery control signals| CB
+    OverviewRouter -.->|Celery active_queues probe| CB
+    OverviewRouter -.->|Storage ping| Samba
+    OverviewRouter -.->|Storage ping| MinIO
     TasksRouter <-->|study:*| R
 
     Inv1 <-->|Consulta y Aplica MAX_GPU, RAM, CPU| R
@@ -98,22 +106,22 @@ pip install -r requirements.txt
 
 Los servicios quedarán disponibles en:
 *   **Interfaz de Usuario (Streamlit):** [http://localhost:8501](http://localhost:8501)
-*   **Backend API (FastAPI Swagger Docs):** [http://localhost:8000/docs](http://localhost:8000/docs)
+*   **Backend API (FastAPI Swagger Docs):** [http://localhost:8001/docs](http://localhost:8001/docs)
 
 ### 2. Ejecución mediante Docker
 
 ```bash
 # Construir la imagen Docker
-docker build -t wisrovi/wyoloservice2_cluster_control:v1.0.0 .
+docker build -t wisrovi/wyoloservice2_cluster_control:v1.2.0 .
 
 # Ejecutar el contenedor
 docker run -d \
   --name wyolo_cluster_control \
-  -p 8000:8000 \
+  -p 8001:8001 \
   -p 8501:8501 \
   -e CONTROL_HOST=192.168.10.252 \
   -e REDIS_PORT=23437 \
-  wisrovi/wyoloservice2_cluster_control:v1.0.0
+  wisrovi/wyoloservice2_cluster_control:v1.2.0
 ```
 
 ---
@@ -142,13 +150,17 @@ Cumpliendo con los estándares de calidad del ecosistema, todas las pruebas unit
 | `GET` | `/api/v1/auth/me` | Retorna el usuario autenticado | Sí |
 | `POST` | `/api/v1/auth/change-password` | Actualiza la contraseña en Redis | Sí |
 | `GET` | `/api/v1/cluster/overview` | KPIs y estado general del cluster | Sí |
+| `GET` | `/api/v1/cluster/health` | Watchdog de latencia Redis, Celery probe, Samba y MinIO | Sí |
+| `GET` | `/api/v1/cluster/webhook` | Consulta configuración de webhooks de alerta | Sí |
+| `POST` | `/api/v1/cluster/webhook` | Guarda URL de Webhook y estado activo | Sí |
+| `POST` | `/api/v1/cluster/webhook/test` | Emite notificación de prueba vía Webhook | Sí |
+| `GET` | `/api/v1/cluster/estimate-duration` | Estimador dinámico de duración y throughput (ETA) | Sí |
 | `GET` | `/api/v1/invokers` | Lista invokers con hardware y límites | Sí |
 | `GET` | `/api/v1/invokers/{ip}` | Detalle completo de un invoker | Sí |
 | `PUT` | `/api/v1/invokers/{ip}/limits` | Modifica `max_gpu_percent`, `max_ram` y `max_cpu_cores` | Sí |
 | `POST` | `/api/v1/invokers/{ip}/pause` | Pausa o reanuda la cola pública de un invoker | Sí |
 | `POST` | `/api/v1/invokers/{ip}/drain` | Pone el nodo en modo drenado (finaliza tareas y pausa) | Sí |
 | `POST` | `/api/v1/invokers/batch-limits` | Actualiza límites en lote en todo el cluster | Sí |
-| `GET` | `/api/v1/cluster/health` | Watchdog de latencia Redis y detección de zombies | Sí |
 | `GET` | `/api/v1/tasks/active` | Lista entrenamientos en ejecución en tiempo real | Sí |
 | `GET` | `/api/v1/tasks/history` | Historial de estudios con filtros (search, autor, nodo, status) | Sí |
 | `POST` | `/api/v1/tasks/quick-launch` | Lanzador rápido de 1-click para pruebas de validación | Sí |
@@ -167,20 +179,25 @@ Cumpliendo con los estándares de calidad del ecosistema, todas las pruebas unit
 
 ## 📝 Changelog
 
+*   **v1.2.0 (2026-10-07):**
+    *   **Watchdog Basado en Celery en Vivo:** Inspección activa mediante `active_queues()` de Celery que reporta con precisión milimétrica los 12 invokers saludables en línea y detecta de inmediato el único nodo desconectado (`192.168.1.77`), erradicando falsos positivos de nodos zombies.
+    *   **Monitoreo de Almacenamiento:** Integración de tarjetas de estado para Samba CIFS y MinIO S3 dentro del Watchdog de Salud.
+    *   **Resolución Completa de VRAM:** Incorporación de RTX 3050 OEM, GTX 1650/1660, series RTX 2000 y GPUs Enterprise (A2000, A4000, A5000, A6000), garantizando que ningún nodo reporte "unknown".
+    *   **Topología Visual de Servidores (Rack Grid):** Selector interactivo entre Tabla Resumen y Cuadrícula visual de Servidores con barras de consumo y especificaciones de hardware.
+    *   **Filtros Avanzados y Acciones en Lote en Nodos:** Filtros por estado (`Todos`, `Solo Activos`, `Solo Pausados`, `En Drenado`), por modelo de GPU, por VRAM mínima (`≥8GB`, `≥12GB`, `≥24GB`), ordenación y botones de pausa/reanudación en lote.
+    *   **Perfiles Rápidos de Recursos (Presets 1-Click):** Botones `🚀 Máximo (90%)`, `⚖️ Equilibrado (50%)` y `🍃 Silencioso (25%)` por nodo.
+    *   **Sistema de Webhooks de Alerta:** Configuración y envío de notificaciones automáticas para Discord, Slack y Telegram.
+    *   **Estimador Dinámico de Duración (ETA):** Cálculo en tiempo real de tiempo de entrenamiento, throughput estimado y GPU sugerida antes de despachar tareas.
+    *   Tests unitarios en Docker pasando al 100% y 70% de cobertura total de código.
 *   **v1.1.0 (2026-10-07):**
-    *   **Corrección de VRAM:** Resolución inteligente de memoria GPU física (`12288 MiB (12.0 GB)`) eliminando valores desconocidos.
-    *   **Monitor y Estado de Colas:** Banner en tiempo real (Activa, Pausa Temporal con timestamp, Pausa Indefinida, Drenado) y botón de Drenado elegante (*Graceful Drain*).
-    *   **Filtros Avanzados en Tareas:** Buscador de texto libre, filtro por remitente / autor ("Quién lo envió"), filtro por nodo de destino ("Dónde cayó"), filtro por estado y botón rápido `👤 Solo mis estudios`.
-    *   **Lanzador Rápido de Pruebas (1-Click Test):** Formulario para despachar pruebas de 1 trial con YOLO base a colas públicas o privadas.
-    *   **Curvas de Aprendizaje de Optuna:** Pestaña de análisis con gráficos de progresión de trials y métrica óptima.
-    *   **Cluster Watchdog:** Monitor de salud en tiempo real con latencia de Redis y detección de nodos zombies (>3m inactivos).
-    *   **Seguridad:** Eliminación de texto con credenciales por defecto en la pantalla de login.
-    *   Tests unitarios en Docker ampliados a 7 pruebas (100% passing) y cobertura del 69%.
+    *   Corrección de resolución de VRAM inicial.
+    *   Banner de estado de colas públicas (Activa, Pausa, Drenado).
+    *   Filtros en historial de estudios y selector `👤 Solo mis estudios`.
+    *   Lanzador rápido de pruebas de verificación.
+    *   Curvas de aprendizaje de Optuna.
 *   **v1.0.0 (2026-10-07):**
     *   Lanzamiento inicial de la plataforma de control del cluster.
     *   Backend FastAPI con autenticación JWT y persistencia en Redis.
     *   Auto-inicialización (seed) de credenciales `wisrovi:wyoloservice`.
-    *   Gestión dinámica de recursos (`MAX_GPU`, RAM, CPU cores) sin reiniciar contenedores.
-    *   Control interactivo de pausas de colas públicas y monitoreo de tareas activas.
-    *   Frontend Streamlit con vistas de Overview, Invokers, Tasks y Settings.
-    *   Tests unitarios y medición de cobertura dockerizados con `python:3.10-slim`.
+    *   Gestión dinámica de recursos (`MAX_GPU`, RAM, CPU cores).
+    *   Frontend Streamlit interactivo.
