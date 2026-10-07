@@ -1,6 +1,6 @@
 # 🎛️ NeuralForge Cluster Control (`wyoloservice2_cluster_control`)
 
-![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.4.0-blue.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 ![Python](https://img.shields.io/badge/python-3.10-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker)
@@ -157,18 +157,23 @@ Cumpliendo con los estándares de calidad del ecosistema, todas las pruebas unit
 | `GET` | `/api/v1/cluster/estimate-duration` | Estimador dinámico de duración y throughput (ETA) | Sí |
 | `GET` | `/api/v1/cluster/recommend-node` | Smart Dispatcher: recomendación inteligente de nodo óptimo | Sí |
 | `GET` | `/api/v1/cluster/gpu-benchmarks` | Leaderboard de rendimiento de GPUs y throughput empírico | Sí |
+| `GET` | `/api/v1/cluster/green-ai` | Métricas de consumo energético (kWh), huella CO₂e y eficiencia | Sí |
+| `POST` | `/api/v1/cluster/watchdog/check-and-alert` | Escaneo proactivo de salud y emisión de alertas a Webhooks | Sí |
 | `GET` | `/api/v1/cluster/trends` | Distribución horaria y diaria de carga de trabajo (Workload Trends) | Sí |
 | `GET` | `/api/v1/cluster/housekeeping/preview` | Inspección de memoria Redis y conteo de estudios fallidos obsoletos | Sí |
 | `POST` | `/api/v1/cluster/housekeeping/purge` | Purga segura de estudios y claves efímeras huérfanas en Redis | Sí |
 | `GET` | `/api/v1/invokers` | Lista invokers con hardware y límites | Sí |
 | `GET` | `/api/v1/invokers/{ip}` | Detalle completo de un invoker | Sí |
+| `GET` | `/api/v1/invokers/{ip}/diagnose` | Diagnóstico profundo de conectividad física, SSH puerto 22 y Celery | Sí |
 | `PUT` | `/api/v1/invokers/{ip}/limits` | Modifica `max_gpu_percent`, `max_ram` y `max_cpu_cores` | Sí |
 | `POST` | `/api/v1/invokers/{ip}/pause` | Pausa o reanuda la cola pública de un invoker | Sí |
 | `POST` | `/api/v1/invokers/{ip}/drain` | Pone el nodo en modo drenado (finaliza tareas y pausa) | Sí |
 | `POST` | `/api/v1/invokers/batch-limits` | Actualiza límites en lote en todo el cluster | Sí |
 | `GET` | `/api/v1/tasks/active` | Lista entrenamientos en ejecución en tiempo real | Sí |
 | `GET` | `/api/v1/tasks/history` | Historial de estudios con filtros (search, autor, nodo, status) | Sí |
-| `POST` | `/api/v1/tasks/quick-launch` | Lanzador rápido de 1-click para pruebas de validación | Sí |
+| `POST` | `/api/v1/tasks/compare` | Comparador Head-to-Head directo entre 2 a 5 estudios | Sí |
+| `GET` | `/api/v1/tasks/{id}/reproducibility` | Generador de comando Docker y manifiesto YAML reproducible | Sí |
+| `POST` | `/api/v1/tasks/quick-launch` | Lanzador rápido con soporte de prioridad (NORMAL, URGENT, BATCH) | Sí |
 | `GET` | `/api/v1/tasks/{id}/metrics` | Métricas de trials para curvas de aprendizaje Optuna | Sí |
 | `POST` | `/api/v1/tasks/{id}/cancel` | Cancela un entrenamiento y emite señal de parada | Sí |
 
@@ -184,6 +189,14 @@ Cumpliendo con los estándares de calidad del ecosistema, todas las pruebas unit
 
 ## 📝 Changelog
 
+*   **v1.4.0 (2026-10-07):**
+    *   **Diagnóstico Profundo de Nodos:** Endpoint `/invokers/{ip}/diagnose` y botón interactivo `🔍 Diagnosticar` que verifica socket SSH en puerto 22, presencia activa en Celery y provee sugerencias de auto-healing.
+    *   **Green AI & Eficiencia Energética:** Endpoint `/cluster/green-ai` que cuantifica kWh consumidos, emisiones de CO₂e según TDP de GPU, árboles equivalentes compensados y velocidad por vatio (`img/W`).
+    *   **Sistema de Prioridades en Despacho:** Soporte para niveles de prioridad (`⚡ NORMAL`, `🔥 URGENTE`, `📦 BATCH`) en el despachador de tareas y persistencia en configuración de estudio.
+    *   **Watchdog Activo Proactivo:** Endpoint `/cluster/watchdog/check-and-alert` con escaneo proactivo bajo demanda y disparo instantáneo de alertas estructuradas a Webhooks (Discord, Slack, Telegram).
+    *   **Comparador Head-to-Head:** Nueva pestaña en Historial con endpoint `/tasks/compare` para contrastar side-by-side de 2 a 5 estudios determinando automáticamente el modelo con mejor precisión y rendimiento.
+    *   **Manifiesto de Reproducción en 1-Click:** Endpoint `/tasks/{id}/reproducibility` que genera el comando exacto `docker run ...` y archivo `training.yaml` con huella criptográfica SHA256 para réplica exacta de experimentos.
+    *   Tests contenerizados en Docker con 100% de aprobación y cobertura incrementada al 75%.
 *   **v1.3.0 (2026-10-07):**
     *   **Arquitectura de Navegación Descongestionada en 6 Vistas:** Desacoplamiento de la interfaz previa de 4 pestañas hacia 6 vistas independientes y reactivas: `📊 Centro de Operaciones`, `⚙️ Nodos Invoker`, `🚀 Despacho y Tareas`, `📈 Historial y Optuna`, `🏆 Rendimiento de GPUs` y `🛠️ Mantenimiento y Ajustes`.
     *   **Despacho Inteligente de Tareas (Smart Dispatcher):** Endpoint `/recommend-node` y selector asistido "🪄 Recomendar Mejor Nodo" basado en requerimientos de VRAM del modelo YOLO seleccionado, carga actual del nodo y heurística de balance para no saturar GPUs de alta gama.
