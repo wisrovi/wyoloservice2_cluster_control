@@ -1,6 +1,6 @@
 # 🎛️ NeuralForge Cluster Admin (`wyoloservice2_cluster_control`)
 
-![Version](https://img.shields.io/badge/version-1.5.1-blue.svg)
+![Version](https://img.shields.io/badge/version-1.6.0-blue.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 ![Python](https://img.shields.io/badge/python-3.10-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker)
@@ -21,6 +21,8 @@ Este microservicio combina un backend API de alto rendimiento con una interfaz g
 *   **Pydantic (v2.6+):** Validación estricta de esquemas de datos y serialización de modelos de hardware, tareas y webhooks.
 *   **Pytest & Pytest-Cov:** Suite de pruebas unitarias automatizadas y cálculo de cobertura de código ejecutadas dentro de contenedores Docker.
 *   **Uvicorn:** Servidor ASGI de nivel de producción para el backend FastAPI.
+*   **WPipe (v2.5.13):** Orquestación del arranque de cada microservicio (`main.py` + `dto/` + `states/`) con pasos tipados y desacoplados.
+*   **Docker & Docker Compose:** Dos imágenes independientes (API y UI) orquestadas con healthchecks y red privada.
 
 ---
 
@@ -92,37 +94,84 @@ El sistema cuenta con autenticación obligatoria tanto en la API como en Streaml
 
 ---
 
+## 📂 Estructura del Proyecto (Arquitectura WPipe)
+
+API e interfaz viven en carpetas propias. Cada una es un microservicio independiente con su `Dockerfile`, `requirements.txt` y un orquestador WPipe (`main.py` + `dto/` + `states/`):
+
+```text
+wyoloservice2_cluster_control/
+├── api/                         # 🔌 REST API service (FastAPI)
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   ├── main.py                  # WPipe pipeline entrypoint
+│   ├── dto/api_startup_context.py
+│   ├── states/                  # LoadApiSettings, CheckRedisConnection, SeedAdminUser, ServeApi
+│   └── backend/                 # FastAPI app, routers, schemas, Redis/Celery client, auth
+├── ui/                          # 🖥️ Streamlit UI service
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   ├── main.py                  # WPipe pipeline entrypoint
+│   ├── dto/ui_startup_context.py
+│   ├── states/                  # LoadUiSettings, WaitForApi, LaunchStreamlit
+│   └── frontend/                # Streamlit app, API client and 10 admin views
+├── tests/api/  tests/ui/        # Dockerized pytest suites
+├── docker-compose.yml           # API + UI stack with healthchecks
+├── Makefile                     # build / up / down / logs / test / push
+├── control_host.env.example     # Runtime configuration template
+└── start.sh                     # Local dev launcher (without Docker)
+```
+
+### Pipelines de arranque WPipe
+
+```mermaid
+flowchart LR
+    subgraph API ["api/main.py - cluster_admin_api"]
+        A1[LoadApiSettings] --> A2[CheckRedisConnection] --> A3[SeedAdminUser] --> A4["ServeApi (Uvicorn :8001)"]
+    end
+    subgraph UI ["ui/main.py - cluster_admin_ui"]
+        U1[LoadUiSettings] --> U2["WaitForApi (/health)"] --> U3["LaunchStreamlit (:8501)"]
+    end
+    A4 -. healthcheck .-> U2
+    U3 -->|REST + JWT| A4
+```
+
+---
+
 ## 🚀 Despliegue y Ejecución
 
-### 1. Ejecución Local Directa
+### 1. Docker Compose (recomendado)
 
 ```bash
-# Instalar dependencias
-pip install -r requirements.txt
+make setup     # crea control_host.env desde control_host.env.example (editar credenciales)
+make up        # construye y levanta API + UI con healthchecks
+make ps        # estado de los contenedores
+make logs      # logs en vivo
+make down      # detiene el stack
+```
 
-# Iniciar backend FastAPI y frontend Streamlit simultáneamente
-./start.sh
+| Servicio | Contenedor | Imagen Docker Hub | Puerto |
+| :--- | :--- | :--- | :--- |
+| API | `neuralforge_cluster_admin_api` | `wisrovi/train_service:cluster_admin_api_v1.6.0` | `8001` |
+| UI | `neuralforge_cluster_admin_ui` | `wisrovi/train_service:cluster_admin_ui_v1.6.0` | `8501` |
+
+La UI espera a que la API esté *healthy* antes de arrancar (`depends_on: service_healthy`) y se comunica con ella por la red interna `cluster_admin_network` (`http://cluster_admin_api:8001`).
+
+Publicar las imágenes en Docker Hub:
+
+```bash
+make build && make push
+```
+
+### 2. Ejecución local sin Docker (desarrollo)
+
+```bash
+pip install -r api/requirements.txt -r ui/requirements.txt
+make dev       # equivalente a ./start.sh
 ```
 
 Los servicios quedarán disponibles en:
 *   **Interfaz de Usuario (Streamlit):** [http://localhost:8501](http://localhost:8501)
 *   **Backend API (FastAPI Swagger Docs):** [http://localhost:8001/docs](http://localhost:8001/docs)
-
-### 2. Ejecución mediante Docker
-
-```bash
-# Construir la imagen Docker
-docker build -t wisrovi/wyoloservice2_cluster_control:v1.2.0 .
-
-# Ejecutar el contenedor
-docker run -d \
-  --name wyolo_cluster_control \
-  -p 8001:8001 \
-  -p 8501:8501 \
-  -e CONTROL_HOST=192.168.10.252 \
-  -e REDIS_PORT=23437 \
-  wisrovi/wyoloservice2_cluster_control:v1.2.0
-```
 
 ---
 
@@ -132,12 +181,12 @@ Cumpliendo con los estándares de calidad del ecosistema, todas las pruebas unit
 
 ### Ejecutar Pruebas Unitarias
 ```bash
-./run_tests.sh
+make test      # o ./run_tests.sh  (tests/api con PYTHONPATH=api, tests/ui con PYTHONPATH=ui)
 ```
 
 ### Calcular Cobertura de Código
 ```bash
-./coverage.sh
+make coverage  # o ./coverage.sh
 ```
 
 ---
@@ -193,6 +242,12 @@ Cumpliendo con los estándares de calidad del ecosistema, todas las pruebas unit
 
 ## 📝 Changelog
 
+*   **v1.6.0 (2026-10-07):**
+    *   **Arquitectura WPipe de microservicios:** API (`api/`) e interfaz (`ui/`) separadas en carpetas propias, cada una con `Dockerfile`, `requirements.txt` y orquestador WPipe (`main.py`, `dto/`, `states/`).
+    *   **Docker Compose + Makefile:** Stack con healthchecks, red privada y arranque ordenado (la UI espera a la API). Imágenes `wisrovi/train_service:cluster_admin_api_v1.6.0` y `wisrovi/train_service:cluster_admin_ui_v1.6.0`.
+    *   **Configuración externa:** `control_host.env.example` para Redis, JWT y credenciales del administrador.
+    *   **Versión única:** `__version__` centralizado en los paquetes `backend` y `frontend` (API, Swagger y barra lateral).
+    *   Tests en Docker: 23/23 pasando (nuevas suites para los pipelines WPipe de API y UI).
 *   **v1.5.1 (2026-10-07):**
     *   **Interfaz 100% en inglés profesional:** Traducción completa de las 10 vistas (navegación, login, títulos, métricas, tablas, botones, mensajes y reportes exportados) y de los mensajes del backend mostrados en la UI (alertas del watchdog, razones del Smart Dispatcher, diagnósticos, auditoría FinOps, webhooks).
     *   **Corrección de prioridad en despacho:** La etiqueta `🔥 URGENT` ahora envía `URGENT` al API (antes enviaba `URGENTE`, no reconocido por el esquema).
@@ -244,3 +299,7 @@ Cumpliendo con los estándares de calidad del ecosistema, todas las pruebas unit
     *   Auto-inicialización (seed) de credenciales `wisrovi:wyoloservice`.
     *   Gestión dinámica de recursos (`MAX_GPU`, RAM, CPU cores).
     *   Frontend Streamlit interactivo.
+
+---
+
+<sub>Generated by WPipe MCP by wisrovi</sub>
