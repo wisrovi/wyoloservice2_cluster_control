@@ -211,3 +211,36 @@ class ClusterApiClient:
         if resp.status_code == 200:
             return resp.json()
         raise ValueError(resp.json().get("detail", f"Error cancelling task {study_id}"))
+
+    def get_webhook_config(self, token: str) -> Dict[str, Any]:
+        """Gets webhook configuration."""
+        url = f"{self.base_url}/api/v1/cluster/webhook"
+        resp = requests.get(url, headers=self._headers(token), timeout=5)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", "Error getting webhook config"))
+
+    def save_webhook_config(self, token: str, webhook_url: str, enabled: bool = True) -> Dict[str, Any]:
+        """Saves webhook configuration."""
+        url = f"{self.base_url}/api/v1/cluster/webhook"
+        resp = requests.post(url, headers=self._headers(token), json={"webhook_url": webhook_url, "enabled": enabled}, timeout=5)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", "Error saving webhook config"))
+
+    def test_webhook(self, token: str) -> Dict[str, Any]:
+        """Sends test notification via webhook."""
+        url = f"{self.base_url}/api/v1/cluster/webhook/test"
+        resp = requests.post(url, headers=self._headers(token), timeout=5)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", "Error sending test webhook"))
+
+    def estimate_duration(self, token: str, model: str, epochs: int, dataset: str = "") -> Dict[str, Any]:
+        """Estimates training duration."""
+        url = f"{self.base_url}/api/v1/cluster/estimate-duration"
+        params = {"model": model, "epochs": epochs, "dataset": dataset}
+        resp = requests.get(url, headers=self._headers(token), params=params, timeout=5)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", "Error estimating duration"))
