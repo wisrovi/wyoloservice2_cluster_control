@@ -244,3 +244,44 @@ class ClusterApiClient:
         if resp.status_code == 200:
             return resp.json()
         raise ValueError(resp.json().get("detail", "Error estimating duration"))
+
+    def recommend_node(self, token: str, model: str = "yolov8n-cls.pt") -> Dict[str, Any]:
+        """Requests smart dispatch recommendation for target model."""
+        url = f"{self.base_url}/api/v1/cluster/recommend-node"
+        params = {"model": model}
+        resp = requests.get(url, headers=self._headers(token), params=params, timeout=5)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", "Error getting node recommendation"))
+
+    def get_gpu_benchmarks(self, token: str) -> Dict[str, Any]:
+        """Retrieves GPU benchmark profiles and throughput numbers."""
+        url = f"{self.base_url}/api/v1/cluster/gpu-benchmarks"
+        resp = requests.get(url, headers=self._headers(token), timeout=5)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", "Error getting GPU benchmarks"))
+
+    def get_housekeeping_preview(self, token: str) -> Dict[str, Any]:
+        """Retrieves housekeeping preview of stale studies and memory."""
+        url = f"{self.base_url}/api/v1/cluster/housekeeping/preview"
+        resp = requests.get(url, headers=self._headers(token), timeout=5)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", "Error getting housekeeping preview"))
+
+    def purge_housekeeping(self, token: str) -> Dict[str, Any]:
+        """Executes purge of stale and failed studies from Redis."""
+        url = f"{self.base_url}/api/v1/cluster/housekeeping/purge"
+        resp = requests.post(url, headers=self._headers(token), timeout=10)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", "Error executing housekeeping purge"))
+
+    def get_workload_trends(self, token: str) -> Dict[str, Any]:
+        """Retrieves cluster workload trends by hour and day."""
+        url = f"{self.base_url}/api/v1/cluster/trends"
+        resp = requests.get(url, headers=self._headers(token), timeout=5)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", "Error getting workload trends"))
