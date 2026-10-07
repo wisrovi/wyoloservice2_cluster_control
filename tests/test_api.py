@@ -189,3 +189,53 @@ def test_authenticated_cluster_endpoints(client):
     trends_data = resp_trends.json()
     assert "hourly_distribution" in trends_data
     assert "busiest_hour" in trends_data
+
+    # 12. v1.4.0 Deep Node Connectivity Diagnostic
+    resp_diag = client.get("/api/v1/invokers/192.168.1.68/diagnose", headers=headers)
+    assert resp_diag.status_code == 200, f"Expected 200, got {resp_diag.status_code}"
+    diag_data = resp_diag.json()
+    assert "status" in diag_data
+    assert "diagnostic_summary" in diag_data
+    assert "suggested_actions" in diag_data
+
+    # 13. v1.4.0 Green AI & Energy Metrics
+    resp_green = client.get("/api/v1/cluster/green-ai", headers=headers)
+    assert resp_green.status_code == 200, f"Expected 200, got {resp_green.status_code}"
+    green_data = resp_green.json()
+    assert "estimated_kwh" in green_data
+    assert "estimated_co2_kg" in green_data
+    assert "gpu_breakdown" in green_data
+
+    # 14. v1.4.0 Proactive Watchdog Check & Alert
+    resp_wd_alert = client.post("/api/v1/cluster/watchdog/check-and-alert", headers=headers)
+    assert resp_wd_alert.status_code == 200, f"Expected 200, got {resp_wd_alert.status_code}"
+    assert "alerts_detected" in resp_wd_alert.json()
+
+    # 15. v1.4.0 Quick Launch with Priority
+    resp_quick_prio = client.post(
+        "/api/v1/tasks/quick-launch",
+        headers=headers,
+        json={"model": "yolov8n-cls.pt", "priority": "URGENT", "epochs": 1},
+    )
+    assert resp_quick_prio.status_code == 200, f"Expected 200, got {resp_quick_prio.status_code}"
+    study_id = resp_quick_prio.json()["data"]["study_id"]
+
+    # 16. v1.4.0 Study Reproducibility Manifest
+    resp_repro = client.get(f"/api/v1/tasks/{study_id}/reproducibility", headers=headers)
+    assert resp_repro.status_code == 200, f"Expected 200, got {resp_repro.status_code}"
+    repro_data = resp_repro.json()
+    assert "docker_run_command" in repro_data
+    assert "training_yaml" in repro_data
+    assert "sha256_fingerprint" in repro_data
+
+    # 17. v1.4.0 Head-to-Head Study Comparison
+    resp_compare = client.post(
+        "/api/v1/tasks/compare",
+        headers=headers,
+        json={"study_ids": [study_id, study_id]},
+    )
+    assert resp_compare.status_code == 200, f"Expected 200, got {resp_compare.status_code}"
+    comp_data = resp_compare.json()
+    assert "studies" in comp_data
+    assert "comparison_summary" in comp_data
+
