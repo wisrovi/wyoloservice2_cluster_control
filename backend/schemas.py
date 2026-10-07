@@ -98,6 +98,7 @@ class QuickLaunchRequest(BaseModel):
     model: str = Field("yolov8n-cls.pt", description="YOLO base model")
     dataset: str = Field("/examples/colorball.v8i.multiclass/", description="Dataset path")
     epochs: int = Field(1, ge=1, le=10, description="Verification epochs")
+    priority: str = Field("NORMAL", description="Task priority: URGENT, NORMAL, or BATCH")
 
 
 class DrainRequest(BaseModel):
@@ -178,3 +179,54 @@ class WorkloadTrendsResponse(BaseModel):
     daily_distribution: Dict[str, int]
     busiest_hour: str
     total_analyzed: int
+
+
+# --- v1.4.0 Optimization Schemas ---
+
+class NodeDiagnosticResponse(BaseModel):
+    worker_ip: str
+    hostname: str
+    status: str
+    ping_ok: bool
+    ssh_port_open: bool
+    celery_active: bool
+    latency_ms: Optional[float]
+    diagnostic_summary: str
+    suggested_actions: List[str]
+
+
+class GreenAiMetricsResponse(BaseModel):
+    total_training_hours: float
+    estimated_kwh: float
+    estimated_co2_kg: float
+    trees_offset_equivalent: float
+    avg_efficiency_img_per_watt: float
+    gpu_breakdown: List[Dict[str, Any]]
+    calculation_basis: str
+
+
+class StudyCompareRequest(BaseModel):
+    study_ids: List[str] = Field(..., min_length=2, max_length=5, description="List of study IDs to compare (2 to 5)")
+
+
+class StudyCompareResponse(BaseModel):
+    studies: List[Dict[str, Any]]
+    common_model: Optional[str]
+    best_study_id: Optional[str]
+    comparison_summary: str
+
+
+class WatchdogAlertResponse(BaseModel):
+    status: str
+    alerts_detected: List[str]
+    webhook_sent: bool
+    details: Dict[str, Any]
+    timestamp: str
+
+
+class ReproducibilityResponse(BaseModel):
+    study_id: str
+    docker_run_command: str
+    training_yaml: str
+    sha256_fingerprint: str
+    generated_at: str
