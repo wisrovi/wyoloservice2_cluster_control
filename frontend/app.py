@@ -38,7 +38,7 @@ else:
                 <span style="font-size: 2.2em; margin-right: 10px;">🧠</span>
                 <div>
                     <h3 style="margin: 0; padding: 0;">NeuralForge</h3>
-                    <p style="color: #6c757d; margin: 0; font-size: 0.85em;">Cluster Control Platform <span style="background-color: #3b82f6; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: bold;">v1.3.0</span></p>
+                    <p style="color: #6c757d; margin: 0; font-size: 0.85em;">Cluster Control Platform <span style="background-color: #3b82f6; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: bold;">v1.4.0</span></p>
                 </div>
             </div>
             """,
