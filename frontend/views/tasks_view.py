@@ -40,6 +40,21 @@ def render_tasks(api_client: ClusterApiClient, token: str):
         with col_q4:
             quick_epochs = st.number_input("Épocas", min_value=1, max_value=5, value=1, step=1, key="quick_epochs_input")
 
+        # Dynamic Training Duration Estimator (ETA)
+        try:
+            eta_res = api_client.estimate_duration(
+                token=token,
+                model=quick_model,
+                epochs=int(quick_epochs),
+                dataset=quick_dataset,
+            )
+            est_min = eta_res.get("estimated_duration_min", 0.0)
+            rec_gpu = eta_res.get("recommended_gpu", "GPU")
+            throughput = eta_res.get("estimated_throughput_img_s", 0)
+            st.info(f"⏱️ **Estimación de Duración (ETA):** ~**{est_min:.1f} min** ({est_min/60:.2f}h) | Throughput estimado: ~{throughput} img/s | GPU sugerida: `{rec_gpu}`")
+        except Exception as ee:
+            st.warning(f"No se pudo estimar duración: {ee}")
+
         if st.button("🚀 Despachar Prueba Inmediata", type="primary", use_container_width=True):
             try:
                 res = api_client.quick_launch_task(
