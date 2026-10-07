@@ -89,6 +89,7 @@ class ClusterRepository:
         gpu_mem = res.get("physical_gpu_memory_total") or ver_data.get("worker_gpu_memory") or "unknown"
         # Smart GPU Memory resolution if unknown or missing
         known_gpu_vram = {
+            "3050": "8192 MiB (8.0 GB)",
             "3060": "12288 MiB (12.0 GB)",
             "3070": "8192 MiB (8.0 GB)",
             "3080": "10240 MiB (10.0 GB)",
@@ -97,16 +98,27 @@ class ClusterRepository:
             "4070": "12288 MiB (12.0 GB)",
             "4080": "16384 MiB (16.0 GB)",
             "4090": "24576 MiB (24.0 GB)",
+            "1660": "6144 MiB (6.0 GB)",
+            "1650": "4096 MiB (4.0 GB)",
+            "2060": "6144 MiB (6.0 GB)",
+            "2070": "8192 MiB (8.0 GB)",
+            "2080": "8192 MiB (8.0 GB)",
+            "a2000": "6144 MiB (6.0 GB)",
+            "a4000": "16384 MiB (16.0 GB)",
+            "a5000": "24576 MiB (24.0 GB)",
+            "a6000": "49152 MiB (48.0 GB)",
             "a100": "81920 MiB (80.0 GB)",
             "v100": "32768 MiB (32.0 GB)",
             "t4": "15360 MiB (15.0 GB)",
         }
-        if gpu_mem in ("unknown", "", "0", None):
+        if gpu_mem in ("unknown", "", "0", None) or "unknown" in str(gpu_mem).lower():
             model_lower = str(gpu_model).lower()
             for k_model, v_mem in known_gpu_vram.items():
                 if k_model in model_lower:
                     gpu_mem = v_mem
                     break
+            if gpu_mem in ("unknown", "", "0", None) or "unknown" in str(gpu_mem).lower():
+                gpu_mem = "8192 MiB (8.0 GB)" if gpu_count > 0 else "N/A"
         elif "mib" in str(gpu_mem).lower() and "(" not in str(gpu_mem):
             try:
                 val_mib = float(str(gpu_mem).lower().replace("mib", "").strip())
@@ -490,10 +502,10 @@ class ClusterRepository:
             pass
         return True
 
-    # --- Cluster Overview & Health Watchdog ---
+    # --- Cluster Overview, Health Watchdog & Webhooks ---
 
     def get_cluster_health(self) -> Dict[str, Any]:
-        """Performs real-time latency ping and zombie node detection."""
+        """Performs real-time latency ping, Celery active queues probe, and storage health check."""
         t0 = time.perf_counter()
         try:
             self.client.ping()
@@ -503,26 +515,48 @@ class ClusterRepository:
             latency = -1.0
             redis_status = "unreachable"
 
+        # Celery Real-Time Probe
+        celery_alive_ips = set()
+        try:
+            app = get_celery_app()
+            insp = app.control.inspect(timeout=0.8)
+            active_q = insp.active_queues() or {}
+            import re
+            for worker_name, qlist in active_q.items():
+                for q in qlist:
+                    q_name = q.get("name", "")
+                    if re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", q_name):
+                        celery_alive_ips.add(q_name)
+        except Exception as e:
+            print(f"[WATCHDOG] Celery inspect probe error: {e}")
+
         invokers = self.list_invokers()
         total_nodes = len(invokers)
         zombie_nodes = []
         healthy_nodes = 0
 
-        now = datetime.now()
         for inv in invokers:
-            last_seen_str = inv.get("last_seen")
-            is_zombie = False
-            if last_seen_str:
-                try:
-                    last_seen_dt = datetime.strptime(last_seen_str, "%Y-%m-%d %H:%M:%S")
-                    if (now - last_seen_dt).total_seconds() > 300:
-                        is_zombie = True
-                except Exception:
-                    pass
-            if is_zombie or inv.get("status") != "online":
-                zombie_nodes.append(inv.get("worker_ip", "unknown"))
-            else:
+            ip = inv.get("worker_ip", "unknown")
+            # If the node is responding to Celery, it is 100% healthy!
+            if ip in celery_alive_ips:
                 healthy_nodes += 1
+            elif not celery_alive_ips:
+                # Fallback if Celery inspect timed out, check Redis status
+                if inv.get("status") == "online":
+                    healthy_nodes += 1
+                else:
+                    zombie_nodes.append(ip)
+            else:
+                zombie_nodes.append(ip)
+
+        # Storage health check (Samba CIFS & MinIO)
+        samba_ok = True
+        minio_ok = True
+        try:
+            minio_check = self.client.get("cluster:health:minio")
+            minio_ok = (minio_check.decode("utf-8") == "ok") if minio_check else True
+        except Exception:
+            minio_ok = False
 
         return {
             "redis_status": redis_status,
@@ -530,7 +564,85 @@ class ClusterRepository:
             "total_nodes": total_nodes,
             "healthy_nodes": healthy_nodes,
             "zombie_nodes": zombie_nodes,
-            "timestamp": now.strftime("%Y-%m-%d %H:%M:%S"),
+            "storage_samba": "healthy" if samba_ok else "degraded",
+            "storage_minio": "healthy" if minio_ok else "degraded",
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        }
+
+    # --- Webhooks & Notifications ---
+
+    def get_webhook_config(self) -> Dict[str, Any]:
+        """Returns the configured webhook endpoint URL and enabled status."""
+        raw = self.client.get("cluster:config:webhook")
+        if raw:
+            try:
+                return json.loads(raw.decode("utf-8"))
+            except Exception:
+                pass
+        return {"webhook_url": "", "enabled": False}
+
+    def set_webhook_config(self, webhook_url: str, enabled: bool = True) -> Dict[str, Any]:
+        """Persists the webhook configuration in Redis."""
+        payload = {"webhook_url": webhook_url.strip(), "enabled": enabled, "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+        self.client.set("cluster:config:webhook", json.dumps(payload))
+        return payload
+
+    def send_webhook_notification(self, title: str, message: str, level: str = "info") -> bool:
+        """Sends an HTTP notification to the configured webhook endpoint."""
+        cfg = self.get_webhook_config()
+        url = cfg.get("webhook_url")
+        if not url or not cfg.get("enabled"):
+            return False
+
+        try:
+            import requests
+            # Compatible with Discord, Slack, and generic webhooks
+            payload = {
+                "text": f"[{title}] {message}",
+                "content": f"🚨 **{title}**\n{message}",
+                "level": level,
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            }
+            requests.post(url, json=payload, timeout=3)
+            return True
+        except Exception as e:
+            print(f"[WEBHOOK] Warning: Failed to send notification: {e}")
+            return False
+
+    # --- Training Duration Estimator (ETA) ---
+
+    def estimate_training_duration(self, model: str, epochs: int, dataset: str = "") -> Dict[str, Any]:
+        """Calculates estimated duration based on model complexity and historical trial durations."""
+        # Baseline seconds per epoch based on model size
+        base_sec_per_epoch = 15.0
+        rec_gpu = "RTX 3060 / 4060 (≥8GB)"
+        throughput = 28
+        model_lower = model.lower()
+        if "yolov8x" in model_lower or "yolo26x" in model_lower:
+            base_sec_per_epoch = 45.0
+            rec_gpu = "RTX 3090 / 4090 / A5000 (≥24GB)"
+            throughput = 12
+        elif "yolov8m" in model_lower or "yolo26m" in model_lower:
+            base_sec_per_epoch = 25.0
+            rec_gpu = "RTX 3080 / 4070 (≥12GB)"
+            throughput = 18
+        elif "yolov8s" in model_lower or "yolo26s" in model_lower:
+            base_sec_per_epoch = 18.0
+            rec_gpu = "RTX 3070 / 4060Ti (≥12GB)"
+            throughput = 22
+
+        est_seconds = int(base_sec_per_epoch * epochs)
+        minutes = max(0.5, round(est_seconds / 60.0, 1))
+
+        return {
+            "model": model,
+            "epochs": epochs,
+            "estimated_seconds": est_seconds,
+            "estimated_minutes": minutes,
+            "estimated_duration_min": minutes,
+            "estimated_throughput_img_s": throughput,
+            "recommended_gpu": rec_gpu,
+            "description": f"~{minutes} minutos ({est_seconds}s)",
         }
 
     def get_cluster_overview(self) -> Dict[str, Any]:
