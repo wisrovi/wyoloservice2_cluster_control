@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-10-07
+
+### Added
+- Modular 6-view navigation architecture decongesting the previous 4-tab interface (`Centro de Operaciones`, `Nodos Invoker`, `Despacho y Tareas`, `Historial y Optuna`, `Rendimiento de GPUs`, `Mantenimiento y Ajustes`).
+- Smart Dispatcher (`/recommend-node`) with "Recomendar Mejor Nodo" automated selector optimizing VRAM balance and workload distribution.
+- GPU Benchmarks and Throughput Leaderboard (`/gpu-benchmarks`) comparing empirical inference/training speeds and 100-epoch projections.
+- Hourly and daily Workload Trends (`/trends`) visualized using interactive Vega/Altair charts detecting cluster peak hours.
+- Cluster Housekeeping and Redis Purge (`/housekeeping/preview`, `/housekeeping/purge`) safely reclaiming memory from stale/failed studies.
+- 1-Click Study Report Exporter generating formatted Markdown (`.md`) and flattened tabular CSV (`.csv`) downloads directly from history.
+- Cyber / Operations Deck dark visual styling with monospace telemetry readouts and cyan borders.
+- Full suite of dockerized tests achieving 100% pass rate and 72% overall code coverage.
+
 ## [1.2.0] - 2026-10-07
 
 ### Added
