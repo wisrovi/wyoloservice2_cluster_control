@@ -29,7 +29,7 @@ def render_login(api_client: ClusterApiClient):
                 username = st.text_input(
                     "Usuario",
                     value="",
-                    placeholder="ej. wisrovi",
+                    placeholder="Introduce tu usuario",
                     key="login_user_input",
                 )
                 password = st.text_input(
@@ -54,5 +54,3 @@ def render_login(api_client: ClusterApiClient):
                             st.rerun()
                         except Exception as e:
                             st.error(f"Error de autenticación: {e}")
-
-        st.caption("ℹ️ Credenciales iniciales por defecto: `wisrovi` / `wyoloservice` (almacenadas en Redis).")
