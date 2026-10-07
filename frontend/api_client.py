@@ -125,6 +125,22 @@ class ClusterApiClient:
             return resp.json()
         raise ValueError(resp.json().get("detail", "Error batch updating limits"))
 
+    def drain_invoker(self, token: str, worker_ip: str, reason: str = "Maintenance") -> Dict[str, Any]:
+        """Puts an invoker node in graceful drain mode."""
+        url = f"{self.base_url}/api/v1/invokers/{worker_ip}/drain"
+        resp = requests.post(url, headers=self._headers(token), json={"reason": reason}, timeout=5)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", f"Error draining invoker {worker_ip}"))
+
+    def get_cluster_health(self, token: str) -> Dict[str, Any]:
+        """Fetches cluster health watchdog metrics."""
+        url = f"{self.base_url}/api/v1/cluster/health"
+        resp = requests.get(url, headers=self._headers(token), timeout=5)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", "Error fetching health watchdog"))
+
     def list_active_tasks(self, token: str) -> List[Dict[str, Any]]:
         """Retrieves active tasks."""
         url = f"{self.base_url}/api/v1/tasks/active"
@@ -133,13 +149,60 @@ class ClusterApiClient:
             return resp.json()
         raise ValueError(resp.json().get("detail", "Error fetching active tasks"))
 
-    def list_task_history(self, token: str, limit: int = 50) -> List[Dict[str, Any]]:
-        """Retrieves task history."""
-        url = f"{self.base_url}/api/v1/tasks/history?limit={limit}"
-        resp = requests.get(url, headers=self._headers(token), timeout=5)
+    def list_task_history(
+        self,
+        token: str,
+        limit: int = 50,
+        search: Optional[str] = None,
+        author: Optional[str] = None,
+        worker_ip: Optional[str] = None,
+        status: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """Retrieves task history with multi-field filtering."""
+        params = {"limit": limit}
+        if search:
+            params["search"] = search
+        if author and author != "Todos":
+            params["author"] = author
+        if worker_ip and worker_ip != "Todos":
+            params["worker_ip"] = worker_ip
+        if status and status != "Todos":
+            params["status"] = status
+
+        url = f"{self.base_url}/api/v1/tasks/history"
+        resp = requests.get(url, headers=self._headers(token), params=params, timeout=5)
         if resp.status_code == 200:
             return resp.json()
         raise ValueError(resp.json().get("detail", "Error fetching task history"))
+
+    def quick_launch_task(
+        self,
+        token: str,
+        worker_ip: Optional[str] = None,
+        model: str = "yolov8n-cls.pt",
+        dataset: str = "/examples/colorball.v8i.multiclass/",
+        epochs: int = 1,
+    ) -> Dict[str, Any]:
+        """Dispatches a quick 1-trial verification task."""
+        url = f"{self.base_url}/api/v1/tasks/quick-launch"
+        payload = {
+            "worker_ip": worker_ip,
+            "model": model,
+            "dataset": dataset,
+            "epochs": epochs,
+        }
+        resp = requests.post(url, headers=self._headers(token), json=payload, timeout=5)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", "Error dispatching quick task"))
+
+    def get_study_metrics(self, token: str, study_id: str) -> List[Dict[str, Any]]:
+        """Retrieves trial metrics for Optuna plotting."""
+        url = f"{self.base_url}/api/v1/tasks/{study_id}/metrics"
+        resp = requests.get(url, headers=self._headers(token), timeout=5)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", f"Error fetching metrics for study {study_id}"))
 
     def cancel_task(self, token: str, study_id: str) -> Dict[str, Any]:
         """Cancels a running study."""
