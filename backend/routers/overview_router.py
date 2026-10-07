@@ -57,13 +57,13 @@ async def test_webhook_notification(current_user: str = Depends(get_current_user
     """Dispatches a test notification to the configured webhook."""
     repo = ClusterRepository()
     success = repo.send_webhook_notification(
-        title="Test de Notificación del Cluster",
-        message=f"Prueba enviada correctamente por el operador {current_user}.",
+        title="Cluster Notification Test",
+        message=f"Test notification successfully sent by operator {current_user}.",
         level="info",
     )
     return {
         "status": "success" if success else "failed",
-        "message": "Notificación enviada" if success else "Fallo al enviar notificación o webhook deshabilitado",
+        "message": "Notification sent" if success else "Failed to send notification or webhook is disabled",
     }
 
 
