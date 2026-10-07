@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-10-07
+
+### Changed
+- Split the monolith into two WPipe microservices: `api/` (FastAPI) and `ui/` (Streamlit), each with its own `Dockerfile`, `requirements.txt` and WPipe orchestrator (`main.py`, `dto/`, `states/`).
+- Centralized the service version in `backend.__version__` and `frontend.__version__`.
+- Test suites split into `tests/api` and `tests/ui`, executed inside Docker.
+
+### Added
+- API startup pipeline: `LoadApiSettings` -> `CheckRedisConnection` -> `SeedAdminUser` -> `ServeApi`.
+- UI startup pipeline: `LoadUiSettings` -> `WaitForApi` -> `LaunchStreamlit`.
+- `docker-compose.yml` with healthchecks, private network and ordered startup.
+- `Makefile` (setup, build, up, down, logs, test, coverage, push, dev), `.dockerignore` and `control_host.env.example`.
+- Docker Hub images `wisrovi/train_service:cluster_admin_api_v1.6.0` and `wisrovi/train_service:cluster_admin_ui_v1.6.0`.
+
+### Removed
+- Root-level single-image `Dockerfile` and `requirements.txt` (replaced by per-service files).
+
 ## [1.5.1] - 2026-10-07
 
 ### Changed
