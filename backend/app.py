@@ -23,7 +23,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="wyoloservice2_cluster_control API",
     description="Centralized Cluster Management and Dynamic Resource Allocation API",
-    version="1.2.0",
+    version="1.3.0",
     lifespan=lifespan,
 )
 
@@ -47,7 +47,7 @@ app.include_router(overview_router)
 async def root():
     return {
         "service": "wyoloservice2_cluster_control",
-        "version": "1.2.0",
+        "version": "1.3.0",
         "status": "operational",
         "docs": "/docs",
     }
