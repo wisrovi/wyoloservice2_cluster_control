@@ -78,17 +78,42 @@ class InvokerDetailResponse(BaseModel):
 
 class TaskResponse(BaseModel):
     study_id: str
+    study_name: Optional[str] = None
+    author: Optional[str] = None
     status: str
     model: str
     task_type: str
     invoker: str
+    destination_node: Optional[str] = None
+    worker_ip: Optional[str] = None
+    dataset: Optional[str] = None
     progress: Dict[str, Any]
     active_trial: Optional[Dict[str, Any]]
     start_time: Optional[str]
     error: Optional[Dict[str, Any]]
 
 
+class QuickLaunchRequest(BaseModel):
+    worker_ip: Optional[str] = Field(None, description="Target invoker IP; if empty, routed to public wyolo_gpu_queue")
+    model: str = Field("yolov8n-cls.pt", description="YOLO base model")
+    dataset: str = Field("/examples/colorball.v8i.multiclass/", description="Dataset path")
+    epochs: int = Field(1, ge=1, le=10, description="Verification epochs")
+
+
+class DrainRequest(BaseModel):
+    reason: Optional[str] = Field("Maintenance", description="Reason for draining node")
+
+
 # --- Overview Schema ---
+
+class ClusterHealthResponse(BaseModel):
+    redis_status: str
+    redis_latency_ms: float
+    total_nodes: int
+    healthy_nodes: int
+    zombie_nodes: List[str]
+    timestamp: str
+
 
 class ClusterOverviewResponse(BaseModel):
     total_nodes: int
