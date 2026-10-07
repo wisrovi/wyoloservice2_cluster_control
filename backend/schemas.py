@@ -131,3 +131,50 @@ class ClusterOverviewResponse(BaseModel):
     active_trials_count: int
     invokers: List[Dict[str, Any]]
     timestamp: str
+
+
+# --- Smart Dispatch & Benchmark Schemas ---
+
+class SmartDispatchRecommendation(BaseModel):
+    target_ip: str
+    hostname: str
+    gpu_model: str
+    vram_total: str
+    score: float
+    reason: str
+
+
+class GpuBenchmarkItem(BaseModel):
+    gpu_model: str
+    completed_studies_count: int
+    avg_throughput_img_s: float
+    avg_epoch_seconds: float
+    estimated_100_epochs_min: float
+    sample_workers: List[str]
+
+
+class GpuLeaderboardResponse(BaseModel):
+    benchmarks: List[GpuBenchmarkItem]
+    updated_at: str
+
+
+# --- Housekeeping & Trends Schemas ---
+
+class HousekeepingPreviewResponse(BaseModel):
+    stale_failed_studies_count: int
+    stale_study_ids: List[str]
+    redis_memory_human: str
+    estimated_reclaimed_kb: int
+
+
+class HousekeepingPurgeResponse(BaseModel):
+    purged_studies_count: int
+    status: str
+    message: str
+
+
+class WorkloadTrendsResponse(BaseModel):
+    hourly_distribution: Dict[str, int]
+    daily_distribution: Dict[str, int]
+    busiest_hour: str
+    total_analyzed: int
