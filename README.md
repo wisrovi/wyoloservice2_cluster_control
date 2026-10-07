@@ -1,6 +1,6 @@
 # 🎛️ NeuralForge Cluster Control (`wyoloservice2_cluster_control`)
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 ![Python](https://img.shields.io/badge/python-3.10-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker)
@@ -146,8 +146,13 @@ Cumpliendo con los estándares de calidad del ecosistema, todas las pruebas unit
 | `GET` | `/api/v1/invokers/{ip}` | Detalle completo de un invoker | Sí |
 | `PUT` | `/api/v1/invokers/{ip}/limits` | Modifica `max_gpu_percent`, `max_ram` y `max_cpu_cores` | Sí |
 | `POST` | `/api/v1/invokers/{ip}/pause` | Pausa o reanuda la cola pública de un invoker | Sí |
+| `POST` | `/api/v1/invokers/{ip}/drain` | Pone el nodo en modo drenado (finaliza tareas y pausa) | Sí |
 | `POST` | `/api/v1/invokers/batch-limits` | Actualiza límites en lote en todo el cluster | Sí |
+| `GET` | `/api/v1/cluster/health` | Watchdog de latencia Redis y detección de zombies | Sí |
 | `GET` | `/api/v1/tasks/active` | Lista entrenamientos en ejecución en tiempo real | Sí |
+| `GET` | `/api/v1/tasks/history` | Historial de estudios con filtros (search, autor, nodo, status) | Sí |
+| `POST` | `/api/v1/tasks/quick-launch` | Lanzador rápido de 1-click para pruebas de validación | Sí |
+| `GET` | `/api/v1/tasks/{id}/metrics` | Métricas de trials para curvas de aprendizaje Optuna | Sí |
 | `POST` | `/api/v1/tasks/{id}/cancel` | Cancela un entrenamiento y emite señal de parada | Sí |
 
 ---
@@ -162,6 +167,15 @@ Cumpliendo con los estándares de calidad del ecosistema, todas las pruebas unit
 
 ## 📝 Changelog
 
+*   **v1.1.0 (2026-10-07):**
+    *   **Corrección de VRAM:** Resolución inteligente de memoria GPU física (`12288 MiB (12.0 GB)`) eliminando valores desconocidos.
+    *   **Monitor y Estado de Colas:** Banner en tiempo real (Activa, Pausa Temporal con timestamp, Pausa Indefinida, Drenado) y botón de Drenado elegante (*Graceful Drain*).
+    *   **Filtros Avanzados en Tareas:** Buscador de texto libre, filtro por remitente / autor ("Quién lo envió"), filtro por nodo de destino ("Dónde cayó"), filtro por estado y botón rápido `👤 Solo mis estudios`.
+    *   **Lanzador Rápido de Pruebas (1-Click Test):** Formulario para despachar pruebas de 1 trial con YOLO base a colas públicas o privadas.
+    *   **Curvas de Aprendizaje de Optuna:** Pestaña de análisis con gráficos de progresión de trials y métrica óptima.
+    *   **Cluster Watchdog:** Monitor de salud en tiempo real con latencia de Redis y detección de nodos zombies (>3m inactivos).
+    *   **Seguridad:** Eliminación de texto con credenciales por defecto en la pantalla de login.
+    *   Tests unitarios en Docker ampliados a 7 pruebas (100% passing) y cobertura del 69%.
 *   **v1.0.0 (2026-10-07):**
     *   Lanzamiento inicial de la plataforma de control del cluster.
     *   Backend FastAPI con autenticación JWT y persistencia en Redis.
