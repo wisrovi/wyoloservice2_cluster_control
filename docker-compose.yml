@@ -1,0 +1,55 @@
+# NeuralForge Cluster Admin - API + UI stack
+# Usage: make up   (or: docker compose up -d --build)
+name: neuralforge_cluster_admin
+
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  cluster_admin_api:
+    container_name: neuralforge_cluster_admin_api
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    image: wisrovi/train_service:cluster_admin_api_v${CLUSTER_ADMIN_VERSION:-1.6.0}
+    restart: unless-stopped
+    env_file:
+      - path: control_host.env
+        required: false
+    environment:
+      API_HOST: 0.0.0.0
+      API_PORT: 8001
+    ports:
+      - "${API_PUBLIC_PORT:-8001}:8001"
+    # Optional: expose the Samba datasets share for storage inspection
+    # volumes:
+    #   - /home/yolo/shared:/home/yolo/shared:ro
+    networks:
+      - cluster_admin_network
+    logging: *default-logging
+
+  cluster_admin_ui:
+    container_name: neuralforge_cluster_admin_ui
+    build:
+      context: .
+      dockerfile: ui/Dockerfile
+    image: wisrovi/train_service:cluster_admin_ui_v${CLUSTER_ADMIN_VERSION:-1.6.0}
+    restart: unless-stopped
+    environment:
+      CLUSTER_API_URL: http://cluster_admin_api:8001
+      STREAMLIT_PORT: 8501
+    ports:
+      - "${UI_PUBLIC_PORT:-8501}:8501"
+    depends_on:
+      cluster_admin_api:
+        condition: service_healthy
+    networks:
+      - cluster_admin_network
+    logging: *default-logging
+
+networks:
+  cluster_admin_network:
+    driver: bridge
