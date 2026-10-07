@@ -53,3 +53,42 @@ def render_settings(api_client: ClusterApiClient, token: str):
                             st.success("✅ Contraseña actualizada exitosamente en Redis.")
                         except Exception as ce:
                             st.error(f"Error: {ce}")
+
+    st.markdown("---")
+    with st.container(border=True):
+        st.subheader("🔔 Notificaciones Webhook (Discord / Slack / Telegram)")
+        st.caption("Recibe alertas automáticas en canales externos cuando un nodo falle, se desconecte o un entrenamiento termine.")
+
+        # Load current webhook config
+        try:
+            current_wh = api_client.get_webhook_config(token)
+        except Exception:
+            current_wh = {"webhook_url": "", "enabled": False}
+
+        col_wh1, col_wh2 = st.columns([3, 1], gap="medium")
+        with col_wh1:
+            wh_url = st.text_input(
+                "URL del Webhook (Discord / Slack / Telegram HTTP POST)",
+                value=current_wh.get("webhook_url", ""),
+                placeholder="https://discord.com/api/webhooks/... o https://hooks.slack.com/services/...",
+            )
+            wh_enabled = st.checkbox(
+                "Activar alertas automáticas de eventos del clúster",
+                value=current_wh.get("enabled", False),
+            )
+        with col_wh2:
+            st.write(" ")
+            st.write(" ")
+            if st.button("💾 Guardar Webhook", type="primary", use_container_width=True):
+                try:
+                    res = api_client.save_webhook_config(token, webhook_url=wh_url, enabled=wh_enabled)
+                    st.success(res.get("message", "Configuración de Webhook guardada exitosamente."))
+                except Exception as we:
+                    st.error(f"Error guardando Webhook: {we}")
+
+            if st.button("🔔 Enviar Notificación de Prueba", use_container_width=True):
+                try:
+                    res_test = api_client.test_webhook(token)
+                    st.info(res_test.get("message", "Prueba enviada."))
+                except Exception as te:
+                    st.error(f"Error probando Webhook: {te}")
