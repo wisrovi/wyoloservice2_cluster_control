@@ -159,14 +159,16 @@ class ClusterApiClient:
         status: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """Retrieves task history with multi-field filtering."""
+        # "All" is the UI sentinel meaning "no filter" ("Todos" kept for backward compatibility).
+        all_sentinels = ("All", "Todos")
         params = {"limit": limit}
         if search:
             params["search"] = search
-        if author and author != "Todos":
+        if author and author not in all_sentinels:
             params["author"] = author
-        if worker_ip and worker_ip != "Todos":
+        if worker_ip and worker_ip not in all_sentinels:
             params["worker_ip"] = worker_ip
-        if status and status != "Todos":
+        if status and status not in all_sentinels:
             params["status"] = status
 
         url = f"{self.base_url}/api/v1/tasks/history"
