@@ -330,3 +330,46 @@ class ClusterApiClient:
             return resp.json()
         raise ValueError(resp.json().get("detail", f"Error getting reproducibility manifest for {study_id}"))
 
+    # --- Cluster Admin v1.5.0 Client Methods ---
+
+    def get_storage_admin(self, token: str) -> Dict[str, Any]:
+        """Inspects Samba CIFS and MinIO S3 cluster storage volumes."""
+        url = f"{self.base_url}/api/v1/cluster/storage/inspect"
+        resp = requests.get(url, headers=self._headers(token), timeout=5)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", "Error inspecting cluster storage"))
+
+    def get_finops_report(self, token: str) -> Dict[str, Any]:
+        """Fetches cluster electricity costs and FinOps breakdown in EUR."""
+        url = f"{self.base_url}/api/v1/cluster/finops"
+        resp = requests.get(url, headers=self._headers(token), timeout=5)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", "Error getting FinOps report"))
+
+    def update_electricity_rate(self, token: str, rate: float) -> Dict[str, Any]:
+        """Updates the electricity billing rate per kWh in EUR."""
+        url = f"{self.base_url}/api/v1/cluster/finops/rate"
+        resp = requests.post(url, headers=self._headers(token), json={"rate_eur_per_kwh": rate}, timeout=5)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", "Error updating electricity rate"))
+
+    def get_audit_logs(self, token: str, limit: int = 50) -> Dict[str, Any]:
+        """Retrieves chronological audit trail of administrative operations."""
+        url = f"{self.base_url}/api/v1/cluster/audit/logs"
+        resp = requests.get(url, headers=self._headers(token), params={"limit": limit}, timeout=5)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", "Error getting audit logs"))
+
+    def get_cluster_capabilities(self, token: str) -> Dict[str, Any]:
+        """Retrieves official catalog of 12 R&D modules and worker capabilities."""
+        url = f"{self.base_url}/api/v1/cluster/capabilities"
+        resp = requests.get(url, headers=self._headers(token), timeout=5)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", "Error getting cluster capabilities"))
+
+
