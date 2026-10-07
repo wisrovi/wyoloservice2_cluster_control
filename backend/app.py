@@ -21,9 +21,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="wyoloservice2_cluster_control API",
-    description="Centralized Cluster Management and Dynamic Resource Allocation API",
-    version="1.4.0",
+    title="NeuralForge Cluster Admin API",
+    description="Centralized Cluster Administration, Storage Volumes, FinOps and Node Governance API",
+    version="1.5.0",
     lifespan=lifespan,
 )
 
