@@ -106,12 +106,19 @@ class DrainRequest(BaseModel):
 
 # --- Overview Schema ---
 
+class WebhookConfigRequest(BaseModel):
+    webhook_url: str = Field(..., description="Webhook endpoint URL (Discord, Telegram, Slack, generic)")
+    enabled: bool = Field(True, description="Whether notifications are enabled")
+
+
 class ClusterHealthResponse(BaseModel):
     redis_status: str
     redis_latency_ms: float
     total_nodes: int
     healthy_nodes: int
     zombie_nodes: List[str]
+    storage_samba: str = "healthy"
+    storage_minio: str = "healthy"
     timestamp: str
 
 
