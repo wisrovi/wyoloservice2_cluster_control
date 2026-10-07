@@ -1,13 +1,33 @@
 """Cluster overview view for Streamlit application."""
 
+import pandas as pd
 import streamlit as st
 from frontend.api_client import ClusterApiClient
 
 
 def render_overview(api_client: ClusterApiClient, token: str):
-    """Renders the executive cluster overview dashboard and watchdog."""
-    st.title("📊 Resumen del Cluster y Topología")
-    st.caption("Visión general en tiempo real del estado de los nodos invoker, almacenamiento y tareas.")
+    """Renders the executive cluster overview dashboard, watchdog, and workload trends."""
+    # Cyber Deck custom CSS injection
+    st.markdown(
+        """
+        <style>
+        .stMetric {
+            background-color: rgba(28, 31, 38, 0.45);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            padding: 10px 14px;
+        }
+        code {
+            font-family: 'JetBrains Mono', 'Fira Code', monospace !important;
+            font-size: 0.9em;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.title("📊 Centro de Operaciones y Topología")
+    st.caption("Visión general en tiempo real del clúster: telemetría, salud de nodos, almacenamiento y tendencias de carga.")
 
     try:
         data = api_client.get_overview(token)
@@ -74,7 +94,30 @@ def render_overview(api_client: ClusterApiClient, token: str):
 
     st.divider()
 
-    # View Mode Switcher
+    # --- Cluster Workload Trends (Propuesta 4) ---
+    st.subheader("📈 Distribución y Tendencias de Carga (Workload Trends)")
+    st.caption("Frecuencia horaria de entrenamientos despachados en el ecosistema.")
+    try:
+        trends = api_client.get_workload_trends(token)
+        hourly = trends.get("hourly_distribution", {})
+        busiest = trends.get("busiest_hour", "14:00")
+        total_runs = trends.get("total_analyzed", 0)
+
+        col_tr1, col_tr2 = st.columns([1, 3], gap="medium")
+        with col_tr1:
+            st.metric(label="🔥 Hora Pico del Clúster", value=busiest)
+            st.write(f"• **Estudios Procesados:** `{total_runs}`")
+            st.caption("Recomendación: Lanza barridos masivos de Optuna durante horas valle para optimizar tiempos.")
+        with col_tr2:
+            if hourly:
+                df_trends = pd.DataFrame(list(hourly.items()), columns=["Hora", "Estudios"]).set_index("Hora")
+                st.bar_chart(df_trends, height=180)
+    except Exception as te:
+        st.caption(f"No se pudieron calcular tendencias de carga: {te}")
+
+    st.divider()
+
+    # --- Invoker Distribution Section ---
     col_v1, col_v2 = st.columns([2, 1])
     with col_v1:
         st.subheader("🖥️ Distribución de Nodos Invoker")
