@@ -3,11 +3,13 @@
 import streamlit as st
 
 from frontend.api_client import ClusterApiClient
+from frontend.views.benchmarks_view import render_benchmarks
+from frontend.views.dispatch_view import render_dispatch
+from frontend.views.history_view import render_history
 from frontend.views.invokers_view import render_invokers
 from frontend.views.login_view import render_login
 from frontend.views.overview_view import render_overview
 from frontend.views.settings_view import render_settings
-from frontend.views.tasks_view import render_tasks
 
 
 # Page Configuration
@@ -36,7 +38,7 @@ else:
                 <span style="font-size: 2.2em; margin-right: 10px;">🧠</span>
                 <div>
                     <h3 style="margin: 0; padding: 0;">NeuralForge</h3>
-                    <p style="color: #6c757d; margin: 0; font-size: 0.85em;">Cluster Control Platform <span style="background-color: #3b82f6; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: bold;">v1.2.0</span></p>
+                    <p style="color: #6c757d; margin: 0; font-size: 0.85em;">Cluster Control Platform <span style="background-color: #3b82f6; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: bold;">v1.3.0</span></p>
                 </div>
             </div>
             """,
@@ -47,7 +49,14 @@ else:
 
         page = st.radio(
             "Navegación:",
-            ["📊 Resumen", "⚙️ Nodos Invoker", "🚀 Entrenamientos", "🛠️ Configuración Global"],
+            [
+                "📊 Centro de Operaciones",
+                "⚙️ Nodos Invoker",
+                "🚀 Despacho y Tareas",
+                "📈 Historial y Optuna",
+                "🏆 Rendimiento de GPUs",
+                "🛠️ Mantenimiento y Ajustes",
+            ],
             index=0,
             label_visibility="collapsed",
         )
@@ -61,11 +70,15 @@ else:
             st.rerun()
 
     # Route to selected page
-    if page == "📊 Resumen":
+    if page == "📊 Centro de Operaciones":
         render_overview(api_client, token)
     elif page == "⚙️ Nodos Invoker":
         render_invokers(api_client, token)
-    elif page == "🚀 Entrenamientos":
-        render_tasks(api_client, token)
-    elif page == "🛠️ Configuración Global":
+    elif page == "🚀 Despacho y Tareas":
+        render_dispatch(api_client, token)
+    elif page == "📈 Historial y Optuna":
+        render_history(api_client, token)
+    elif page == "🏆 Rendimiento de GPUs":
+        render_benchmarks(api_client, token)
+    elif page == "🛠️ Mantenimiento y Ajustes":
         render_settings(api_client, token)
