@@ -7,20 +7,20 @@ from frontend.api_client import ClusterApiClient
 
 def render_benchmarks(api_client: ClusterApiClient, token: str):
     """Renders GPU performance comparison, throughput metrics, and leaderboard."""
-    st.title("🏆 Rendimiento de GPUs y Leaderboard del Clúster")
-    st.caption("Comparativa de velocidad de entrenamiento (throughput img/s y tiempo por época) entre las GPUs del ecosistema.")
+    st.title("🏆 Cluster GPU Performance & Leaderboard")
+    st.caption("Training speed comparison (throughput in img/s and time per epoch) across all GPUs in the ecosystem.")
 
     try:
         data = api_client.get_gpu_benchmarks(token)
         benchmarks = data.get("benchmarks", [])
         updated_at = data.get("updated_at", "N/A")
     except Exception as e:
-        st.error(f"Error cargando benchmarks de GPU: {e}")
+        st.error(f"Failed to load GPU benchmarks: {e}")
         benchmarks = []
         updated_at = "N/A"
 
     if not benchmarks:
-        st.info("No hay datos de benchmark disponibles en este momento.")
+        st.info("No benchmark data is available at the moment.")
         return
 
     df = pd.DataFrame(benchmarks)
@@ -32,21 +32,21 @@ def render_benchmarks(api_client: ClusterApiClient, token: str):
 
     with col_kpi1:
         st.metric(
-            label="⚡ GPU Más Rápida",
+            label="⚡ Fastest GPU",
             value=fastest_gpu["gpu_model"].replace("NVIDIA GeForce ", ""),
             delta=f"{fastest_gpu['avg_throughput_img_s']} img/s",
         )
     with col_kpi2:
         st.metric(
-            label="⏱️ Tiempo Mínimo (100 Épocas)",
+            label="⏱️ Best Time (100 Epochs)",
             value=f"~{fastest_gpu['estimated_100_epochs_min']} min",
-            delta="Alta eficiencia",
+            delta="High efficiency",
         )
     with col_kpi3:
         st.metric(
-            label="📊 Estudios Analizados",
+            label="📊 Studies Analyzed",
             value=f"{total_benchmark_studies} runs",
-            delta=f"Actualizado: {updated_at.split(' ')[1] if ' ' in updated_at else updated_at}",
+            delta=f"Updated: {updated_at.split(' ')[1] if ' ' in updated_at else updated_at}",
         )
 
     st.markdown("---")
@@ -54,30 +54,30 @@ def render_benchmarks(api_client: ClusterApiClient, token: str):
     col_chart, col_details = st.columns([1.6, 1.4], gap="large")
 
     with col_chart:
-        st.subheader("📊 Comparativa de Throughput (Imágenes por Segundo)")
-        st.caption("A mayor valor, más rápido procesa batches durante el entrenamiento YOLO.")
+        st.subheader("📊 Throughput Comparison (Images per Second)")
+        st.caption("Higher is better: the GPU processes batches faster during YOLO training.")
         chart_data = df.set_index("gpu_model")["avg_throughput_img_s"]
         st.bar_chart(chart_data)
 
     with col_details:
-        st.subheader("⏱️ Tiempo Estimado para 100 Épocas (Minutos)")
-        st.caption("A menor tiempo, más rápido concluye un ciclo de entrenamiento completo.")
+        st.subheader("⏱️ Estimated Time for 100 Epochs (Minutes)")
+        st.caption("Lower is better: a full training cycle completes sooner.")
         time_chart_data = df.set_index("gpu_model")["estimated_100_epochs_min"]
         st.bar_chart(time_chart_data)
 
     st.markdown("---")
-    st.subheader("📋 Tabla Comparativa Completa de Modelos y Nodos Asignados")
+    st.subheader("📋 Full Comparison of GPU Models and Assigned Nodes")
 
     display_table = []
     for idx, row in df.iterrows():
         display_table.append({
-            "Rango": f"#{idx + 1}",
-            "Modelo GPU": row["gpu_model"],
-            "Throughput Promedio": f"{row['avg_throughput_img_s']} img/s",
-            "Tiempo Medio / Época": f"{row['avg_epoch_seconds']} seg",
-            "100 Épocas Est.": f"{row['estimated_100_epochs_min']} min",
-            "Estudios Registrados": row["completed_studies_count"],
-            "Nodos con este Modelo": ", ".join(row.get("sample_workers", [])),
+            "Rank": f"#{idx + 1}",
+            "GPU Model": row["gpu_model"],
+            "Avg. Throughput": f"{row['avg_throughput_img_s']} img/s",
+            "Avg. Time / Epoch": f"{row['avg_epoch_seconds']} s",
+            "Est. 100 Epochs": f"{row['estimated_100_epochs_min']} min",
+            "Recorded Studies": row["completed_studies_count"],
+            "Nodes with this Model": ", ".join(row.get("sample_workers", [])),
         })
 
     st.dataframe(pd.DataFrame(display_table), use_container_width=True, hide_index=True)
