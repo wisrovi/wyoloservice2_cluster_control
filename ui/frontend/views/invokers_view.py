@@ -149,9 +149,10 @@ def render_invokers(api_client: ClusterApiClient, token: str):
         limits = inv.get("limits", {})
         pause_state = inv.get("pause_state", "active")
 
-        # Color-coded icon
+        # Color-coded icon and runtime badge
         status_icon = "🟢" if pause_state == "active" else ("🟡" if "paused" in pause_state else "🛡️")
-        expander_title = f"{status_icon} {hostname} ({worker_ip}) — {physical.get('gpu_model', 'N/A')}"
+        runtime_badge = "☸️ K8s" if "Kubernetes" in inv.get("orchestration_runtime", "") else "🐳 Docker"
+        expander_title = f"{status_icon} {hostname} ({worker_ip}) [{runtime_badge}] — {physical.get('gpu_model', 'N/A')}"
 
         with st.expander(expander_title, expanded=(len(filtered) == 1 or idx == 0)):
             col_info, col_controls = st.columns([1, 1], gap="medium")
@@ -163,6 +164,7 @@ def render_invokers(api_client: ClusterApiClient, token: str):
                 st.write(f"• **Total VRAM:** `{physical.get('gpu_memory_total', 'N/A')}`")
                 st.write(f"• **Total RAM:** `{physical.get('ram_total', 'N/A')}`")
                 st.write(f"• **Physical CPU Cores:** `{physical.get('cpu_cores', 'N/A')}`")
+                st.write(f"• **Orchestration Runtime:** `{inv.get('orchestration_runtime', 'Docker Standalone')}`")
                 st.caption(f"Last sync: {inv.get('updated_at', 'N/A')}")
 
                 # Status Banner
@@ -297,3 +299,39 @@ def render_invokers(api_client: ClusterApiClient, token: str):
                         st.rerun()
                     except Exception as se:
                         st.error(f"Failed to save limits: {se}")
+
+            # --- Live GPU Compute Processes & Zombie Monitor ---
+            with st.expander(f"🔍 Live GPU Processes & Zombie Monitor ({worker_ip})", expanded=False):
+                try:
+                    proc_info = api_client.get_node_gpu_processes(token, worker_ip)
+                    if proc_info.get("has_zombies") or proc_info.get("zombie_alert"):
+                        st.error(
+                            "🚨 **CRITICAL ZOMBIE PROCESS ALERT!** One or more processes have held VRAM for >24h "
+                            "without active training. Terminate them below to avoid CUDA Out-Of-Memory (OOM) errors."
+                        )
+                    procs = proc_info.get("processes", [])
+                    if not procs:
+                        st.info("No active compute processes using GPU VRAM on this node.")
+                    else:
+                        st.write(f"**Total Active Processes:** `{len(procs)}`")
+                        for p in procs:
+                            col_pinfo, col_pact = st.columns([4, 1])
+                            with col_pinfo:
+                                z_tag = "⚠️ **[ZOMBIE LEAK]**" if p.get("is_zombie") else "⚡ **[ACTIVE]**"
+                                p_name = p.get("name") or p.get("process_name", "N/A")
+                                vram = p.get("vram_used_mb") or p.get("used_memory_mb", 0)
+                                elapsed = p.get("elapsed") or p.get("elapsed_time", "N/A")
+                                st.markdown(
+                                    f"{z_tag} **PID:** `{p.get('pid')}` | **Name:** `{p_name}` | "
+                                    f"**VRAM:** `{vram:.0f} MB` | **Elapsed:** `{elapsed}`"
+                                )
+                            with col_pact:
+                                if st.button("🛑 Kill PID", key=f"kill_{worker_ip}_{p.get('pid')}", help="Terminate process"):
+                                    try:
+                                        res = api_client.kill_node_gpu_process(token, worker_ip, p.get("pid"))
+                                        st.success(res.get("message", "Signal sent"))
+                                        st.rerun()
+                                    except Exception as ke:
+                                        st.error(f"Failed to kill process: {ke}")
+                except Exception as pe:
+                    st.caption(f"GPU process telemetry unavailable: {pe}")
