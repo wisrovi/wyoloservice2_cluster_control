@@ -461,3 +461,152 @@ class K8sPurgeResponse(BaseModel):
     details: str
 
 
+# --- Enterprise Cluster Suite Schemas (v2.0.0) ---
+
+class SweepTrialInfo(BaseModel):
+    study_id: str
+    trial_number: Optional[int] = None
+    status: str
+    loss: Optional[float] = None
+    map50: Optional[float] = None
+    worker_ip: Optional[str] = None
+    created_at: Optional[str] = None
+
+
+class SweepDetail(BaseModel):
+    sweep_name: str
+    total_trials: int
+    active_trials: int
+    completed_trials: int
+    failed_trials: int
+    best_trial_id: Optional[str] = None
+    best_metric: Optional[float] = None
+    metric_name: str = "mAP50"
+    trials: List[SweepTrialInfo] = Field(default_factory=list)
+
+
+class SweepsListResponse(BaseModel):
+    total_sweeps: int
+    sweeps: List[SweepDetail]
+
+
+class SweepActionResponse(BaseModel):
+    sweep_name: str
+    action: str
+    affected_tasks: int
+    status: str
+    message: str
+
+
+class NodeImageStatus(BaseModel):
+    worker_ip: str
+    hostname: str
+    image_tag: str
+    image_digest: Optional[str] = None
+    status: str  # synchronized, outdated, missing, unknown
+    last_checked: str
+
+
+class ClusterImagesResponse(BaseModel):
+    target_image: str
+    latest_tag: str
+    synchronized_nodes: int
+    total_nodes: int
+    nodes: List[NodeImageStatus]
+
+
+class BroadcastPullResponse(BaseModel):
+    target_image: str
+    status: str
+    dispatched_nodes: List[str]
+    excluded_nodes: List[str]
+    message: str
+
+
+class DatasetValidationRequest(BaseModel):
+    dataset_path: str = Field(..., description="Dataset path (e.g. /examples/dataset1 or Samba CIFS path)")
+
+
+class DatasetInspectionResponse(BaseModel):
+    dataset_path: str
+    valid: bool
+    data_yaml_exists: bool
+    train_split_exists: bool
+    val_split_exists: bool
+    num_classes: Optional[int] = None
+    class_names: List[str] = Field(default_factory=list)
+    train_images_count: int = 0
+    val_images_count: int = 0
+    details: str
+
+
+class AvailableDatasetsResponse(BaseModel):
+    base_path: str
+    datasets: List[Dict[str, Any]]
+
+
+class QuarantinedTask(BaseModel):
+    task_id: str
+    study_id: str
+    failed_at: str
+    failure_count: int
+    last_error: str
+    root_cause: Optional[str] = None
+    worker_ip: Optional[str] = None
+    original_queue: str
+
+
+class QuarantineListResponse(BaseModel):
+    total_quarantined: int
+    tasks: List[QuarantinedTask]
+
+
+class QuarantineActionResponse(BaseModel):
+    task_id: str
+    action: str
+    status: str
+    message: str
+
+
+class SchedulerPolicy(BaseModel):
+    enabled: bool = False
+    office_start_hour: int = Field(9, ge=0, le=23)
+    office_end_hour: int = Field(18, ge=0, le=23)
+    office_max_gpu_percent: float = Field(25.0, ge=5.0, le=100.0)
+    night_max_gpu_percent: float = Field(90.0, ge=5.0, le=100.0)
+    target_worker_ips: List[str] = Field(default_factory=list, description="Worker IPs affected by office limits; empty means all")
+    weekend_full_throttle: bool = True
+
+
+class SchedulerPolicyResponse(BaseModel):
+    policy: SchedulerPolicy
+    current_mode: str
+    server_time: str
+    active_profile_description: str
+
+
+class SupportBundleResponse(BaseModel):
+    bundle_id: str
+    generated_at: str
+    generated_by: str
+    cluster_overview: Dict[str, Any]
+    invokers_snapshot: List[Dict[str, Any]]
+    active_tasks: List[Dict[str, Any]]
+    quarantined_tasks: List[Dict[str, Any]]
+    recent_audit_events: List[Dict[str, Any]]
+    system_metrics: Dict[str, Any]
+
+
+class RichWebhookTestRequest(BaseModel):
+    event_type: str = Field("study_completed", description="study_completed, pod_evicted, queue_stall")
+    webhook_url: Optional[str] = None
+
+
+class RichWebhookResponse(BaseModel):
+    status: str
+    event_type: str
+    delivered: bool
+    payload_preview: Dict[str, Any]
+    message: str
+
+
