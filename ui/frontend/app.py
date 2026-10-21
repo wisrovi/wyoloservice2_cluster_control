@@ -16,6 +16,7 @@ from frontend.views.login_view import render_login
 from frontend.views.overview_view import render_overview
 from frontend.views.settings_view import render_settings
 from frontend.views.storage_view import render_storage
+from frontend.views.tasks_view import render_tasks
 
 
 # Page Configuration
@@ -59,6 +60,7 @@ else:
                 "📊 Operations Center",
                 "⚙️ Nodes & Invokers",
                 "🚀 Dispatch & Scheduler",
+                "📋 Tasks & Queues Monitor",
                 "📁 Storage & Volumes",
                 "📈 Job History",
                 "🏆 GPU Benchmarks",
@@ -86,6 +88,8 @@ else:
         render_invokers(api_client, token)
     elif page == "🚀 Dispatch & Scheduler":
         render_dispatch(api_client, token)
+    elif page == "📋 Tasks & Queues Monitor":
+        render_tasks(api_client, token)
     elif page == "📁 Storage & Volumes":
         render_storage(api_client, token)
     elif page == "📈 Job History":
