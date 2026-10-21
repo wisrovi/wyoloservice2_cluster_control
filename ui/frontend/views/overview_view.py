@@ -92,11 +92,11 @@ def render_overview(api_client: ClusterApiClient, token: str):
     except Exception as he:
         st.caption(f"Unable to load the health watchdog: {he}")
 
-    # --- 1-Click Cluster Smoke Test ---
-    with st.expander("🧪 Cluster Smoke Test (Prueba de Humo 1-Click)", expanded=False):
-        st.caption("Verifica la salud integral del cluster: conectividad CIFS Samba, acceso MinIO S3 y disponibilidad de GPU en todos los nodos online.")
-        col_sm1, col_sm2 = st.columns([1, 3])
-        with col_sm1:
+    # --- 1-Click Cluster Smoke Test & K8s Maintenance ---
+    col_st1, col_st2 = st.columns(2)
+    with col_st1:
+        with st.expander("🧪 Cluster Smoke Test (1-Click)", expanded=False):
+            st.caption("Verifica conectividad CIFS Samba, acceso MinIO S3 y disponibilidad de GPU en todos los nodos online.")
             if st.button("🚀 Iniciar Smoke Test", key="btn_run_smoke_test", type="primary", use_container_width=True):
                 try:
                     with st.spinner("Ejecutando smoke test en los nodos del cluster..."):
@@ -106,31 +106,30 @@ def render_overview(api_client: ClusterApiClient, token: str):
                 except Exception as s_err:
                     st.error(f"Error ejecutando smoke test: {s_err}")
 
-        with col_sm2:
             if "cluster_smoke_result" in st.session_state:
                 smoke_data = st.session_state["cluster_smoke_result"]
                 s_stat = smoke_data.get("status", "unknown").upper()
                 s_total = smoke_data.get("total_nodes", 0)
                 dispatched = smoke_data.get("dispatched_nodes", [])
                 s_badge = "🟢 PASADO" if s_stat == "SUCCESS" else "🔴 FALLIDO"
-                st.write(f"**Resultado:** `{s_badge}` | **Nodos Validados:** `{len(dispatched)}/{s_total}` | {smoke_data.get('summary', '')}")
+                st.write(f"**Resultado:** `{s_badge}` | **Nodos:** `{len(dispatched)}/{s_total}`")
 
                 det_rows = smoke_data.get("results", [])
                 if det_rows:
                     df_smoke = pd.DataFrame(det_rows)
-                    df_smoke = df_smoke.rename(columns={
-                        "worker_ip": "IP",
-                        "hostname": "Hostname",
-                        "gpu_model": "Modelo GPU",
-                        "samba_mounted": "CIFS Montado",
-                        "minio_reachable": "MinIO S3 OK",
-                        "gpu_allocated": "GPU Asignada",
-                        "status": "Estado",
-                        "latency_ms": "Latencia (ms)"
-                    })
-                    st.dataframe(df_smoke, use_container_width=True, hide_index=True)
-            else:
-                st.info("Presiona 'Iniciar Smoke Test' para validar la preparación de cómputo y almacenamiento en vivo.")
+                    st.dataframe(df_smoke[["worker_ip", "gpu_model", "status", "latency_ms"]], use_container_width=True, hide_index=True)
+
+    with col_st2:
+        with st.expander("☸️ Mantenimiento de Pods Kubernetes", expanded=False):
+            st.caption("Limpia pods huérfanos, desalojados (Evicted) o en estado Terminating para liberar locks de GPU y hostPath.")
+            if st.button("🧹 Purgar Pods Huérfanos/Fallidos K8s", key="btn_purge_k8s_pods", use_container_width=True, help="Elimina pods en fase Failed o Evicted"):
+                try:
+                    p_res = api_client.purge_stale_k8s_pods(token)
+                    st.success(f"✅ {p_res.get('details', 'Pods purgados')}")
+                    st.caption(f"Pods liberados: {', '.join(p_res.get('purged_pods', []))}")
+                except Exception as pe:
+                    st.error(f"Error purgando pods: {pe}")
+            st.caption("ℹ️ Nota: Los invokers de wyolo crean pods efímeros con tolerancias para 'disk-pressure' y 'memory-pressure'.")
 
     st.divider()
 
