@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-10-21
+
+### Added
+- **Optuna Sweeps & Multi-Trial Aggregator:** Added `GET /api/v1/tasks/sweeps` and `POST /api/v1/tasks/sweeps/{sweep_name}/cancel` to aggregate trials by hyperparameter sweep, monitor global convergence (mAP50 / Fitness), and cancel active trials in batch.
+- **Cluster Docker/K8s Image Synchronization & Broadcast Pull:** Added `GET /api/v1/cluster/images/status` and `POST /api/v1/cluster/images/broadcast-pull` with node-by-node image digest inspection and 1-click broadcast pull across all invoker workers, strictly excluding the NAS manager (`celery@NAS_Train_service`).
+- **Dataset Pre-Flight Check & Samba Auto-Discovery:** Added `GET /api/v1/cluster/datasets/inspect`, `POST /api/v1/cluster/datasets/validate`, and `GET /api/v1/cluster/datasets/available` validating `data.yaml`, class count (`nc`), and split images (`train/`, `val/`) before dispatch.
+- **Dead Letter Queue (DLQ) & Quarantine Management:** Added `GET /api/v1/tasks/quarantine`, `POST /api/v1/tasks/quarantine/{task_id}/retry`, and `DELETE /api/v1/tasks/quarantine/{task_id}` to isolate repeated failures (CUDA device-side asserts, NaN loss, OOM) and protect worker queues.
+- **Day / Night Office Hours Automated Scheduler:** Added `GET /api/v1/cluster/scheduler/policy`, `POST /api/v1/cluster/scheduler/policy`, and `POST /api/v1/cluster/scheduler/apply-policy` to configure quiet profiles (25% GPU) during office hours (09:00-18:30) and maximum uncapped performance (90% GPU) at night and weekends.
+- **Diagnostic Support Bundle Exporter:** Added `GET /api/v1/cluster/support-bundle` delivering a unified JSON diagnostic black box snapshot containing node conditions, active tasks, DLQ entries, audit trails, and system telemetry.
+- **Rich Webhook Embed Notifications:** Added `POST /api/v1/cluster/webhook/test-rich` supporting Discord/Slack structured embed templates for study completion, pod eviction, and queue stalls.
+
+### Changed
+- Bumped project version to `2.0.0` across backend, frontend, Docker Compose, and documentation.
+
 ## [1.9.0] - 2026-10-21
 
 ### Added
