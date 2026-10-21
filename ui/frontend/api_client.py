@@ -64,6 +64,7 @@ class ClusterApiClient:
         max_gpu_percent: Optional[float] = None,
         max_ram: Optional[str] = None,
         max_cpu_cores: Optional[float] = None,
+        shm_size_gb: Optional[float] = None,
     ) -> Dict[str, Any]:
         """Updates limits for an invoker node."""
         url = f"{self.base_url}/api/v1/invokers/{worker_ip}/limits"
@@ -74,6 +75,8 @@ class ClusterApiClient:
             payload["max_ram"] = max_ram
         if max_cpu_cores is not None:
             payload["max_cpu_cores"] = max_cpu_cores
+        if shm_size_gb is not None:
+            payload["shm_size_gb"] = shm_size_gb
 
         resp = requests.put(url, headers=self._headers(token), json=payload, timeout=5)
         if resp.status_code == 200:
@@ -465,6 +468,33 @@ class ClusterApiClient:
         if resp.status_code == 200:
             return resp.json()
         raise ValueError(resp.json().get("detail", "Error running cluster smoke test"))
+
+    # --- Kubernetes Pod Management Client Methods (v1.9.0) ---
+
+    def get_task_k8s_events(self, token: str, study_id: str) -> Dict[str, Any]:
+        """Retrieves live Kubernetes pod lifecycle events for an active study."""
+        url = f"{self.base_url}/api/v1/tasks/{study_id}/k8s-events"
+        resp = requests.get(url, headers=self._headers(token), timeout=5)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", f"Error fetching K8s events for {study_id}"))
+
+    def kill_task_pod(self, token: str, study_id: str) -> Dict[str, Any]:
+        """Dispatches an immediate K8s Pod eviction / termination signal."""
+        url = f"{self.base_url}/api/v1/tasks/{study_id}/kill-pod"
+        resp = requests.post(url, headers=self._headers(token), timeout=10)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", f"Error evicting pod for {study_id}"))
+
+    def purge_stale_k8s_pods(self, token: str) -> Dict[str, Any]:
+        """Triggers cluster-wide garbage collection of stale/evicted/failed K8s pods."""
+        url = f"{self.base_url}/api/v1/cluster/k8s/purge-stale-pods"
+        resp = requests.post(url, headers=self._headers(token), timeout=15)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", "Error purging stale K8s pods"))
+
 
 
 
