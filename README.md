@@ -1,6 +1,6 @@
 # 🎛️ NeuralForge Cluster Admin (`wyoloservice2_cluster_control`)
 
-![Version](https://img.shields.io/badge/version-1.9.0-blue.svg)
+![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 ![Python](https://img.shields.io/badge/python-3.10-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker)
@@ -15,8 +15,9 @@ Este microservicio combina un backend API de alto rendimiento con una interfaz g
 
 *   **FastAPI (v0.110+):** Framework asíncrono para el API Gateway RESTful con documentación interactiva Swagger/OpenAPI (`/docs`).
 *   **Streamlit (v1.32+):** Framework frontend en Python para la interfaz visual de monitoreo, controles por nodo (sliders de VRAM, RAM, CPU) y gestión en tiempo real.
-*   **Redis (v5.0+):** Almacén de datos persistente en memoria para la telemetría física (`physical_*`), límites asignados (`limits_*`), credenciales seguras de operadores (`cluster:auth:users`) y configuración de alertas webhook.
-*   **Celery (v5.3+):** Protocolo de comunicación para inspección en tiempo real de colas activas (`active_queues`) y emisión de señales (`cancel_consumer`, `add_consumer`, `stop_study`) hacia los invokers y managers.
+*   **Redis (v5.0+):** Almacén de datos persistente en memoria para la telemetría física (`physical_*`), límites asignados (`limits_*`), credenciales seguras de operadores (`cluster:auth:users`), políticas de scheduling y dead-letter queue (`cluster:dlq:tasks`).
+*   **Celery (v5.3+):** Protocolo de comunicación para inspección en tiempo real de colas activas (`active_queues`), emisiones de señales hacia invokers y difusión masiva de imágenes (`force_docker_pull`).
+*   **Optuna & Hyperparameter Sweeps:** Agrupación y supervisión de barridos multi-trial, cálculo de convergencia métrica y cancelación en lote.
 *   **PyJWT & Cryptography:** Generación, firma y verificación de tokens de acceso Bearer JWT para proteger las operaciones del cluster.
 *   **Pydantic (v2.6+):** Validación estricta de esquemas de datos y serialización de modelos de hardware, tareas y webhooks.
 *   **Pytest & Pytest-Cov:** Suite de pruebas unitarias automatizadas y cálculo de cobertura de código ejecutadas dentro de contenedores Docker.
@@ -244,6 +245,21 @@ make coverage  # o ./coverage.sh
 | `POST` | `/api/v1/cluster/k8s/purge-stale-pods` | Purgado de pods huérfanos/fallidos en Kubernetes para liberar recursos | Sí |
 | `GET` | `/api/v1/tasks/{id}/diagnostics` | Diagnóstico automatizado post-mortem de causa raíz (OOM, datasets, exit 1) | Sí |
 | `POST` | `/api/v1/tasks/{id}/cancel` | Cancela un entrenamiento y emite señal de parada | Sí |
+| `GET` | `/api/v1/tasks/sweeps` | Agrupación y métricas de convergencia de barridos Optuna | Sí |
+| `POST` | `/api/v1/tasks/sweeps/{name}/cancel` | Cancelación en lote de todos los trials activos de un sweep | Sí |
+| `GET` | `/api/v1/tasks/quarantine` | Inspección de tareas aisladas en Dead Letter Queue (DLQ) | Sí |
+| `POST` | `/api/v1/tasks/quarantine/{id}/retry` | Reintentar y desbloquear tarea aislada en DLQ | Sí |
+| `DELETE` | `/api/v1/tasks/quarantine/{id}` | Purga permanente de tarea venenosa de la DLQ | Sí |
+| `GET` | `/api/v1/cluster/images/status` | Matriz de versiones y digests Docker/K8s por nodo invoker | Sí |
+| `POST` | `/api/v1/cluster/images/broadcast-pull` | Difusión broadcast de pull de imagen (excluyendo NAS manager) | Sí |
+| `GET` | `/api/v1/cluster/datasets/inspect` | Pre-flight check y validación de `data.yaml`, splits y clases | Sí |
+| `POST` | `/api/v1/cluster/datasets/validate` | Validación instantánea de dataset previa a despacho | Sí |
+| `GET` | `/api/v1/cluster/datasets/available` | Auto-descubrimiento de datasets en disco local y montajes Samba | Sí |
+| `GET` | `/api/v1/cluster/scheduler/policy` | Consulta de política y modo activo Day/Night Scheduler | Sí |
+| `POST` | `/api/v1/cluster/scheduler/policy` | Configuración de política horaria (modo silencioso vs potencia) | Sí |
+| `POST` | `/api/v1/cluster/scheduler/apply-policy` | Aplicación forzada e inmediata del perfil horario activo al clúster | Sí |
+| `GET` | `/api/v1/cluster/support-bundle` | Exportador de caja negra diagnóstica en JSON descargable (1-Click) | Sí |
+| `POST` | `/api/v1/cluster/webhook/test-rich` | Disparo y prueba de alertas ricas embed en Discord/Slack | Sí |
 
 ---
 
@@ -257,6 +273,14 @@ make coverage  # o ./coverage.sh
 
 ## 📝 Changelog
 
+*   **v2.0.0 (2026-10-21):**
+    *   **Agregador de Barridos Optuna (`/tasks/sweeps`, `/cancel`):** Agrupación jerárquica de trials por estudio de hiperparámetros, tracking de métrica líder global (`mAP50`) y cancelación masiva de trials en ejecución.
+    *   **Sincronización de Imágenes y Broadcast Pull (`/cluster/images/*`):** Matriz de versiones y tags de imágenes Docker/K8s en cada invoker con botón de difusión broadcast 1-click, excluyendo estrictamente al manager (`celery@NAS_Train_service`).
+    *   **Pre-Flight Check de Datasets & Auto-Descubrimiento Samba (`/cluster/datasets/*`):** Verificación proactiva de `data.yaml`, recuento de clases (`nc`), comprobación de particiones `train/` y `val/` y conteo de imágenes antes de permitir el encolamiento de trabajos.
+    *   **Gestión de Cuarentena y Dead Letter Queue - DLQ (`/tasks/quarantine/*`):** Aislamiento automático de tareas venenosas o con fallos críticos repetidos (CUDA device-side asserts, NaN loss, OOM) con opciones de reintento o purga definitiva.
+    *   **Programador Horario Automatizado Día / Noche (`/cluster/scheduler/*`):** Control de perfiles con modo silencioso en horas de oficina (09:00–18:30 con límite de 25% GPU) y máxima potencia nocturna y fines de semana (90% GPU).
+    *   **Exportador de Diagnostic Support Bundle (Caja Negra 1-Click):** Descarga de paquete JSON unificado con inventario de nodos, estado de colas, eventos K8s, registros de auditoría y telemetría de hardware para soporte offline.
+    *   **Notificaciones Webhook Ricas (Embeds):** Plantillas formateadas para Discord y Slack ante finalización de estudios, desalojo de pods y atascos en colas Celery.
 *   **v1.9.0 (2026-10-21):**
     *   **Gestión de Pods de Kubernetes (`/tasks/{id}/k8s-events`, `/kill-pod`):** Inspección de eventos de ciclo de vida del Pod (`Scheduled`, `Pulled`, `Created`, `Started`, `OOMKilled`, `CrashLoopBackOff`) y botón en 1-click `💥 Desalojar Pod K8s` para terminación inmediata con `gracePeriodSeconds: 0`.
     *   **Limpieza de Pods Huérfanos/Fallidos (`/cluster/k8s/purge-stale-pods`):** Recolección de basura administrativa para eliminar pods en estados fallidos o desalojados y liberar locks de GPU.
