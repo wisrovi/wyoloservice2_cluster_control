@@ -6,10 +6,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from backend.auth import get_current_user
 from backend.redis_client import ClusterRepository
 from backend.schemas import (
+    PromoteTaskRequest,
+    QueueStatusResponse,
     QuickLaunchRequest,
     ReproducibilityResponse,
     StudyCompareRequest,
     StudyCompareResponse,
+    TaskDiagnosticsResponse,
+    TaskLogsResponse,
 )
 
 
@@ -109,3 +113,66 @@ async def cancel_task(study_id: str, current_user: str = Depends(get_current_use
         "status": "success",
         "message": f"Study {study_id} marked as cancelled and stop broadcast sent.",
     }
+
+
+# --- Queue Inspection & Priority Management ---
+
+@router.get("/queues", response_model=QueueStatusResponse)
+async def get_celery_queues(current_user: str = Depends(get_current_user)):
+    """Inspects pending jobs across Celery queues (gpus_high, gpus_medium, gpus_low, etc.)."""
+    repo = ClusterRepository()
+    return repo.get_celery_queues()
+
+
+@router.post("/queues/{task_id}/promote")
+async def promote_celery_task(
+    task_id: str,
+    payload: PromoteTaskRequest = PromoteTaskRequest(),
+    current_user: str = Depends(get_current_user),
+):
+    """Promotes a queued task to a higher priority queue."""
+    repo = ClusterRepository()
+    res = repo.promote_celery_task(task_id, target_queue=payload.target_queue, user=current_user)
+    if res.get("status") == "error":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=res.get("message", "Task not found in queues"),
+        )
+    return res
+
+
+@router.delete("/queues/{task_id}")
+async def delete_celery_task(task_id: str, current_user: str = Depends(get_current_user)):
+    """Cancels and removes a pending task from Celery queues before execution starts."""
+    repo = ClusterRepository()
+    res = repo.delete_celery_task(task_id, user=current_user)
+    if res.get("status") == "error":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=res.get("message", "Task not found in queues"),
+        )
+    return res
+
+
+# --- Live Logs & Diagnostics ---
+
+@router.get("/{study_id}/logs", response_model=TaskLogsResponse)
+async def get_task_logs(
+    study_id: str,
+    limit: int = Query(200, ge=10, le=1000),
+    current_user: str = Depends(get_current_user),
+):
+    """Retrieves real-time training or post-mortem logs for a study."""
+    repo = ClusterRepository()
+    return repo.get_task_logs(study_id, limit=limit)
+
+
+@router.get("/{study_id}/diagnostics", response_model=TaskDiagnosticsResponse)
+async def get_task_diagnostics(
+    study_id: str,
+    current_user: str = Depends(get_current_user),
+):
+    """Analyzes study errors and provides actionable root-cause diagnostics."""
+    repo = ClusterRepository()
+    return repo.get_task_diagnostics(study_id)
+
