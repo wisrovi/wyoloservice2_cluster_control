@@ -3,12 +3,16 @@
 import pandas as pd
 import streamlit as st
 from frontend.api_client import ClusterApiClient
+from frontend.styles import render_page_header
 
 
 def render_finops(api_client: ClusterApiClient, token: str):
     """Renders the FinOps, Energy Monitoring, and Infrastructure Cost Governance dashboard."""
-    st.markdown("## 🌿 Cluster FinOps, Energy & Costs")
-    st.caption("Real-time control of electricity operating costs, environmental sustainability (Green AI) and budget forecasting.")
+    render_page_header(
+        title="FinOps, Energy & Cost Governance",
+        subtitle="Track real-time electricity consumption, billing rates (€/kWh), carbon footprint offsets, and cost projections.",
+        badge_text="Green AI & FinOps",
+    )
 
     tab_overview, tab_rates, tab_sustainability = st.tabs([
         "💶 Cost & FinOps Overview",
