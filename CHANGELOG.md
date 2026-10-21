@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-10-21
+
+### Added
+- **Enterprise 5-Star UI Redesign:** Comprehensive visual overhaul with deep-space dark theme, glassmorphic cards, custom radial ambient glow, and micro-interactions.
+- **Unified Design System (`frontend/styles.py`):** Centralized theme engine importing `Plus Jakarta Sans` and `JetBrains Mono`, custom metric cards with top gradient borders and lift-on-hover, custom pill tabs, and gradient primary buttons.
+- **Top HUD Cluster Pulse Bar:** Real-time cluster health ribbon across views showing active invokers, allocatable GPUs, running trials, Redis broker latency, and storage fabrics status.
+- **Branded Enterprise Sidebar:** Modernized dark sidebar with NeuralForge glowing brain badge, version chip, live cluster heartbeat indicator, categorized navigation, and operator user chip.
+- **Enterprise Security Gateway Login:** Redesigned authentication portal with glassmorphism card, security badges, and instant demo pre-fill capabilities.
+
+### Changed
+- Bumped project version to `2.1.0` across backend, frontend, Docker Compose, and documentation.
+
 ## [2.0.0] - 2026-10-21
 
 ### Added
