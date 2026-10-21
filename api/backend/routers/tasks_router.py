@@ -6,6 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from backend.auth import get_current_user
 from backend.redis_client import ClusterRepository
 from backend.schemas import (
+    K8sPodEventsResponse,
+    KillPodResponse,
     PromoteTaskRequest,
     QueueStatusResponse,
     QuickLaunchRequest,
@@ -194,4 +196,27 @@ async def get_task_diagnostics(
     """Analyzes study errors and provides actionable root-cause diagnostics."""
     repo = ClusterRepository()
     return repo.get_task_diagnostics(study_id)
+
+
+# --- K8s Pod Lifecycle & Management Endpoints (v1.9.0) ---
+
+@router.get("/{study_id}/k8s-events", response_model=K8sPodEventsResponse)
+async def get_task_k8s_events(
+    study_id: str,
+    current_user: str = Depends(get_current_user),
+):
+    """Retrieves live Kubernetes pod lifecycle events (Scheduled, Pulled, Created, OOMKilled, BackOff)."""
+    repo = ClusterRepository()
+    return repo.get_task_k8s_events(study_id)
+
+
+@router.post("/{study_id}/kill-pod", response_model=KillPodResponse)
+async def kill_task_pod(
+    study_id: str,
+    current_user: str = Depends(get_current_user),
+):
+    """Dispatches an immediate K8s Pod eviction / termination signal (gracePeriodSeconds: 0)."""
+    repo = ClusterRepository()
+    return repo.kill_task_pod(study_id, user=current_user)
+
 
