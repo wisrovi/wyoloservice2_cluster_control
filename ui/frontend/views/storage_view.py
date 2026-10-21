@@ -3,12 +3,16 @@
 import pandas as pd
 import streamlit as st
 from frontend.api_client import ClusterApiClient
+from frontend.styles import render_page_header
 
 
 def render_storage(api_client: ClusterApiClient, token: str):
     """Renders the Cluster Storage Volumes and MinIO S3 administration dashboard."""
-    st.markdown("## 📁 Cluster Storage & Volumes")
-    st.caption("Monitoring of shared CIFS/Samba volumes, MinIO S3 checkpoint storage and disk quotas.")
+    render_page_header(
+        title="Cluster Storage & Volume Fabrics",
+        subtitle="Manage shared Samba CIFS dataset volumes, MinIO S3 checkpoint buckets, and I/O throughput integrity.",
+        badge_text="Storage Architecture",
+    )
 
     tab_volumes, tab_minio, tab_diagnostics = st.tabs([
         "📂 Shared Volumes & Disk",
