@@ -3,12 +3,16 @@
 import pandas as pd
 import streamlit as st
 from frontend.api_client import ClusterApiClient
+from frontend.styles import render_page_header
 
 
 def render_tasks(api_client: ClusterApiClient, token: str):
     """Renders Celery queues, active training trials with epoch telemetry and live logs, historical studies, and Optuna metrics."""
-    st.title("🚀 Training & Task Monitoring")
-    st.caption("Monitor Celery queues, track active jobs with epoch-level telemetry and live logs, and diagnose past studies.")
+    render_page_header(
+        title="Tasks, Queues & Sweep Telemetry",
+        subtitle="Live Celery queue backlog, Optuna hyperparameter sweeps, real-time training progress, and DLQ quarantine.",
+        badge_text="Workload Monitor",
+    )
 
     current_user = st.session_state.get("username", "wisrovi")
 
