@@ -29,9 +29,43 @@ def render_dispatch(api_client: ClusterApiClient, token: str):
             ]
             selected_model = st.selectbox("YOLO Model", options=model_options, index=0, key="dispatch_model_sel")
         with col_m2:
-            dataset_path = st.text_input("Samba Dataset Path", value="/examples/colorball.v8i.multiclass/", key="dispatch_dataset_input")
+            # Dataset Auto-Discovery & Path
+            try:
+                avail_datasets = api_client.list_available_datasets(token).get("datasets", [])
+                ds_options = [d["path"] for d in avail_datasets] if avail_datasets else []
+                if "/examples/colorball.v8i.multiclass/" not in ds_options:
+                    ds_options = ["/examples/colorball.v8i.multiclass/"] + ds_options
+            except Exception:
+                ds_options = ["/examples/colorball.v8i.multiclass/"]
+
+            dataset_path = st.text_input("Samba Dataset Path", value=ds_options[0], key="dispatch_dataset_input")
         with col_m3:
             epochs = st.number_input("Epochs", min_value=1, max_value=200, value=2, step=1, key="dispatch_epochs_input")
+
+        # Dataset Pre-Flight Check (v2.0.0)
+        with st.expander("🔍 Dataset Pre-Flight Check & Validation", expanded=False):
+            col_pf1, col_pf2 = st.columns([3, 1])
+            with col_pf1:
+                st.caption("Verifies data.yaml, class definitions (nc), and train/val split image counts before dispatch.")
+            with col_pf2:
+                check_ds = st.button("🔍 Validar Dataset", key="btn_validate_ds", use_container_width=True)
+
+            if check_ds:
+                try:
+                    insp = api_client.inspect_dataset(token, dataset_path)
+                    if insp.get("valid"):
+                        st.success(f"✅ **Dataset Válido:** {insp.get('details')}")
+                        c_a, c_b, c_c = st.columns(3)
+                        with c_a:
+                            st.metric("Clases Detectadas", insp.get("num_classes", 0))
+                        with c_b:
+                            st.metric("Imágenes Train", insp.get("train_images_count", 0))
+                        with c_c:
+                            st.metric("Imágenes Val", insp.get("val_images_count", 0))
+                    else:
+                        st.warning(f"⚠️ **Pre-Flight Incompleto:** {insp.get('details')}")
+                except Exception as de:
+                    st.error(f"Error inspeccionando dataset: {de}")
 
         # Row 2: Smart Recommendation Button & Destination Selection
         try:
