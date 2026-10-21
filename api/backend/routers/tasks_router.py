@@ -9,6 +9,7 @@ from backend.schemas import (
     PromoteTaskRequest,
     QueueStatusResponse,
     QuickLaunchRequest,
+    ReassignTaskRequest,
     ReproducibilityResponse,
     StudyCompareRequest,
     StudyCompareResponse,
@@ -152,6 +153,24 @@ async def delete_celery_task(task_id: str, current_user: str = Depends(get_curre
             detail=res.get("message", "Task not found in queues"),
         )
     return res
+
+
+@router.post("/queues/{task_id}/reassign")
+async def reassign_celery_task(
+    task_id: str,
+    payload: ReassignTaskRequest = ReassignTaskRequest(),
+    current_user: str = Depends(get_current_user),
+):
+    """Reassigns a queued task from any queue to a target queue (e.g. wyolo_gpu_queue or specific node)."""
+    repo = ClusterRepository()
+    res = repo.reassign_celery_task(task_id, target_queue=payload.target_queue, user=current_user)
+    if res.get("status") == "not_found":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=res.get("message", "Task not found in queues"),
+        )
+    return res
+
 
 
 # --- Live Logs & Diagnostics ---
