@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] - 2026-10-21
+
+### Added
+- **Live Task Log Streaming:** Added `/api/v1/tasks/{study_id}/logs` endpoint and UI log stream viewers for both active runs and historical studies, eliminating the need to SSH into worker nodes to inspect executor output.
+- **GPU Process & Zombie Leak Monitor:** Added `/api/v1/invokers/{worker_ip}/processes` and `/api/v1/invokers/{worker_ip}/kill-process/{pid}` with automated detection of compute processes retaining GPU VRAM >24h without active training, including 1-click administrative termination.
+- **Celery Queue Manager & Priority Switcher:** Added `/api/v1/tasks/queues`, `/promote`, and `/delete` endpoints with UI queue management cards allowing inspection and priority promotion of pending jobs across `gpus_high`, `gpus_medium`, and `gpus_low`.
+- **Epoch-Level Granular Telemetry:** Extracted epoch-level progress (`epoch`, `total_epochs`, `loss`, `top1`, `eta_seconds`) to render live progress bars at single-epoch resolution.
+- **Post-Mortem Root Cause Diagnostics:** Added `/api/v1/tasks/{study_id}/diagnostics` with pattern matching for CUDA OOM, Samba dataset mount failures, and container abnormal exits (code 1), accompanied by remediation guides.
+- **Orchestration Runtime Badges:** Detected and visualized `[☸️ Kubernetes (RKE2/K3s)]` vs `[🐳 Docker Standalone]` nodes in inventory cards.
+- **Tasks View Reconnection:** Reconnected and modernized `tasks_view.py` as `📋 Tasks & Queues Monitor` in `app.py` sidebar navigation.
+
+### Changed
+- Bumped project version to `1.7.0` across backend and frontend packages.
+
 ## [1.6.0] - 2026-10-07
 
 ### Changed
