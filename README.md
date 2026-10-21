@@ -1,6 +1,6 @@
 # 🎛️ NeuralForge Cluster Admin (`wyoloservice2_cluster_control`)
 
-![Version](https://img.shields.io/badge/version-1.6.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.7.0-blue.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 ![Python](https://img.shields.io/badge/python-3.10-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker)
@@ -213,6 +213,8 @@ make coverage  # o ./coverage.sh
 | `POST` | `/api/v1/cluster/housekeeping/purge` | Purga segura de estudios y claves efímeras huérfanas en Redis | Sí |
 | `GET` | `/api/v1/invokers` | Lista invokers con hardware y límites | Sí |
 | `GET` | `/api/v1/invokers/{ip}` | Detalle completo de un invoker | Sí |
+| `GET` | `/api/v1/invokers/{ip}/processes` | Procesos GPU activos por nodo con alerta de procesos zombies | Sí |
+| `POST` | `/api/v1/invokers/{ip}/kill-process/{pid}` | Terminación remota de un proceso rogue/zombie en el nodo | Sí |
 | `GET` | `/api/v1/invokers/{ip}/diagnose` | Diagnóstico profundo de conectividad física, SSH puerto 22 y Celery | Sí |
 | `PUT` | `/api/v1/invokers/{ip}/limits` | Modifica `max_gpu_percent`, `max_ram` y `max_cpu_cores` | Sí |
 | `POST` | `/api/v1/invokers/{ip}/pause` | Pausa o reanuda la cola pública de un invoker | Sí |
@@ -222,12 +224,17 @@ make coverage  # o ./coverage.sh
 | `POST` | `/api/v1/cluster/finops/rate` | Configuración de tarifa eléctrica dinámica (€/kWh) con registro de auditoría | Sí |
 | `GET` | `/api/v1/cluster/audit/logs` | Registro inmutable de auditoría administrativa (`cluster:audit:logs`) | Sí |
 | `GET` | `/api/v1/cluster/capabilities` | Catálogo de capacidades del clúster y los 12 módulos de I+D (XAI, CVPR, NeurIPS) | Sí |
+| `GET` | `/api/v1/tasks/queues` | Inspección en tiempo real de colas Celery y lista de espera de tareas | Sí |
+| `POST` | `/api/v1/tasks/queues/{id}/promote` | Promoción de prioridad de una tarea en cola Celery a HIGH | Sí |
+| `DELETE` | `/api/v1/tasks/queues/{id}` | Purga/eliminación de una tarea en cola Celery antes de su inicio | Sí |
 | `GET` | `/api/v1/tasks/active` | Lista entrenamientos en ejecución en tiempo real | Sí |
 | `GET` | `/api/v1/tasks/history` | Historial de estudios con filtros (search, autor, nodo, status) | Sí |
 | `POST` | `/api/v1/tasks/compare` | Comparador Head-to-Head directo entre 2 a 5 estudios | Sí |
 | `GET` | `/api/v1/tasks/{id}/reproducibility` | Generador de comando Docker y manifiesto YAML reproducible | Sí |
 | `POST` | `/api/v1/tasks/quick-launch` | Lanzador rápido con soporte de prioridad (NORMAL, URGENT, BATCH) | Sí |
 | `GET` | `/api/v1/tasks/{id}/metrics` | Métricas de trials para curvas de aprendizaje Optuna | Sí |
+| `GET` | `/api/v1/tasks/{id}/logs` | Streaming de logs de entrenamiento en vivo o históricos | Sí |
+| `GET` | `/api/v1/tasks/{id}/diagnostics` | Diagnóstico automatizado post-mortem de causa raíz (OOM, datasets, exit 1) | Sí |
 | `POST` | `/api/v1/tasks/{id}/cancel` | Cancela un entrenamiento y emite señal de parada | Sí |
 
 ---
@@ -242,6 +249,14 @@ make coverage  # o ./coverage.sh
 
 ## 📝 Changelog
 
+*   **v1.7.0 (2026-10-21):**
+    *   **Live Task Log Viewer (`/tasks/{study_id}/logs`):** Transmisión de logs de entrenamiento en tiempo real directamente desde la interfaz web (evita accesos manuales por SSH a nodos de cálculo).
+    *   **Monitoreo de Procesos GPU y Detección de Zombies (`/invokers/{ip}/processes`):** Desglose detallado de procesos que consumen VRAM por GPU (`nvidia-smi`), banderas de alerta para procesos zombies inactivos por más de 24h y botón de terminación administrativa en 1-click.
+    *   **Gestor de Colas Celery y Conmutador de Prioridades (`/tasks/queues`):** Inspección en tiempo real de tareas en espera en colas (`gpus_high`, `gpus_medium`, `gpus_low`, colas privadas), con botones para promover prioridad a HIGH o purgar tareas antes de ejecutarse.
+    *   **Telemetría Granular a Nivel de Época:** Extracción y representación en barras de progreso en tiempo real de época actual, épocas totales, loss actual y precisión Top-1.
+    *   **Diagnóstico Post-Mortem de Causa Raíz (`/tasks/{study_id}/diagnostics`):** Diagnóstico automatizado de fallos en entrenamientos (detección de CUDA Out-Of-Memory OOM, fallos de montaje Samba CIFS, salidas anómalas de contenedor) con guías de remediación.
+    *   **Distinción de Runtime de Orquestación:** Identificación visual de nodos ejecutándose bajo `[☸️ Kubernetes (RKE2/K3s)]` vs `[🐳 Docker Standalone]` en las tarjetas de inventario.
+    *   **Reconexión y Modernización de `tasks_view.py`:** Incorporación de la vista completa de gestión de colas, logs y diagnóstico dentro de la navegación principal de `app.py`.
 *   **v1.6.0 (2026-10-07):**
     *   **Arquitectura WPipe de microservicios:** API (`api/`) e interfaz (`ui/`) separadas en carpetas propias, cada una con `Dockerfile`, `requirements.txt` y orquestador WPipe (`main.py`, `dto/`, `states/`).
     *   **Docker Compose + Makefile:** Stack con healthchecks, red privada y arranque ordenado (la UI espera a la API). Imágenes `wisrovi/train_service:cluster_admin_api_v1.6.0` y `wisrovi/train_service:cluster_admin_ui_v1.6.0`.
