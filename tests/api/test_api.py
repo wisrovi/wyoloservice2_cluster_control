@@ -271,4 +271,54 @@ def test_authenticated_cluster_endpoints(client):
     assert "modules" in caps_data
     assert caps_data["total_modules"] >= 5
 
+    # 22. v1.7.0 Celery Task Queues Inspection
+    resp_queues = client.get("/api/v1/tasks/queues", headers=headers)
+    assert resp_queues.status_code == 200, f"Expected 200, got {resp_queues.status_code}"
+    queues_data = resp_queues.json()
+    assert "queues" in queues_data
+    assert "total_queued" in queues_data
+
+    # 23. v1.7.0 Task Queue Management (Promote & Delete)
+    resp_promote = client.post(
+        "/api/v1/tasks/queues/non-existent-task-id/promote",
+        headers=headers,
+        json={"target_queue": "gpus_high"},
+    )
+    assert resp_promote.status_code in [200, 404]
+
+    resp_del_task = client.delete("/api/v1/tasks/queues/non-existent-task-id", headers=headers)
+    assert resp_del_task.status_code in [200, 404]
+
+    # 24. v1.7.0 Live Task Logs
+    resp_logs = client.get(f"/api/v1/tasks/{study_id}/logs?limit=50", headers=headers)
+    assert resp_logs.status_code == 200, f"Expected 200, got {resp_logs.status_code}"
+    logs_data = resp_logs.json()
+    assert "study_id" in logs_data
+    assert "logs" in logs_data
+
+    # 25. v1.7.0 Post-Mortem Root Cause Diagnostics
+    resp_task_diag = client.get(f"/api/v1/tasks/{study_id}/diagnostics", headers=headers)
+    assert resp_task_diag.status_code == 200, f"Expected 200, got {resp_task_diag.status_code}"
+    task_diag_data = resp_task_diag.json()
+    assert "study_id" in task_diag_data
+    assert "status" in task_diag_data
+    assert "root_cause" in task_diag_data
+    assert "suggested_action" in task_diag_data
+
+    # 26. v1.7.0 Node GPU Process Breakdown & Zombie Detection
+    resp_proc = client.get("/api/v1/invokers/192.168.1.68/processes", headers=headers)
+    assert resp_proc.status_code == 200, f"Expected 200, got {resp_proc.status_code}"
+    proc_data = resp_proc.json()
+    assert "worker_ip" in proc_data
+    assert "processes" in proc_data
+    assert "has_zombies" in proc_data
+
+    # 27. v1.7.0 Kill Rogue GPU Process on Node
+    resp_kill = client.post("/api/v1/invokers/192.168.1.68/kill-process/99999", headers=headers)
+    assert resp_kill.status_code == 200, f"Expected 200, got {resp_kill.status_code}"
+    kill_data = resp_kill.json()
+    assert "worker_ip" in kill_data
+    assert "pid" in kill_data
+    assert "status" in kill_data
+
 
