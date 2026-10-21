@@ -1,6 +1,6 @@
 # 🎛️ NeuralForge Cluster Admin (`wyoloservice2_cluster_control`)
 
-![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)
+![Version](https://img.shields.io/badge/version-2.1.0-blue.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 ![Python](https://img.shields.io/badge/python-3.10-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker)
@@ -14,7 +14,7 @@
 Este microservicio combina un backend API de alto rendimiento con una interfaz gráfica interactiva y reactiva:
 
 *   **FastAPI (v0.110+):** Framework asíncrono para el API Gateway RESTful con documentación interactiva Swagger/OpenAPI (`/docs`).
-*   **Streamlit (v1.32+):** Framework frontend en Python para la interfaz visual de monitoreo, controles por nodo (sliders de VRAM, RAM, CPU) y gestión en tiempo real.
+*   **Streamlit (v1.32+) & Enterprise Glassmorphic Theme:** Frontend visual interactivo con tipografía `Plus Jakarta Sans` y `JetBrains Mono`, efectos de desenfoque de fondo (backdrop blur), HUD Ribbon superior en tiempo real y componentes KPI con elevación tridimensional.
 *   **Redis (v5.0+):** Almacén de datos persistente en memoria para la telemetría física (`physical_*`), límites asignados (`limits_*`), credenciales seguras de operadores (`cluster:auth:users`), políticas de scheduling y dead-letter queue (`cluster:dlq:tasks`).
 *   **Celery (v5.3+):** Protocolo de comunicación para inspección en tiempo real de colas activas (`active_queues`), emisiones de señales hacia invokers y difusión masiva de imágenes (`force_docker_pull`).
 *   **Optuna & Hyperparameter Sweeps:** Agrupación y supervisión de barridos multi-trial, cálculo de convergencia métrica y cancelación en lote.
@@ -273,6 +273,12 @@ make coverage  # o ./coverage.sh
 
 ## 📝 Changelog
 
+*   **v2.1.0 (2026-10-21):**
+    *   **Rediseño Visual Enterprise 5 Estrellas:** Reingeniería visual completa basada en Glassmorphism de alta gama con fuentes `Plus Jakarta Sans` y `JetBrains Mono`, gradientes sutiles y micro-interacciones.
+    *   **Motor de Estilos Centralizado (`ui/frontend/styles.py`):** Inyección de variables CSS avanzadas, tarjetas métricas con bordes superiores luminiscentes y elevación al pasar el cursor (`hover lift`), pestañas segmentadas sin subrayados toscos y botones primarios con sombra difusa.
+    *   **Top HUD Ribbon & Cluster Pulse:** Barra superior que resume en vivo el estado y latencia de Redis, GPUs totales asignables, invokers en línea y estado de tejidos de almacenamiento CIFS y MinIO.
+    *   **Sidebar Ejecutivo:** Barra lateral oscura con logotipo y monograma cerebral luminiscente, indicador de pulso continuo (`🟢 CLUSTER ACTIVE`), chip de versión y tarjeta de perfil de operador con avatar y rol.
+    *   **Portal de Seguridad y Acceso (Login Portal):** Pantalla de inicio de sesión inspirada en consolas de computación de alto rendimiento con insignias de verificación criptográfica y botones de acceso rápido para operadores.
 *   **v2.0.0 (2026-10-21):**
     *   **Agregador de Barridos Optuna (`/tasks/sweeps`, `/cancel`):** Agrupación jerárquica de trials por estudio de hiperparámetros, tracking de métrica líder global (`mAP50`) y cancelación masiva de trials en ejecución.
     *   **Sincronización de Imágenes y Broadcast Pull (`/cluster/images/*`):** Matriz de versiones y tags de imágenes Docker/K8s en cada invoker con botón de difusión broadcast 1-click, excluyendo estrictamente al manager (`celery@NAS_Train_service`).
