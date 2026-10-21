@@ -158,6 +158,20 @@ def render_dispatch(api_client: ClusterApiClient, token: str):
                     if total_trials > 0:
                         pct = min(completed_trials / total_trials, 1.0)
                         st.progress(pct, text=f"Trial Progress: {completed_trials}/{total_trials} ({int(pct*100)}%)")
+
+                    # Epoch-level granular progress
+                    epoch_prog = task.get("epoch_progress")
+                    if epoch_prog:
+                        curr_ep = epoch_prog.get("epoch", 0)
+                        tot_ep = max(epoch_prog.get("total_epochs", 1), 1)
+                        ep_pct = min(curr_ep / tot_ep, 1.0)
+                        ep_text = f"Epoch {curr_ep}/{tot_ep}"
+                        if epoch_prog.get("loss") is not None:
+                            ep_text += f" | Loss: {epoch_prog.get('loss'):.4f}"
+                        if epoch_prog.get("top1") is not None:
+                            ep_text += f" | Top-1: {epoch_prog.get('top1')*100:.1f}%"
+                        st.progress(ep_pct, text=ep_text)
+
                 with col_t2:
                     st.write(" ")
                     st.write(" ")
@@ -168,3 +182,86 @@ def render_dispatch(api_client: ClusterApiClient, token: str):
                             st.rerun()
                         except Exception as ce:
                             st.error(f"Failed to cancel study: {ce}")
+
+                # Live Logs and Diagnostics expanders
+                col_exp1, col_exp2 = st.columns(2)
+                with col_exp1:
+                    with st.expander(f"📄 Live Logs ({study_id[:8]}...)", expanded=False):
+                        try:
+                            logs_res = api_client.get_task_logs(token, study_id, limit=50)
+                            log_lines = logs_res.get("logs", logs_res.get("lines", []))
+                            if log_lines:
+                                st.code("\n".join(log_lines), language="log")
+                            else:
+                                st.caption("No log stream lines recorded yet.")
+                        except Exception as le:
+                            st.caption(f"Could not load logs: {le}")
+
+                with col_exp2:
+                    with st.expander(f"🩺 Diagnostics ({study_id[:8]}...)", expanded=False):
+                        try:
+                            diag_res = api_client.get_task_diagnostics(token, study_id)
+                            st.write(f"**Status:** `{diag_res.get('status')}`")
+                            st.write(f"**Root Cause:** {diag_res.get('root_cause', 'N/A')}")
+                            s_act = diag_res.get("suggested_action")
+                            if s_act:
+                                st.info(f"💡 **Suggested Action:**\n{s_act}")
+                        except Exception as de:
+                            st.caption(f"Diagnostics unavailable: {de}")
+
+    st.markdown("---")
+
+    # --- Section 3: Celery Queues & Waitlist Manager ---
+    st.subheader("📋 Celery Task Queues & Waitlist Manager")
+    st.caption("Inspect pending tasks across priority queues, promote urgent jobs, or purge stale waitlist items.")
+
+    try:
+        queues_data = api_client.get_celery_queues(token)
+        q_counts = queues_data.get("queues", {})
+        total_queued = queues_data.get("total_queued", 0)
+        pending_tasks = queues_data.get("tasks", [])
+
+        # Priority Queue Metric Cards
+        cols_q = st.columns(max(len(q_counts), 1))
+        for idx, (q_name, count) in enumerate(q_counts.items()):
+            if idx < len(cols_q):
+                with cols_q[idx]:
+                    st.metric(label=f"Queue: {q_name}", value=count)
+
+        if not pending_tasks:
+            st.info("No pending tasks currently waiting in Celery queues.")
+        else:
+            st.markdown(f"##### Pending Tasks in Waitlist ({len(pending_tasks)} / Total Queued: {total_queued})")
+            for t in pending_tasks:
+                tid = t.get("task_id", "N/A")
+                t_study = t.get("study_name", tid)
+                t_author = t.get("author", "Unknown")
+                t_prio = t.get("priority", "NORMAL")
+                t_queue = t.get("queue", "wyolo_gpu_queue")
+                t_model = t.get("model", "N/A")
+
+                with st.container(border=True):
+                    col_pt1, col_pt2, col_pt3 = st.columns([3, 1, 1])
+                    with col_pt1:
+                        st.markdown(f"**`{t_study}`** | Priority: `{t_prio}` | Queue: `{t_queue}`")
+                        st.caption(f"Task ID: `{tid}` | Author: `{t_author}` | Model: `{t_model}`")
+                    with col_pt2:
+                        if t_queue != "gpus_high":
+                            if st.button("⚡ Promote to HIGH", key=f"prom_{tid}", use_container_width=True):
+                                try:
+                                    res = api_client.promote_celery_task(token, tid, target_queue="gpus_high")
+                                    st.success(f"Task promoted to gpus_high: {res.get('status')}")
+                                    st.rerun()
+                                except Exception as pe:
+                                    st.error(f"Promotion failed: {pe}")
+                    with col_pt3:
+                        if st.button("🗑️ Purge", key=f"del_{tid}", type="secondary", use_container_width=True):
+                            try:
+                                res = api_client.delete_celery_task(token, tid)
+                                st.warning(f"Task purged from queue: {res.get('status')}")
+                                st.rerun()
+                            except Exception as de:
+                                st.error(f"Purge failed: {de}")
+    except Exception as qe:
+        st.error(f"Failed to load Celery queues: {qe}")
+
