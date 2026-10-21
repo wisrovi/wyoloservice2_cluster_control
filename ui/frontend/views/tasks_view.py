@@ -241,13 +241,18 @@ def render_tasks(api_client: ClusterApiClient, token: str):
                 completed_trials = progress.get("completed_trials", 0)
                 total_trials = progress.get("total_trials", 1)
 
+                pod_name = task.get("k8s_pod_name", f"executor-{study_id[:8]}")
+                pod_phase = task.get("k8s_pod_phase", "Running")
+                phase_badge = "🟢 Running" if pod_phase == "Running" else ("🔴 Failed" if pod_phase == "Failed" else ("🟡 Pending" if pod_phase == "Pending" else f"⚙️ {pod_phase}"))
+                dozzle_url = task.get("dozzle_url", "http://localhost:8888")
+
                 with st.container(border=True):
                     col_t1, col_t2 = st.columns([3, 1])
                     with col_t1:
                         st.markdown(f"### 🎯 Study: `{study_name}`")
                         st.write(f"• **Submitted by:** `{author}` | **Assigned Node:** `{dest_node}`")
                         st.write(f"• **Model:** `{model}` | **Dataset:** `{task.get('dataset', 'N/A')}`")
-                        st.write(f"• **Started:** `{start_time}` | **Study ID:** `{study_id}`")
+                        st.write(f"• **K8s Pod:** `{pod_name}` [{phase_badge}] | **Started:** `{start_time}`")
 
                         if total_trials > 0:
                             pct = min(completed_trials / total_trials, 1.0)
@@ -267,8 +272,15 @@ def render_tasks(api_client: ClusterApiClient, token: str):
                             st.progress(ep_pct, text=ep_text)
 
                     with col_t2:
-                        st.write(" ")
-                        st.write(" ")
+                        st.markdown(f"[🌐 Abrir Dozzle Stream]({dozzle_url})")
+                        if st.button("💥 Desalojar Pod K8s", key=f"tview_killpod_{study_id}", type="primary", use_container_width=True, help="Elimina inmediatamente el Pod en Kubernetes (gracePeriodSeconds: 0)"):
+                            try:
+                                k_res = api_client.kill_task_pod(token, study_id)
+                                st.warning(k_res.get("message", "Pod desalojado"))
+                                st.rerun()
+                            except Exception as ke:
+                                st.error(f"Error desalojando Pod: {ke}")
+
                         if st.button("🛑 Cancel Study", key=f"tview_cancel_{study_id}", type="secondary", use_container_width=True):
                             try:
                                 api_client.cancel_task(token, study_id)
@@ -277,17 +289,39 @@ def render_tasks(api_client: ClusterApiClient, token: str):
                             except Exception as ce:
                                 st.error(f"Failed to cancel: {ce}")
 
-                    # Collapsible Live Logs Viewer
-                    with st.expander(f"📄 Live Logs ({study_id[:8]}...)", expanded=False):
-                        try:
-                            logs_res = api_client.get_task_logs(token, study_id, limit=60)
-                            lines = logs_res.get("logs", logs_res.get("lines", []))
-                            if lines:
-                                st.code("\n".join(lines), language="log")
-                            else:
-                                st.caption("No log stream lines recorded yet.")
-                        except Exception as le:
-                            st.caption(f"Could not load logs: {le}")
+                    # Collapsible Viewers: Logs and K8s Events
+                    col_lv1, col_lv2 = st.columns(2)
+                    with col_lv1:
+                        with st.expander(f"📄 Live Logs ({study_id[:8]}...)", expanded=False):
+                            try:
+                                logs_res = api_client.get_task_logs(token, study_id, limit=60)
+                                lines = logs_res.get("logs", logs_res.get("lines", []))
+                                if lines:
+                                    st.code("\n".join(lines), language="log")
+                                else:
+                                    st.caption("No log stream lines recorded yet.")
+                            except Exception as le:
+                                st.caption(f"Could not load logs: {le}")
+
+                    with col_lv2:
+                        with st.expander(f"☸️ K8s Pod Events ({pod_name})", expanded=False):
+                            try:
+                                k8s_data = api_client.get_task_k8s_events(token, study_id)
+                                ev_list = k8s_data.get("events", [])
+                                if ev_list:
+                                    df_ev = pd.DataFrame(ev_list)
+                                    df_ev = df_ev.rename(columns={
+                                        "type": "Tipo",
+                                        "reason": "Razón",
+                                        "message": "Mensaje",
+                                        "timestamp": "Hora",
+                                        "count": "Conteo"
+                                    })
+                                    st.dataframe(df_ev, use_container_width=True, hide_index=True)
+                                else:
+                                    st.caption("No se encontraron eventos de Kubernetes para este Pod.")
+                            except Exception as kee:
+                                st.caption(f"No se pudieron cargar eventos K8s: {kee}")
 
     # --- TAB 3: Study History & Diagnostics ---
     with tab_history:
