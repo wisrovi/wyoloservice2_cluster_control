@@ -3,37 +3,30 @@
 import pandas as pd
 import streamlit as st
 from frontend.api_client import ClusterApiClient
+from frontend.styles import render_cluster_pulse_bar, render_page_header
 
 
 def render_overview(api_client: ClusterApiClient, token: str):
     """Renders the executive cluster overview dashboard, watchdog, and workload trends."""
-    # Cyber Deck custom CSS injection
-    st.markdown(
-        """
-        <style>
-        .stMetric {
-            background-color: rgba(28, 31, 38, 0.45);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 8px;
-            padding: 10px 14px;
-        }
-        code {
-            font-family: 'JetBrains Mono', 'Fira Code', monospace !important;
-            font-size: 0.9em;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
+    render_page_header(
+        title="Operations Center & Topology",
+        subtitle="Real-time cluster telemetry, compute fabrics, node health watchdog, and workload distribution.",
+        badge_text="Executive Dashboard",
     )
-
-    st.title("📊 Operations Center & Topology")
-    st.caption("Real-time cluster overview: telemetry, node health, storage, and workload trends.")
 
     try:
         data = api_client.get_overview(token)
     except Exception as e:
         st.error(f"Failed to load cluster overview: {e}")
         return
+
+    # Real-Time Cluster Pulse HUD Bar
+    try:
+        health = api_client.get_cluster_health(token)
+    except Exception:
+        health = None
+
+    render_cluster_pulse_bar(data, health)
 
     # Top KPI Metrics Cards
     col1, col2, col3, col4, col5 = st.columns(5)
@@ -52,8 +45,7 @@ def render_overview(api_client: ClusterApiClient, token: str):
 
     # --- Cluster Health & Watchdog Section ---
     st.subheader("🚨 Cluster Health Monitor & Watchdog")
-    try:
-        health = api_client.get_cluster_health(token)
+    if health:
         col_h1, col_h2, col_h3, col_h4, col_h5 = st.columns(5)
         with col_h1:
             st.metric(
@@ -89,8 +81,6 @@ def render_overview(api_client: ClusterApiClient, token: str):
             st.warning(f"⚠️ Nodes not responding to Celery broadcast: {', '.join(zombies)}")
         else:
             st.success("✅ All invokers are reporting periodic heartbeats and active Celery queues.")
-    except Exception as he:
-        st.caption(f"Unable to load the health watchdog: {he}")
 
     # --- 1-Click Cluster Smoke Test & K8s Maintenance ---
     col_st1, col_st2 = st.columns(2)
@@ -239,10 +229,35 @@ def render_overview(api_client: ClusterApiClient, token: str):
                 max_ram = inv.get("limits", {}).get("max_ram", "16g")
                 max_cpu = inv.get("limits", {}).get("max_cpu_cores", 4.0)
 
-                icon = "🟢" if state == "active" else ("🟡" if "paused" in state else "🛡️")
+                state_color = "#10B981" if state == "active" else ("#F59E0B" if "pause" in state else "#3B82F6")
+                pulse_cls = "pulse-green" if state == "active" else ("pulse-amber" if "pause" in state else "pulse-blue")
+
                 with st.container(border=True):
-                    st.markdown(f"##### {icon} `{hostname}`")
-                    st.caption(f"IP: `{ip}` | {gpu_model}")
-                    st.write(f"• **VRAM:** `{vram_total}`")
-                    st.progress(min(max_gpu_pct / 100.0, 1.0), text=f"VRAM Limit: {int(max_gpu_pct)}%")
-                    st.write(f"• **RAM:** `{max_ram}` | **CPU:** `{max_cpu} cores`")
+                    st.markdown(
+                        f"""
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span class="pulse-dot {pulse_cls}"></span>
+                                <span style="font-weight: 700; color: #FFFFFF; font-size: 1.05rem;">{hostname}</span>
+                            </div>
+                            <span style="background: rgba(255,255,255,0.06); color: {state_color}; border: 1px solid rgba(255,255,255,0.1); font-size: 0.7rem; font-weight: 700; padding: 2px 6px; border-radius: 4px; text-transform: uppercase;">
+                                {state}
+                            </span>
+                        </div>
+                        <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: #94A3B8; margin-bottom: 8px;">
+                            {ip} &nbsp;•&nbsp; <span style="color: #60A5FA;">{gpu_model}</span>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+                    st.write(f"• **Physical VRAM:** `{vram_total}`")
+                    st.progress(min(max_gpu_pct / 100.0, 1.0), text=f"Max VRAM Limit: {int(max_gpu_pct)}%")
+                    st.markdown(
+                        f"""
+                        <div style="display: flex; gap: 6px; margin-top: 8px;">
+                            <span style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255,255,255,0.06); padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; color: #E2E8F0; font-family: monospace;">RAM: {max_ram}</span>
+                            <span style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255,255,255,0.06); padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; color: #E2E8F0; font-family: monospace;">CPU: {max_cpu} cores</span>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
