@@ -106,6 +106,19 @@ def render_settings(api_client: ClusterApiClient, token: str):
                 except Exception as wde:
                     st.error(f"Watchdog run failed: {wde}")
 
+            # Rich Webhook Embed Tester (v2.0.0)
+            rich_event = st.selectbox(
+                "Rich Embed Event Type",
+                options=["study_completed", "pod_evicted", "queue_stall"],
+                key="sel_rich_webhook_event",
+            )
+            if st.button("🎨 Test Rich Embed Alert", use_container_width=True):
+                try:
+                    rich_res = api_client.test_rich_webhook(token, event_type=rich_event, webhook_url=wh_url)
+                    st.success(f"✅ {rich_res.get('message', 'Rich webhook sent.')}")
+                except Exception as rhe:
+                    st.error(f"Rich webhook test failed: {rhe}")
+
     st.markdown("---")
     with st.container(border=True):
         st.subheader("🧹 Redis Cleanup & Maintenance (Cluster Housekeeping)")
@@ -144,3 +157,85 @@ def render_settings(api_client: ClusterApiClient, token: str):
                         st.write(f"• `{sid}` (failed / cancelled)")
         except Exception as he:
             st.caption(f"Could not load the maintenance assistant: {he}")
+
+    # --- Day/Night Automated Scheduler Policy (v2.0.0) ---
+    st.markdown("---")
+    with st.container(border=True):
+        st.subheader("⏰ Day / Night Automated Scheduler Policy")
+        st.caption("Configura el limitador horario automatizado: perfil silencioso durante horas de oficina (09:00–18:30) y máxima potencia nocturna/fin de semana.")
+
+        try:
+            sched_status = api_client.get_scheduler_policy(token)
+            policy = sched_status.get("policy", {})
+            curr_mode = sched_status.get("current_mode", "disabled")
+            desc = sched_status.get("active_profile_description", "")
+            srv_time = sched_status.get("server_time", "")
+
+            st.info(f"🕒 **Hora del Servidor:** `{srv_time}` | **Modo Activo:** `{curr_mode.upper()}`\n\n📌 *{desc}*")
+
+            col_sch1, col_sch2, col_sch3 = st.columns(3)
+            with col_sch1:
+                en_sched = st.checkbox("Habilitar Programador Horario", value=policy.get("enabled", True), key="chk_sched_enabled")
+                wk_full = st.checkbox("Fines de semana a máxima potencia", value=policy.get("weekend_full_throttle", True), key="chk_sched_wk")
+            with col_sch2:
+                off_start = st.number_input("Inicio Horario Oficina (Hora)", min_value=0, max_value=23, value=policy.get("office_start_hour", 9), key="num_off_start")
+                off_end = st.number_input("Fin Horario Oficina (Hora)", min_value=0, max_value=23, value=policy.get("office_end_hour", 18), key="num_off_end")
+            with col_sch3:
+                off_gpu = st.slider("Límite GPU Oficina (%)", min_value=10, max_value=100, value=int(policy.get("office_max_gpu_percent", 25.0)), step=5, key="sld_off_gpu")
+                night_gpu = st.slider("Límite GPU Nocturno (%)", min_value=10, max_value=100, value=int(policy.get("night_max_gpu_percent", 90.0)), step=5, key="sld_night_gpu")
+
+            col_act1, col_act2 = st.columns(2)
+            with col_act1:
+                if st.button("💾 Guardar Política Horaria", type="primary", use_container_width=True):
+                    try:
+                        new_policy = {
+                            "enabled": en_sched,
+                            "office_start_hour": int(off_start),
+                            "office_end_hour": int(off_end),
+                            "office_max_gpu_percent": float(off_gpu),
+                            "night_max_gpu_percent": float(night_gpu),
+                            "weekend_full_throttle": wk_full,
+                            "target_worker_ips": policy.get("target_worker_ips", []),
+                        }
+                        api_client.set_scheduler_policy(token, new_policy)
+                        st.success("✅ Política horaria guardada en Redis.")
+                        st.rerun()
+                    except Exception as s_err:
+                        st.error(f"Error guardando política: {s_err}")
+            with col_act2:
+                if st.button("⚡ Aplicar Perfil Activo al Clúster Ahora", use_container_width=True):
+                    try:
+                        app_res = api_client.apply_scheduler_policy(token)
+                        st.success(f"✅ {app_res.get('message', 'Perfil aplicado con éxito.')}")
+                        st.rerun()
+                    except Exception as a_err:
+                        st.error(f"Error aplicando política: {a_err}")
+        except Exception as sc_err:
+            st.caption(f"No se pudo cargar la política horaria: {sc_err}")
+
+    # --- Diagnostic Support Bundle Exporter (v2.0.0) ---
+    st.markdown("---")
+    with st.container(border=True):
+        st.subheader("📦 Diagnostic Support Bundle Exporter (Caja Negra 1-Click)")
+        st.caption("Exporta una instantánea JSON exhaustiva con el estado del clúster, condiciones de nodos, colas, métricas y pistas de auditoría para depuración offline.")
+
+        try:
+            col_bnd1, col_bnd2 = st.columns([3, 1])
+            with col_bnd1:
+                st.write("Genera un informe unificado con logs de auditoría, invokers, DLQ y telemetría de tareas activas.")
+            with col_bnd2:
+                if st.button("📥 Generar Support Bundle", key="btn_gen_support_bundle", type="primary", use_container_width=True):
+                    bundle = api_client.get_support_bundle(token)
+                    import json
+                    bundle_json = json.dumps(bundle, indent=2)
+                    st.download_button(
+                        label="💾 Descargar JSON",
+                        data=bundle_json,
+                        file_name=f"{bundle.get('bundle_id', 'support-bundle')}.json",
+                        mime="application/json",
+                        use_container_width=True,
+                    )
+                    st.success(f"✅ Paquete de soporte `{bundle.get('bundle_id')}` generado correctamente.")
+        except Exception as b_err:
+            st.caption(f"Error generando soporte: {b_err}")
+
