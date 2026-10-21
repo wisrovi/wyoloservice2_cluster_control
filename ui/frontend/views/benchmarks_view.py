@@ -3,12 +3,16 @@
 import pandas as pd
 import streamlit as st
 from frontend.api_client import ClusterApiClient
+from frontend.styles import render_page_header
 
 
 def render_benchmarks(api_client: ClusterApiClient, token: str):
     """Renders GPU performance comparison, throughput metrics, and leaderboard."""
-    st.title("🏆 Cluster GPU Performance & Leaderboard")
-    st.caption("Training speed comparison (throughput in img/s and time per epoch) across all GPUs in the ecosystem.")
+    render_page_header(
+        title="GPU Performance & Hardware Leaderboard",
+        subtitle="Empirical throughput measurements (images/sec), epoch latency, and compute benchmarks across GPU tiers.",
+        badge_text="Compute Benchmarks",
+    )
 
     try:
         data = api_client.get_gpu_benchmarks(token)
