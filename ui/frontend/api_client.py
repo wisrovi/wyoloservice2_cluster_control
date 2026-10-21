@@ -495,6 +495,137 @@ class ClusterApiClient:
             return resp.json()
         raise ValueError(resp.json().get("detail", "Error purging stale K8s pods"))
 
+    # --- Enterprise Cluster Suite Client Methods (v2.0.0) ---
+
+    def list_optuna_sweeps(self, token: str) -> Dict[str, Any]:
+        """Fetches all aggregated Optuna sweeps with convergence and trial stats."""
+        url = f"{self.base_url}/api/v1/tasks/sweeps"
+        resp = requests.get(url, headers=self._headers(token), timeout=8)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", "Error fetching Optuna sweeps"))
+
+    def cancel_optuna_sweep(self, token: str, sweep_name: str) -> Dict[str, Any]:
+        """Cancels all active trials running under a sweep."""
+        url = f"{self.base_url}/api/v1/tasks/sweeps/{sweep_name}/cancel"
+        resp = requests.post(url, headers=self._headers(token), timeout=10)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", f"Error cancelling sweep {sweep_name}"))
+
+    def get_cluster_images_status(
+        self,
+        token: str,
+        target_image: str = "wisrovi/train_service:worker_executor_v1.0.0",
+    ) -> Dict[str, Any]:
+        """Fetches Docker / K8s image digest and tag synchronization status across all cluster invokers."""
+        url = f"{self.base_url}/api/v1/cluster/images/status"
+        resp = requests.get(url, headers=self._headers(token), params={"target_image": target_image}, timeout=8)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", "Error fetching cluster images status"))
+
+    def trigger_broadcast_docker_pull(
+        self,
+        token: str,
+        target_image: str = "wisrovi/train_service:worker_executor_v1.0.0",
+    ) -> Dict[str, Any]:
+        """Triggers broadcast docker pull across all workers (strictly excluding NAS manager)."""
+        url = f"{self.base_url}/api/v1/cluster/images/broadcast-pull"
+        resp = requests.post(url, headers=self._headers(token), params={"target_image": target_image}, timeout=20)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", "Error triggering broadcast docker pull"))
+
+    def inspect_dataset(self, token: str, dataset_path: str) -> Dict[str, Any]:
+        """Performs pre-flight check on dataset path (classes, splits, YAML)."""
+        url = f"{self.base_url}/api/v1/cluster/datasets/inspect"
+        resp = requests.get(url, headers=self._headers(token), params={"dataset_path": dataset_path}, timeout=10)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", f"Error inspecting dataset at {dataset_path}"))
+
+    def list_available_datasets(self, token: str, base_path: str = "/examples") -> Dict[str, Any]:
+        """Discovers datasets available on local filesystem or mounted Samba shares."""
+        url = f"{self.base_url}/api/v1/cluster/datasets/available"
+        resp = requests.get(url, headers=self._headers(token), params={"base_path": base_path}, timeout=10)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", "Error discovering datasets"))
+
+    def list_quarantined_tasks(self, token: str) -> Dict[str, Any]:
+        """Retrieves dead-letter queue (DLQ) quarantined tasks."""
+        url = f"{self.base_url}/api/v1/tasks/quarantine"
+        resp = requests.get(url, headers=self._headers(token), timeout=8)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", "Error fetching quarantined tasks"))
+
+    def retry_quarantined_task(self, token: str, task_id: str) -> Dict[str, Any]:
+        """Re-enqueues a quarantined task."""
+        url = f"{self.base_url}/api/v1/tasks/quarantine/{task_id}/retry"
+        resp = requests.post(url, headers=self._headers(token), timeout=10)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", f"Error retrying task {task_id}"))
+
+    def purge_quarantined_task(self, token: str, task_id: str) -> Dict[str, Any]:
+        """Permanently deletes a task from the DLQ."""
+        url = f"{self.base_url}/api/v1/tasks/quarantine/{task_id}"
+        resp = requests.delete(url, headers=self._headers(token), timeout=10)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", f"Error purging task {task_id}"))
+
+    def get_scheduler_policy(self, token: str) -> Dict[str, Any]:
+        """Retrieves automated Day/Night scheduler policy and active mode."""
+        url = f"{self.base_url}/api/v1/cluster/scheduler/policy"
+        resp = requests.get(url, headers=self._headers(token), timeout=5)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", "Error fetching scheduler policy"))
+
+    def set_scheduler_policy(self, token: str, policy: Dict[str, Any]) -> Dict[str, Any]:
+        """Updates Day/Night automated scheduler policy."""
+        url = f"{self.base_url}/api/v1/cluster/scheduler/policy"
+        resp = requests.post(url, headers=self._headers(token), json=policy, timeout=10)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", "Error updating scheduler policy"))
+
+    def apply_scheduler_policy(self, token: str) -> Dict[str, Any]:
+        """Immediately applies active scheduler policy limits to cluster."""
+        url = f"{self.base_url}/api/v1/cluster/scheduler/apply-policy"
+        resp = requests.post(url, headers=self._headers(token), timeout=15)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", "Error applying scheduler policy"))
+
+    def get_support_bundle(self, token: str) -> Dict[str, Any]:
+        """Exports diagnostic black-box support bundle."""
+        url = f"{self.base_url}/api/v1/cluster/support-bundle"
+        resp = requests.get(url, headers=self._headers(token), timeout=15)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", "Error exporting support bundle"))
+
+    def test_rich_webhook(
+        self,
+        token: str,
+        event_type: str = "study_completed",
+        webhook_url: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Tests rich Discord/Slack embed notification delivery."""
+        url = f"{self.base_url}/api/v1/cluster/webhook/test-rich"
+        payload = {"event_type": event_type}
+        if webhook_url:
+            payload["webhook_url"] = webhook_url
+        resp = requests.post(url, headers=self._headers(token), json=payload, timeout=10)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", "Error testing rich webhook"))
+
+
 
 
 
