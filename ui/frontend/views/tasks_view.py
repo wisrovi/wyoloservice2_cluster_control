@@ -76,57 +76,145 @@ def render_tasks(api_client: ClusterApiClient, token: str):
 
     # --- TAB 1: Celery Queues & Waitlist Manager ---
     with tab_queues:
-        st.markdown("#### 📋 Celery Queues & Priority Waitlist")
-        st.caption("Inspect pending tasks across queues, promote priority, or purge waitlisted jobs.")
+        st.markdown("#### 📋 Gestión y Estado de Colas de Celery")
+        st.caption("Inspecciona la lista de espera, reasigna tareas privadas a la cola pública global o promueve prioridades.")
 
         try:
             queues_data = api_client.get_celery_queues(token)
-            q_counts = queues_data.get("queues", {})
             total_queued = queues_data.get("total_queued", 0)
+            global_queues = queues_data.get("global_queues", {})
+            node_queues = queues_data.get("node_queues", {})
+            author_breakdown = queues_data.get("author_breakdown", {})
+            backlog_eta = queues_data.get("backlog_eta_minutes", 0.0)
+            jam_alert = queues_data.get("jam_alert", False)
+            jam_reason = queues_data.get("jam_reason")
             pending_tasks = queues_data.get("tasks", [])
 
-            cols_q = st.columns(max(len(q_counts), 1))
-            for idx, (q_name, count) in enumerate(q_counts.items()):
-                if idx < len(cols_q):
-                    with cols_q[idx]:
-                        st.metric(label=f"Queue: {q_name}", value=count)
+            # Jam Alert Banner
+            if jam_alert:
+                st.error(f"🚨 **{jam_reason}**")
+                col_j1, col_j2 = st.columns([3, 1])
+                with col_j1:
+                    st.caption("Los trabajos no pueden progresar si los nodos no están consumiendo la cola pública.")
+                with col_j2:
+                    if st.button("▶️ Reanudar Todos los Nodos", key="tview_jam_resume_all", use_container_width=True):
+                        try:
+                            inv_list = api_client.list_invokers(token)
+                            for inv in inv_list:
+                                api_client.set_pause(token, inv["worker_ip"], action="resume")
+                            st.success("Se envió la señal de reanudación a todos los nodos.")
+                            st.rerun()
+                        except Exception as re_err:
+                            st.error(f"Error reanudando nodos: {re_err}")
+
+            # KPI Cards (Human-Readable)
+            col_m1, col_m2, col_m3, col_m4, col_m5 = st.columns(5)
+            with col_m1:
+                st.metric(
+                    label="⚡ Cola Pública Global",
+                    value=f"{global_queues.get('wyolo_gpu_queue', 0)} tareas",
+                    help="Cola compartida por defecto (wyolo_gpu_queue). Cualquier nodo invoker desocupado toma trabajos de aquí.",
+                )
+            with col_m2:
+                st.metric(
+                    label="🔥 Prioridad Alta",
+                    value=f"{global_queues.get('gpus_high', 0)} tareas",
+                    help="Cola prioritaria (gpus_high). Se atienden antes que cualquier trabajo normal.",
+                )
+            with col_m3:
+                st.metric(
+                    label="📦 Baja Prioridad",
+                    value=f"{global_queues.get('gpus_low', 0)} tareas",
+                    help="Cola en segundo plano (gpus_low). Se procesan en ventanas de baja utilización.",
+                )
+            with col_m4:
+                node_q_sum = sum(node_queues.values())
+                st.metric(
+                    label="🎯 Encoladas a Nodos",
+                    value=f"{node_q_sum} tareas",
+                    help="Trabajos dirigidos exclusivamente a nodos específicos (ej. 192.168.1.72).",
+                )
+            with col_m5:
+                eta_h = backlog_eta / 60.0
+                st.metric(
+                    label="⏳ Tiempo Backlog (ETA)",
+                    value=f"~{eta_h:.1f} h" if eta_h >= 1.0 else f"~{backlog_eta:.0f} min",
+                    help="Tiempo estimado para procesar todas las tareas en espera con los nodos activos actuales.",
+                )
+
+            # Show Node-targeted queues if any
+            if node_queues:
+                st.markdown("##### 🎯 Nodos con Trabajos Privados en Espera")
+                cols_nq = st.columns(min(len(node_queues), 4))
+                for idx, (nip, ncount) in enumerate(node_queues.items()):
+                    with cols_nq[idx % len(cols_nq)]:
+                        st.info(f"🖥️ **Nodo `{nip}`**: **{ncount}** tarea(s) exclusiva(s)")
+
+            # Author Breakdown expander
+            if author_breakdown:
+                with st.expander(f"👥 Desglose de Espera por Autor ({len(author_breakdown)} investigadores)", expanded=False):
+                    col_ab = st.columns(min(len(author_breakdown), 4))
+                    for idx, (auth, a_cnt) in enumerate(author_breakdown.items()):
+                        with col_ab[idx % len(col_ab)]:
+                            st.markdown(f"👤 **{auth}**: `{a_cnt} tareas` ({a_cnt/max(total_queued, 1)*100:.0f}%)")
+
+            st.divider()
 
             if not pending_tasks:
-                st.info("No pending tasks currently waiting in Celery queues.")
+                st.info("No hay tareas pendientes en ninguna cola de Celery.")
             else:
-                st.markdown(f"##### Waitlisted Tasks ({len(pending_tasks)} / Total: {total_queued})")
-                for t in pending_tasks:
+                # Filter by Author if multiple
+                all_authors = ["Todos"] + sorted(list({t.get("author", "Unknown") for t in pending_tasks if t.get("author")}))
+                col_f_auth, col_f_info = st.columns([1.5, 3])
+                with col_f_auth:
+                    sel_auth = st.selectbox("Filtrar lista por autor:", options=all_authors, key="tview_filter_auth_waitlist")
+
+                shown_tasks = pending_tasks
+                if sel_auth != "Todos":
+                    shown_tasks = [t for t in shown_tasks if t.get("author") == sel_auth]
+
+                st.markdown(f"##### Lista de Espera Detallada ({len(shown_tasks)} mostradas / {total_queued} en total):")
+                for t in shown_tasks:
                     tid = t.get("task_id", "N/A")
                     t_study = t.get("study_name", tid)
                     t_author = t.get("author", "Unknown")
                     t_prio = t.get("priority", "NORMAL")
-                    t_queue = t.get("queue", "wyolo_gpu_queue")
+                    t_queue = t.get("queue_name", t.get("queue", "wyolo_gpu_queue"))
                     t_model = t.get("model", "N/A")
 
                     with st.container(border=True):
-                        col_pt1, col_pt2, col_pt3 = st.columns([3, 1, 1])
+                        col_pt1, col_pt2, col_pt3, col_pt4 = st.columns([2.5, 1, 1, 1])
                         with col_pt1:
-                            st.markdown(f"**`{t_study}`** | Priority: `{t_prio}` | Queue: `{t_queue}`")
-                            st.caption(f"Task ID: `{tid}` | Author: `{t_author}` | Model: `{t_model}`")
+                            st.markdown(f"**`{t_study}`** | Prioridad: `{t_prio}` | Cola actual: `{t_queue}`")
+                            st.caption(f"Task ID: `{tid}` | Autor: `{t_author}` | Modelo: `{t_model}`")
                         with col_pt2:
+                            if t_queue != "wyolo_gpu_queue":
+                                if st.button("🔀 A Cola Pública", key=f"tview_pub_{tid}", help="Mueve a wyolo_gpu_queue para que cualquier nodo libre pueda tomarla", use_container_width=True):
+                                    try:
+                                        res = api_client.reassign_celery_task(token, tid, target_queue="wyolo_gpu_queue")
+                                        st.success(res.get("message", "Reasignada"))
+                                        st.rerun()
+                                    except Exception as r_err:
+                                        st.error(f"Error reasignando: {r_err}")
+                        with col_pt3:
                             if t_queue != "gpus_high":
-                                if st.button("⚡ Promote to HIGH", key=f"tview_prom_{tid}", use_container_width=True):
+                                if st.button("⚡ Prioridad ALTA", key=f"tview_prom_{tid}", help="Promover a gpus_high", use_container_width=True):
                                     try:
                                         res = api_client.promote_celery_task(token, tid, target_queue="gpus_high")
-                                        st.success(f"Task promoted: {res.get('status')}")
+                                        st.success(f"Promovida: {res.get('status')}")
                                         st.rerun()
                                     except Exception as pe:
-                                        st.error(f"Promotion failed: {pe}")
-                        with col_pt3:
-                            if st.button("🗑️ Purge", key=f"tview_del_{tid}", type="secondary", use_container_width=True):
+                                        st.error(f"Error promoviendo: {pe}")
+                        with col_pt4:
+                            if st.button("🗑️ Purgar", key=f"tview_del_{tid}", type="secondary", use_container_width=True):
                                 try:
                                     res = api_client.delete_celery_task(token, tid)
-                                    st.warning(f"Task purged: {res.get('status')}")
+                                    st.warning(f"Purgada: {res.get('status')}")
                                     st.rerun()
                                 except Exception as de:
-                                    st.error(f"Purge failed: {de}")
+                                    st.error(f"Error purgando: {de}")
         except Exception as qe:
-            st.error(f"Failed to load Celery queues: {qe}")
+            st.error(f"Error cargando colas de Celery: {qe}")
 
     # --- TAB 2: Active Tasks with Epoch Telemetry and Live Logs ---
     with tab_active:
