@@ -1,6 +1,6 @@
 # 🎛️ NeuralForge Cluster Admin (`wyoloservice2_cluster_control`)
 
-![Version](https://img.shields.io/badge/version-1.8.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.9.0-blue.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 ![Python](https://img.shields.io/badge/python-3.10-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker)
@@ -23,6 +23,7 @@ Este microservicio combina un backend API de alto rendimiento con una interfaz g
 *   **Uvicorn:** Servidor ASGI de nivel de producción para el backend FastAPI.
 *   **WPipe (v2.5.13):** Orquestación del arranque de cada microservicio (`main.py` + `dto/` + `states/`) con pasos tipados y desacoplados.
 *   **Docker & Docker Compose:** Dos imágenes independientes (API y UI) orquestadas con healthchecks y red privada.
+*   **Kubernetes Pods & Dozzle:** Soporte nativo para orquestación de Pods efímeros en K8s (RKE2/K3s) con fijado `spec.nodeName`, `emptyDir` para `/dev/shm`, límites `nvidia.com/gpu` y transmisión de logs a Dozzle.
 
 ---
 
@@ -238,6 +239,9 @@ make coverage  # o ./coverage.sh
 | `POST` | `/api/v1/tasks/quick-launch` | Lanzador rápido con soporte de prioridad (NORMAL, URGENT, BATCH) | Sí |
 | `GET` | `/api/v1/tasks/{id}/metrics` | Métricas de trials para curvas de aprendizaje Optuna | Sí |
 | `GET` | `/api/v1/tasks/{id}/logs` | Streaming de logs de entrenamiento en vivo o históricos | Sí |
+| `GET` | `/api/v1/tasks/{id}/k8s-events` | Inspección de eventos de ciclo de vida del Pod en Kubernetes | Sí |
+| `POST` | `/api/v1/tasks/{id}/kill-pod` | Desalojo forzoso e inmediato del Pod en Kubernetes (`gracePeriodSeconds: 0`) | Sí |
+| `POST` | `/api/v1/cluster/k8s/purge-stale-pods` | Purgado de pods huérfanos/fallidos en Kubernetes para liberar recursos | Sí |
 | `GET` | `/api/v1/tasks/{id}/diagnostics` | Diagnóstico automatizado post-mortem de causa raíz (OOM, datasets, exit 1) | Sí |
 | `POST` | `/api/v1/tasks/{id}/cancel` | Cancela un entrenamiento y emite señal de parada | Sí |
 
@@ -253,6 +257,13 @@ make coverage  # o ./coverage.sh
 
 ## 📝 Changelog
 
+*   **v1.9.0 (2026-10-21):**
+    *   **Gestión de Pods de Kubernetes (`/tasks/{id}/k8s-events`, `/kill-pod`):** Inspección de eventos de ciclo de vida del Pod (`Scheduled`, `Pulled`, `Created`, `Started`, `OOMKilled`, `CrashLoopBackOff`) y botón en 1-click `💥 Desalojar Pod K8s` para terminación inmediata con `gracePeriodSeconds: 0`.
+    *   **Limpieza de Pods Huérfanos/Fallidos (`/cluster/k8s/purge-stale-pods`):** Recolección de basura administrativa para eliminar pods en estados fallidos o desalojados y liberar locks de GPU.
+    *   **Monitoreo de Condiciones de Nodo K8s:** Semáforo de presiones de Kubernetes (`DiskPressure`, `MemoryPressure`, `PIDPressure`, `Ready`) para prevenir desalojos sorpresivos.
+    *   **Telemetría del NVIDIA Device Plugin:** Visualización de GPUs asignables vs capacidad total de Kubernetes (`nvidia.com/gpu`).
+    *   **Asignador Dinámico de Memoria Compartida (`/dev/shm`):** Control deslizante para ajustar el `sizeLimit` del `emptyDir` de memoria en el Pod, erradicando fallos de bus en los DataLoaders de YOLO.
+    *   **Integración con Dozzle K8s:** Enlaces directos a las transmisiones de logs de cada nodo (`http://{worker_ip}:8888`).
 *   **v1.8.0 (2026-10-21):**
     *   **Gestión Inteligente de Colas Celery:** Rediseño comprensible en 5 tarjetas KPI (`wyolo_gpu_queue`, `gpus_high`, `gpus_low`, encoladas a nodos y tiempo estimado de backlog ETA), eliminando colas técnicas ruidosas (`managers`, `*.pidbox`) y ocultando nodos sin carga.
     *   **Reasignador Inmediato de Tareas (`/tasks/queues/{id}/reassign`):** Botón `🔀 A Cola Pública` que transfiere tareas retenidas en colas privadas de nodos hacia la cola global pública para su consumo por cualquier trabajador disponible.
