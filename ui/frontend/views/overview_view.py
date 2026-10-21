@@ -92,6 +92,46 @@ def render_overview(api_client: ClusterApiClient, token: str):
     except Exception as he:
         st.caption(f"Unable to load the health watchdog: {he}")
 
+    # --- 1-Click Cluster Smoke Test ---
+    with st.expander("🧪 Cluster Smoke Test (Prueba de Humo 1-Click)", expanded=False):
+        st.caption("Verifica la salud integral del cluster: conectividad CIFS Samba, acceso MinIO S3 y disponibilidad de GPU en todos los nodos online.")
+        col_sm1, col_sm2 = st.columns([1, 3])
+        with col_sm1:
+            if st.button("🚀 Iniciar Smoke Test", key="btn_run_smoke_test", type="primary", use_container_width=True):
+                try:
+                    with st.spinner("Ejecutando smoke test en los nodos del cluster..."):
+                        res_smoke = api_client.run_cluster_smoke_test(token)
+                        st.session_state["cluster_smoke_result"] = res_smoke
+                        st.rerun()
+                except Exception as s_err:
+                    st.error(f"Error ejecutando smoke test: {s_err}")
+
+        with col_sm2:
+            if "cluster_smoke_result" in st.session_state:
+                smoke_data = st.session_state["cluster_smoke_result"]
+                s_stat = smoke_data.get("status", "unknown").upper()
+                s_total = smoke_data.get("total_nodes", 0)
+                dispatched = smoke_data.get("dispatched_nodes", [])
+                s_badge = "🟢 PASADO" if s_stat == "SUCCESS" else "🔴 FALLIDO"
+                st.write(f"**Resultado:** `{s_badge}` | **Nodos Validados:** `{len(dispatched)}/{s_total}` | {smoke_data.get('summary', '')}")
+
+                det_rows = smoke_data.get("results", [])
+                if det_rows:
+                    df_smoke = pd.DataFrame(det_rows)
+                    df_smoke = df_smoke.rename(columns={
+                        "worker_ip": "IP",
+                        "hostname": "Hostname",
+                        "gpu_model": "Modelo GPU",
+                        "samba_mounted": "CIFS Montado",
+                        "minio_reachable": "MinIO S3 OK",
+                        "gpu_allocated": "GPU Asignada",
+                        "status": "Estado",
+                        "latency_ms": "Latencia (ms)"
+                    })
+                    st.dataframe(df_smoke, use_container_width=True, hide_index=True)
+            else:
+                st.info("Presiona 'Iniciar Smoke Test' para validar la preparación de cómputo y almacenamiento en vivo.")
+
     st.divider()
 
     # --- Cluster Workload Trends (Proposal 4) ---
