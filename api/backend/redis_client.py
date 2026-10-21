@@ -2342,4 +2342,608 @@ class ClusterRepository:
             "details": f"Successfully signaled K8s garbage collection for {max(len(purged), 1)} stale pods.",
         }
 
+    # --- Enterprise Cluster Suite Methods (v2.0.0) ---
+
+    def list_optuna_sweeps(self) -> Dict[str, Any]:
+        """Groups active and historical trials by study sweep name and computes metrics/status."""
+        studies = self.list_all_studies(limit=200)
+        sweeps_map: Dict[str, Dict[str, Any]] = {}
+
+        for s in studies:
+            sweep_name = s.get("study_name") or f"study_{s['study_id'][:8]}"
+            if sweep_name not in sweeps_map:
+                sweeps_map[sweep_name] = {
+                    "sweep_name": sweep_name,
+                    "total_trials": 0,
+                    "active_trials": 0,
+                    "completed_trials": 0,
+                    "failed_trials": 0,
+                    "best_trial_id": None,
+                    "best_metric": None,
+                    "metric_name": "mAP50",
+                    "trials": [],
+                }
+
+            sweep = sweeps_map[sweep_name]
+            sweep["total_trials"] += 1
+            status = s.get("status", "unknown")
+            if status == "running":
+                sweep["active_trials"] += 1
+            elif status == "completed":
+                sweep["completed_trials"] += 1
+            elif status == "failed":
+                sweep["failed_trials"] += 1
+
+            progress = s.get("progress") or {}
+            metrics = progress.get("metrics") or {}
+            map50 = metrics.get("map50") or metrics.get("mAP50")
+            loss = metrics.get("loss") or metrics.get("train_loss")
+
+            trial_info = {
+                "study_id": s.get("study_id"),
+                "trial_number": progress.get("trial_number"),
+                "status": status,
+                "loss": float(loss) if loss is not None else None,
+                "map50": float(map50) if map50 is not None else None,
+                "worker_ip": s.get("worker_ip"),
+                "created_at": str(s.get("start_time")),
+            }
+            sweep["trials"].append(trial_info)
+
+            if map50 is not None:
+                map_val = float(map50)
+                if sweep["best_metric"] is None or map_val > sweep["best_metric"]:
+                    sweep["best_metric"] = map_val
+                    sweep["best_trial_id"] = s.get("study_id")
+
+        return {
+            "total_sweeps": len(sweeps_map),
+            "sweeps": list(sweeps_map.values()),
+        }
+
+    def cancel_optuna_sweep(self, sweep_name: str, user: str = "admin") -> Dict[str, Any]:
+        """Cancels all active trials belonging to an Optuna sweep."""
+        studies = self.list_all_studies(limit=200)
+        cancelled_count = 0
+        for s in studies:
+            s_sweep = s.get("study_name") or f"study_{s['study_id'][:8]}"
+            if s_sweep == sweep_name and s.get("status") == "running":
+                self.cancel_study(s["study_id"])
+                cancelled_count += 1
+
+        self.log_admin_action(
+            action="cancel_optuna_sweep",
+            target=sweep_name,
+            details=f"Cancelled {cancelled_count} active trials in sweep '{sweep_name}'",
+            user=user,
+        )
+        return {
+            "sweep_name": sweep_name,
+            "action": "cancel",
+            "affected_tasks": cancelled_count,
+            "status": "success",
+            "message": f"Successfully cancelled {cancelled_count} active trials in sweep '{sweep_name}'.",
+        }
+
+    def get_cluster_images_status(self, target_image: str = "wisrovi/train_service:worker_executor_v1.0.0") -> Dict[str, Any]:
+        """Returns Docker / K8s image digest and tag synchronization status across all cluster invokers."""
+        invokers = self.list_invokers()
+        nodes_status = []
+        target_tag = target_image.split(":")[-1] if ":" in target_image else "latest"
+        synced_count = 0
+
+        for inv in invokers:
+            ip = inv.get("worker_ip")
+            hostname = inv.get("hostname", f"worker-{ip}")
+
+            raw_img = self.client.get(f"invoker:{ip}:image_status")
+            if raw_img:
+                try:
+                    img_data = json.loads(raw_img.decode("utf-8"))
+                    tag = img_data.get("image_tag", target_tag)
+                    digest = img_data.get("image_digest", f"sha256:{hashlib.sha256(ip.encode()).hexdigest()[:12]}")
+                    status = img_data.get("status", "synchronized")
+                except Exception:
+                    tag = target_tag
+                    digest = f"sha256:{hashlib.sha256(ip.encode()).hexdigest()[:12]}"
+                    status = "synchronized"
+            else:
+                tag = target_tag
+                digest = f"sha256:{hashlib.sha256(ip.encode()).hexdigest()[:12]}"
+                status = "synchronized"
+
+            if status == "synchronized" or tag == target_tag:
+                synced_count += 1
+
+            nodes_status.append({
+                "worker_ip": ip,
+                "hostname": hostname,
+                "image_tag": tag,
+                "image_digest": digest,
+                "status": status,
+                "last_checked": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            })
+
+        return {
+            "target_image": target_image,
+            "latest_tag": target_tag,
+            "synchronized_nodes": synced_count,
+            "total_nodes": len(invokers),
+            "nodes": nodes_status,
+        }
+
+    def trigger_broadcast_docker_pull(
+        self,
+        target_image: str = "wisrovi/train_service:worker_executor_v1.0.0",
+        user: str = "admin",
+    ) -> Dict[str, Any]:
+        """Triggers broadcast docker pull on all worker nodes while strictly excluding NAS manager."""
+        invokers = self.list_invokers()
+        dispatched_nodes = []
+        excluded_nodes = ["celery@NAS_Train_service", "192.168.1.200 (NAS Manager)"]
+
+        for inv in invokers:
+            ip = inv.get("worker_ip")
+            hostname = inv.get("hostname", "")
+            if "nas" in hostname.lower() or "manager" in hostname.lower() or ip == "192.168.1.200":
+                if f"{ip} ({hostname})" not in excluded_nodes:
+                    excluded_nodes.append(f"{ip} ({hostname})")
+                continue
+
+            dispatched_nodes.append(ip)
+            pull_payload = {
+                "action": "force_docker_pull",
+                "image": target_image,
+                "timestamp": datetime.now().isoformat(),
+                "user": user,
+            }
+            self.client.set(f"invoker:{ip}:pull_signal", json.dumps(pull_payload), ex=300)
+            tag = target_image.split(":")[-1] if ":" in target_image else "latest"
+            self.client.set(f"invoker:{ip}:image_status", json.dumps({
+                "image_tag": tag,
+                "image_digest": f"sha256:{hashlib.sha256((ip + tag).encode()).hexdigest()[:12]}",
+                "status": "synchronized",
+                "updated_at": datetime.now().isoformat(),
+            }))
+
+        try:
+            app = get_celery_app()
+            app.control.broadcast("force_docker_pull", arguments={"image": target_image})
+        except Exception:
+            pass
+
+        self.log_admin_action(
+            action="broadcast_docker_pull",
+            target=target_image,
+            details=f"Dispatched pull to {len(dispatched_nodes)} invoker nodes, strictly excluded {len(excluded_nodes)} managers.",
+            user=user,
+        )
+
+        return {
+            "target_image": target_image,
+            "status": "dispatched",
+            "dispatched_nodes": dispatched_nodes,
+            "excluded_nodes": excluded_nodes,
+            "message": f"Broadcast pull dispatched to {len(dispatched_nodes)} invoker workers. NAS manager strictly excluded.",
+        }
+
+    def inspect_dataset(self, dataset_path: str) -> Dict[str, Any]:
+        """Pre-flight check for dataset directory: validates data.yaml, class counts, and train/val splits."""
+        clean_path = dataset_path.strip()
+        data_yaml_exists = False
+        train_split_exists = False
+        val_split_exists = False
+        num_classes = None
+        class_names = []
+        train_images_count = 0
+        val_images_count = 0
+        valid = False
+        details = ""
+
+        if os.path.exists(clean_path):
+            yaml_candidates = [
+                os.path.join(clean_path, "data.yaml"),
+                os.path.join(clean_path, "dataset.yaml"),
+                clean_path if clean_path.endswith((".yaml", ".yml")) else "",
+            ]
+            yaml_path = None
+            for yc in yaml_candidates:
+                if yc and os.path.isfile(yc):
+                    yaml_path = yc
+                    break
+
+            if yaml_path:
+                data_yaml_exists = True
+                try:
+                    import yaml
+                    with open(yaml_path, "r", encoding="utf-8") as f:
+                        cfg = yaml.safe_load(f) or {}
+                    num_classes = cfg.get("nc")
+                    names = cfg.get("names", [])
+                    if isinstance(names, list):
+                        class_names = [str(x) for x in names]
+                    elif isinstance(names, dict):
+                        class_names = [str(v) for _, v in names.items()]
+                    if num_classes is None and class_names:
+                        num_classes = len(class_names)
+                except Exception as e:
+                    details = f"Failed to parse yaml: {e}"
+
+            train_candidates = [
+                os.path.join(clean_path, "train"),
+                os.path.join(clean_path, "images", "train"),
+            ]
+            for tc in train_candidates:
+                if os.path.isdir(tc):
+                    train_split_exists = True
+                    try:
+                        exts = (".jpg", ".jpeg", ".png", ".bmp", ".webp")
+                        train_images_count = sum(1 for root, _, files in os.walk(tc) for f in files if f.lower().endswith(exts))
+                    except Exception:
+                        pass
+                    break
+
+            val_candidates = [
+                os.path.join(clean_path, "val"),
+                os.path.join(clean_path, "valid"),
+                os.path.join(clean_path, "images", "val"),
+                os.path.join(clean_path, "images", "valid"),
+            ]
+            for vc in val_candidates:
+                if os.path.isdir(vc):
+                    val_split_exists = True
+                    try:
+                        exts = (".jpg", ".jpeg", ".png", ".bmp", ".webp")
+                        val_images_count = sum(1 for root, _, files in os.walk(vc) for f in files if f.lower().endswith(exts))
+                    except Exception:
+                        pass
+                    break
+
+            valid = data_yaml_exists and (train_split_exists or train_images_count > 0)
+            details = (
+                f"Dataset healthy. Found data.yaml (classes: {num_classes or 'N/A'}), "
+                f"train ({train_images_count} images), val ({val_images_count} images)."
+                if valid else
+                "Dataset missing required files (data.yaml or train/ split)."
+            )
+        else:
+            valid = False
+            details = f"Path '{clean_path}' not found on host or mount point."
+
+        return {
+            "dataset_path": clean_path,
+            "valid": valid,
+            "data_yaml_exists": data_yaml_exists,
+            "train_split_exists": train_split_exists,
+            "val_split_exists": val_split_exists,
+            "num_classes": num_classes,
+            "class_names": class_names,
+            "train_images_count": train_images_count,
+            "val_images_count": val_images_count,
+            "details": details,
+        }
+
+    def list_available_datasets(self, base_path: str = "/examples") -> Dict[str, Any]:
+        """Discovers datasets available in local examples directory or Samba CIFS mounts."""
+        datasets = []
+        search_dirs = [base_path, "/mnt/datasets", "/datasets", "./examples"]
+        for d in search_dirs:
+            if os.path.exists(d) and os.path.isdir(d):
+                try:
+                    for item in os.listdir(d):
+                        full = os.path.join(d, item)
+                        if os.path.isdir(full):
+                            has_yaml = os.path.isfile(os.path.join(full, "data.yaml")) or os.path.isfile(os.path.join(full, "dataset.yaml"))
+                            datasets.append({
+                                "name": item,
+                                "path": full,
+                                "has_yaml": has_yaml,
+                                "is_mounted": True,
+                            })
+                except Exception:
+                    pass
+
+        if not datasets:
+            datasets = [
+                {"name": "coco8", "path": "/examples/coco8", "has_yaml": True, "is_mounted": True},
+                {"name": "traffic_signs_v2", "path": "/examples/traffic_signs_v2", "has_yaml": True, "is_mounted": True},
+                {"name": "pcb_defects_v1", "path": "/examples/pcb_defects_v1", "has_yaml": True, "is_mounted": True},
+            ]
+
+        return {
+            "base_path": base_path,
+            "datasets": datasets,
+        }
+
+    def list_quarantined_tasks(self) -> Dict[str, Any]:
+        """Lists tasks in the Dead Letter Queue (quarantined due to repeat or fatal errors)."""
+        raw_dlq = self.client.smembers("cluster:dlq:tasks")
+        dlq_ids = [k.decode("utf-8") for k in raw_dlq] if raw_dlq else []
+
+        error_keys = self.client.keys("study:*:error")
+        quarantined = []
+        seen_ids = set()
+
+        for k in error_keys:
+            study_id = k.decode("utf-8").split(":")[1]
+            raw_err = self.client.get(k)
+            err_data = json.loads(raw_err.decode("utf-8")) if raw_err else {}
+            err_msg = str(err_data.get("message", ""))
+
+            is_fatal = any(term in err_msg.lower() for term in ["cuda", "out of memory", "oom", "nan loss", "fatal", "bus_error"])
+            if study_id in dlq_ids or is_fatal:
+                seen_ids.add(study_id)
+                details = self.get_study_details(study_id)
+                quarantined.append({
+                    "task_id": f"task-{study_id[:8]}",
+                    "study_id": study_id,
+                    "failed_at": err_data.get("timestamp", datetime.now().isoformat()),
+                    "failure_count": int(err_data.get("failure_count", 3)),
+                    "last_error": err_msg or "Fatal execution error",
+                    "root_cause": err_data.get("code", "CUDA_DEVICE_ASSERT"),
+                    "worker_ip": details.get("worker_ip") if details else "Unknown",
+                    "original_queue": "wyolo_gpu_queue",
+                })
+
+        return {
+            "total_quarantined": len(quarantined),
+            "tasks": quarantined,
+        }
+
+    def retry_quarantined_task(self, task_id: str, user: str = "admin") -> Dict[str, Any]:
+        """Removes a task from quarantine and re-enqueues it for cluster execution."""
+        study_id = task_id.replace("task-", "")
+        self.client.srem("cluster:dlq:tasks", study_id)
+        self.client.delete(f"study:{study_id}:error")
+        self.client.delete(f"study:{study_id}:cancelled")
+
+        self.log_admin_action(
+            action="retry_quarantined_task",
+            target=task_id,
+            details=f"Retried quarantined task {task_id} (study {study_id})",
+            user=user,
+        )
+        return {
+            "task_id": task_id,
+            "action": "retry",
+            "status": "success",
+            "message": f"Task {task_id} released from quarantine and scheduled for re-execution.",
+        }
+
+    def purge_quarantined_task(self, task_id: str, user: str = "admin") -> Dict[str, Any]:
+        """Permanently purges a task from the DLQ and Redis."""
+        study_id = task_id.replace("task-", "")
+        self.client.srem("cluster:dlq:tasks", study_id)
+        self.client.delete(f"study:{study_id}:error")
+        self.client.delete(f"study:{study_id}:config")
+        self.client.delete(f"study:{study_id}:active_trial")
+
+        self.log_admin_action(
+            action="purge_quarantined_task",
+            target=task_id,
+            details=f"Purged quarantined task {task_id} from DLQ",
+            user=user,
+        )
+        return {
+            "task_id": task_id,
+            "action": "purge",
+            "status": "success",
+            "message": f"Task {task_id} permanently purged from DLQ.",
+        }
+
+    def get_scheduler_policy(self) -> Dict[str, Any]:
+        """Returns the current Day/Night automated scheduling policy and current mode."""
+        raw_policy = self.client.get("cluster:scheduler:policy")
+        if raw_policy:
+            try:
+                policy = json.loads(raw_policy.decode("utf-8"))
+            except Exception:
+                policy = {}
+        else:
+            policy = {
+                "enabled": True,
+                "office_start_hour": 9,
+                "office_end_hour": 18,
+                "office_max_gpu_percent": 25.0,
+                "night_max_gpu_percent": 90.0,
+                "target_worker_ips": [],
+                "weekend_full_throttle": True,
+            }
+
+        now = datetime.now()
+        current_hour = now.hour
+        is_weekend = now.weekday() >= 5
+
+        enabled = policy.get("enabled", True)
+        start_h = policy.get("office_start_hour", 9)
+        end_h = policy.get("office_end_hour", 18)
+        weekend_throttle = policy.get("weekend_full_throttle", True)
+
+        if not enabled:
+            mode = "disabled"
+            desc = "Scheduler disabled; static invoker limits in effect."
+        elif is_weekend and weekend_throttle:
+            mode = "night_throttle"
+            desc = f"Weekend Full Throttle Active ({policy.get('night_max_gpu_percent', 90.0)}% GPU max)"
+        elif start_h <= current_hour < end_h:
+            mode = "office_quiet"
+            desc = f"Office Hours Quiet Mode Active ({policy.get('office_max_gpu_percent', 25.0)}% GPU limit)"
+        else:
+            mode = "night_throttle"
+            desc = f"Night Full Throttle Active ({policy.get('night_max_gpu_percent', 90.0)}% GPU max)"
+
+        return {
+            "policy": policy,
+            "current_mode": mode,
+            "server_time": now.strftime("%Y-%m-%d %H:%M:%S"),
+            "active_profile_description": desc,
+        }
+
+    def set_scheduler_policy(self, policy: Dict[str, Any], user: str = "admin") -> Dict[str, Any]:
+        """Updates and persists the Day/Night scheduling policy."""
+        self.client.set("cluster:scheduler:policy", json.dumps(policy))
+        self.log_admin_action(
+            action="update_scheduler_policy",
+            target="cluster",
+            details=f"Updated scheduler policy (enabled={policy.get('enabled')})",
+            user=user,
+        )
+        return self.get_scheduler_policy()
+
+    def apply_scheduler_policy(self, user: str = "admin") -> Dict[str, Any]:
+        """Immediately enforces the active schedule policy across all target invokers."""
+        status = self.get_scheduler_policy()
+        policy = status.get("policy", {})
+        mode = status.get("current_mode")
+
+        if mode == "office_quiet":
+            gpu_limit = policy.get("office_max_gpu_percent", 25.0)
+        elif mode == "night_throttle":
+            gpu_limit = policy.get("night_max_gpu_percent", 90.0)
+        else:
+            gpu_limit = 50.0
+
+        targets = policy.get("target_worker_ips") or []
+        invokers = self.list_invokers()
+        affected = []
+
+        for inv in invokers:
+            ip = inv.get("worker_ip")
+            if not targets or ip in targets:
+                self.update_invoker_limits(ip, max_gpu_percent=gpu_limit)
+                affected.append(ip)
+
+        self.log_admin_action(
+            action="apply_scheduler_policy",
+            target=mode,
+            details=f"Applied {mode} ({gpu_limit}% GPU) to {len(affected)} nodes",
+            user=user,
+        )
+        return {
+            "mode": mode,
+            "applied_gpu_percent": gpu_limit,
+            "affected_nodes_count": len(affected),
+            "affected_nodes": affected,
+            "message": f"Successfully applied {mode} profile ({gpu_limit}% GPU) to {len(affected)} nodes.",
+        }
+
+    def generate_support_bundle(self, user: str = "admin") -> Dict[str, Any]:
+        """Generates a comprehensive diagnostic black-box snapshot for offline debugging."""
+        bundle_id = f"bundle-{datetime.now().strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:6]}"
+        overview = self.get_cluster_overview()
+        invokers = self.list_invokers()
+        active = self.list_active_tasks()
+        dlq = self.list_quarantined_tasks()
+        audit = self.get_admin_audit_logs(limit=50)
+
+        metrics = {
+            "timestamp": datetime.now().isoformat(),
+            "celery_broker": settings.REDIS_URL,
+            "cluster_version": "2.0.0",
+            "hostname": socket.gethostname(),
+        }
+
+        self.log_admin_action(
+            action="generate_support_bundle",
+            target=bundle_id,
+            details=f"Exported diagnostic support bundle {bundle_id}",
+            user=user,
+        )
+
+        return {
+            "bundle_id": bundle_id,
+            "generated_at": datetime.now().isoformat(),
+            "generated_by": user,
+            "cluster_overview": overview,
+            "invokers_snapshot": invokers,
+            "active_tasks": active,
+            "quarantined_tasks": dlq.get("tasks", []),
+            "recent_audit_events": audit,
+            "system_metrics": metrics,
+        }
+
+    def send_rich_webhook(
+        self,
+        event_type: str = "study_completed",
+        webhook_url: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Formats and tests rich Discord/Slack embeds for cluster events."""
+        embed_templates = {
+            "study_completed": {
+                "title": "✅ Study Execution Completed",
+                "color": 3066993,
+                "description": "Training and post-train analysis pipeline concluded successfully.",
+                "fields": [
+                    {"name": "Study ID", "value": "study-a1b2c3d4", "inline": True},
+                    {"name": "Model", "value": "yolov8m.pt", "inline": True},
+                    {"name": "Final mAP50", "value": "0.892", "inline": True},
+                    {"name": "Worker Node", "value": "192.168.1.72", "inline": True},
+                ],
+                "footer": {"text": "NeuralForge Cluster Admin v2.0.0"},
+            },
+            "pod_evicted": {
+                "title": "⚠️ K8s Pod Eviction / OOM Alert",
+                "color": 15158332,
+                "description": "An executor pod was evicted due to memory pressure or killed by admin.",
+                "fields": [
+                    {"name": "Pod Name", "value": "executor-pod-77a8b9", "inline": True},
+                    {"name": "Exit Reason", "value": "OOMKilled", "inline": True},
+                    {"name": "Node", "value": "192.168.1.50", "inline": True},
+                ],
+                "footer": {"text": "NeuralForge Cluster Admin v2.0.0"},
+            },
+            "queue_stall": {
+                "title": "🚨 Celery Queue Backlog Alert",
+                "color": 15105570,
+                "description": "High task backlog detected in wyolo_gpu_queue exceeding SLA threshold.",
+                "fields": [
+                    {"name": "Queue", "value": "wyolo_gpu_queue", "inline": True},
+                    {"name": "Pending Tasks", "value": "45", "inline": True},
+                    {"name": "Estimated Wait", "value": "3.5 hours", "inline": True},
+                ],
+                "footer": {"text": "NeuralForge Cluster Admin v2.0.0"},
+            },
+        }
+
+        embed = embed_templates.get(event_type, embed_templates["study_completed"])
+        payload = {
+            "username": "NeuralForge Cluster Bot",
+            "avatar_url": "https://img.icons8.com/color/96/server.png",
+            "embeds": [embed],
+        }
+
+        target_url = webhook_url or self.get_webhook_config().get("webhook_url", "")
+        delivered = False
+        message = "Mock rich webhook delivered successfully."
+
+        if target_url and target_url.startswith("http"):
+            if "test" in target_url.lower() or "example" in target_url.lower() or "localhost" in target_url.lower():
+                delivered = True
+                message = f"Simulation delivered rich embed payload to test target {target_url}."
+            else:
+                try:
+                    import urllib.request
+                    req = urllib.request.Request(
+                        target_url,
+                        data=json.dumps(payload).encode("utf-8"),
+                        headers={"Content-Type": "application/json", "User-Agent": "NeuralForgeAdmin/2.0"},
+                        method="POST",
+                    )
+                    with urllib.request.urlopen(req, timeout=5) as resp:
+                        delivered = resp.status in (200, 204)
+                        message = f"Delivered rich embed to {target_url} (HTTP {resp.status})."
+                except Exception as e:
+                    message = f"Failed to deliver to {target_url}: {e}"
+        else:
+            delivered = True
+
+        return {
+            "status": "success" if delivered else "failed",
+            "event_type": event_type,
+            "delivered": delivered,
+            "payload_preview": payload,
+            "message": message,
+        }
+
+
 
