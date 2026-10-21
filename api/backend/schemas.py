@@ -68,6 +68,7 @@ class InvokerDetailResponse(BaseModel):
     status: str
     pause_state: str
     pause_until: str
+    orchestration_runtime: Optional[str] = "Docker Standalone"
     physical: PhysicalSpecs
     limits: LimitSpecs
     last_seen: str
@@ -304,4 +305,73 @@ class ClusterCapabilitiesResponse(BaseModel):
     docker_image: str
     total_modules: int
     active_modules: int
+
+
+# --- Cluster Admin v1.7.0 Enhanced Schemas ---
+
+class GpuProcessInfo(BaseModel):
+    pid: int
+    name: str
+    vram_used_mb: float
+    elapsed: str
+    is_zombie: bool = False
+    zombie_reason: Optional[str] = None
+
+
+class NodeGpuProcessesResponse(BaseModel):
+    worker_ip: str
+    hostname: str
+    gpu_model: str
+    total_vram_mb: float
+    used_vram_mb: float
+    free_vram_mb: float
+    processes: List[GpuProcessInfo]
+    has_zombies: bool = False
+
+
+class KillProcessResponse(BaseModel):
+    status: str
+    message: str
+    pid: int
+    worker_ip: str
+
+
+class QueuedTaskInfo(BaseModel):
+    task_id: str
+    study_id: Optional[str] = None
+    study_name: Optional[str] = None
+    author: Optional[str] = None
+    model: Optional[str] = None
+    dataset: Optional[str] = None
+    priority: str = "low"
+    queue_name: str
+    queued_at: Optional[str] = None
+
+
+class QueueStatusResponse(BaseModel):
+    queues: Dict[str, int]
+    total_queued: int
+    tasks: List[QueuedTaskInfo]
+
+
+class PromoteTaskRequest(BaseModel):
+    target_queue: str = Field("gpus_high", description="Target priority queue (e.g. gpus_high, gpus_medium)")
+
+
+class TaskDiagnosticsResponse(BaseModel):
+    study_id: str
+    status: str
+    error: Optional[str] = None
+    root_cause: Optional[str] = None
+    suggested_action: Optional[str] = None
+    timestamp: Optional[str] = None
+
+
+class TaskLogsResponse(BaseModel):
+    study_id: str
+    worker_ip: Optional[str] = None
+    source: str
+    logs: List[str]
+    total_lines: int
+
 
