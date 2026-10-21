@@ -4,12 +4,16 @@ import json
 import pandas as pd
 import streamlit as st
 from frontend.api_client import ClusterApiClient
+from frontend.styles import render_page_header
 
 
 def render_history(api_client: ClusterApiClient, token: str):
     """Renders historical study browser, Optuna trial curves, and 1-click report export."""
-    st.title("📈 Study History, Metrics & Reports")
-    st.caption("Advanced search, Optuna learning curves, and experiment report export.")
+    render_page_header(
+        title="Training History & Analytics Explorer",
+        subtitle="Filter historical training runs, visualize Optuna convergence curves, compare experiments head-to-head, and export reports.",
+        badge_text="Analytics Studio",
+    )
 
     current_user = st.session_state.get("username", "wisrovi")
 
