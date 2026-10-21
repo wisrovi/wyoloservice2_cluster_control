@@ -3,12 +3,16 @@
 import pandas as pd
 import streamlit as st
 from frontend.api_client import ClusterApiClient
+from frontend.styles import render_page_header
 
 
 def render_capabilities(api_client: ClusterApiClient, token: str):
     """Renders the Cluster Capabilities and R&D Extension Module catalog dashboard."""
-    st.markdown("## 🔬 Cluster Capabilities & Extensions")
-    st.caption("Official catalog of training engines, R&D modules (XAI, robustness, uncertainty) and post-processing pipelines available on the executors.")
+    render_page_header(
+        title="Cluster Capabilities & Research Extensions",
+        subtitle="Catalog of official training engines, 12 scientific I+D modules (XAI, Adversarial Attacks, Uncertainty), and paper alignments.",
+        badge_text="R&D Ecosystem",
+    )
 
     tab_modules, tab_docker, tab_research = st.tabs([
         "🧩 R&D Module Catalog",
