@@ -188,6 +188,25 @@ def render_invokers(api_client: ClusterApiClient, token: str):
                         u_val = util_pct if util_pct is not None else 0.0
                         st.metric("Cómputo GPU", f"{u_val:.0f}%", help="Utilización de núcleos CUDA")
 
+                # Kubernetes Node Status & Conditions
+                k8s_cond = inv.get("k8s_conditions") or {}
+                k8s_gpu = inv.get("k8s_gpu_plugin") or {}
+                if k8s_cond or k8s_gpu:
+                    st.markdown("##### ☸️ Estado Kubernetes del Nodo")
+                    col_k1, col_k2, col_k3 = st.columns(3)
+                    with col_k1:
+                        k_ready = k8s_cond.get("ready", True)
+                        st.write(f"• **K8s Node:** {'🟢 Ready' if k_ready else '🔴 NotReady'}")
+                    with col_k2:
+                        d_press = k8s_cond.get("disk_pressure", False)
+                        m_press = k8s_cond.get("memory_pressure", False)
+                        press_str = "🟢 Normal" if (not d_press and not m_press) else ("⚠️ DiskPressure" if d_press else "⚠️ MemPressure")
+                        st.write(f"• **Presión:** `{press_str}`")
+                    with col_k3:
+                        g_alloc = k8s_gpu.get("allocatable", 1)
+                        g_cap = k8s_gpu.get("capacity", 1)
+                        st.write(f"• **GPU Plugin:** `{g_alloc}/{g_cap} Allocatable`")
+
                 # Status Banner
                 st.markdown("##### ⏯️ Public Queue Status & Control")
                 if pause_state == "active":
@@ -270,6 +289,7 @@ def render_invokers(api_client: ClusterApiClient, token: str):
                             st.success(p_res.get("message", "Docker saneado"))
                         except Exception as pr_e:
                             st.error(f"Error: {pr_e}")
+                st.caption(f"🔗 [🌐 Abrir Dozzle K8s de este Nodo](http://{worker_ip}:8888)")
 
             with col_controls:
                 st.markdown("#### ⚡ Dynamic Resource Allocation")
@@ -325,6 +345,17 @@ def render_invokers(api_client: ClusterApiClient, token: str):
                     key=f"slider_cpu_{worker_ip}",
                 )
 
+                current_shm = float(limits.get("shm_size_gb", 8.0))
+                new_shm = st.slider(
+                    "PyTorch Shared Memory (/dev/shm GiB)",
+                    min_value=2.0,
+                    max_value=64.0,
+                    value=float(current_shm),
+                    step=2.0,
+                    key=f"slider_shm_{worker_ip}",
+                    help="Memoria compartida en emptyDir para DataLoader de YOLO; previene 'Bus error (core dumped)'",
+                )
+
                 if st.button("💾 Save Limits to Redis", key=f"btn_save_{worker_ip}", type="primary", use_container_width=True):
                     try:
                         api_client.update_limits(
@@ -333,8 +364,9 @@ def render_invokers(api_client: ClusterApiClient, token: str):
                             max_gpu_percent=float(new_max_gpu),
                             max_ram=new_max_ram,
                             max_cpu_cores=float(new_max_cores),
+                            shm_size_gb=float(new_shm),
                         )
-                        st.success(f"✅ Saved for {worker_ip} (GPU={new_max_gpu}%, RAM={new_max_ram}, CPU={new_max_cores})")
+                        st.success(f"✅ Saved for {worker_ip} (GPU={new_max_gpu}%, RAM={new_max_ram}, CPU={new_max_cores}, SHM={new_shm}GiB)")
                         st.rerun()
                     except Exception as se:
                         st.error(f"Failed to save limits: {se}")
