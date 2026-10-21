@@ -139,6 +139,45 @@ def render_invokers(api_client: ClusterApiClient, token: str):
             st.success(f"Resumed {len(filtered)} nodes.")
             st.rerun()
 
+    # --- Image Synchronization & Broadcast Pull (v2.0.0) ---
+    with st.expander("📦 Cluster Docker/K8s Image Synchronization & Broadcast Pull", expanded=False):
+        st.caption("Verifica las versiones de imagen desplegadas en cada nodo invoker y ejecuta un pull simultáneo en lote (excluyendo automáticamente al NAS manager).")
+        col_img1, col_img2 = st.columns([3, 1])
+        with col_img1:
+            target_pull_img = st.text_input(
+                "Target Docker Image",
+                value="wisrovi/train_service:worker_executor_v1.0.0",
+                key="input_target_pull_img",
+            )
+        with col_img2:
+            st.write(" ")
+            btn_broadcast = st.button("🚀 Broadcast Pull", key="btn_broadcast_pull", type="primary", use_container_width=True)
+
+        if btn_broadcast:
+            try:
+                b_res = api_client.trigger_broadcast_docker_pull(token, target_image=target_pull_img)
+                st.success(b_res.get("message", "Broadcast pull dispatched"))
+                st.rerun()
+            except Exception as be:
+                st.error(f"Error en broadcast pull: {be}")
+
+        try:
+            img_status = api_client.get_cluster_images_status(token, target_image=target_pull_img)
+            col_is1, col_is2 = st.columns(2)
+            with col_is1:
+                st.metric("Nodos Sincronizados", f"{img_status.get('synchronized_nodes', 0)} / {img_status.get('total_nodes', 0)}")
+            with col_is2:
+                st.metric("Tag Esperado", img_status.get("latest_tag", "latest"))
+
+            nodes_data = img_status.get("nodes", [])
+            if nodes_data:
+                import pandas as pd
+                df_nodes = pd.DataFrame(nodes_data)
+                st.dataframe(df_nodes, use_container_width=True, hide_index=True)
+        except Exception as ie:
+            st.caption(f"No se pudo consultar el estado de imágenes: {ie}")
+
+
     st.divider()
 
     # --- NODE CARDS ---
