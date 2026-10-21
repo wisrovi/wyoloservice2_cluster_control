@@ -67,9 +67,11 @@ def render_tasks(api_client: ClusterApiClient, token: str):
             except Exception as qe:
                 st.error(f"Failed to dispatch test: {qe}")
 
-    tab_queues, tab_active, tab_history, tab_metrics = st.tabs([
+    tab_queues, tab_active, tab_sweeps, tab_dlq, tab_history, tab_metrics = st.tabs([
         "📋 Celery Queues & Waitlist",
         "⚡ Active Tasks & Live Logs",
+        "🗃️ Optuna Sweeps & Studies",
+        "🧯 Cola de Cuarentena (DLQ)",
         "📜 Study History & Diagnostics",
         "📈 Optuna Curves & Metrics",
     ])
@@ -323,7 +325,106 @@ def render_tasks(api_client: ClusterApiClient, token: str):
                             except Exception as kee:
                                 st.caption(f"No se pudieron cargar eventos K8s: {kee}")
 
-    # --- TAB 3: Study History & Diagnostics ---
+    # --- TAB 3: Optuna Sweeps & Multi-Trial Aggregator (v2.0.0) ---
+    with tab_sweeps:
+        st.markdown("#### 🗃️ Agregador de Barridos Optuna y Estudios Multi-Trial")
+        st.caption("Supervisa los barridos de hiperparámetros agrupados por estudio, su convergencia y cancela trials en lote.")
+
+        try:
+            sweeps_res = api_client.list_optuna_sweeps(token)
+            total_sweeps = sweeps_res.get("total_sweeps", 0)
+            sweeps_list = sweeps_res.get("sweeps", [])
+
+            col_sw1, col_sw2, col_sw3 = st.columns(3)
+            with col_sw1:
+                st.metric("Total de Barridos (Sweeps)", total_sweeps)
+            with col_sw2:
+                active_sweeps_count = sum(s.get("active_trials", 0) for s in sweeps_list)
+                st.metric("Trials Activos en Ejecución", active_sweeps_count)
+            with col_sw3:
+                best_global_metric = max([s.get("best_metric") for s in sweeps_list if s.get("best_metric") is not None] or [0.0])
+                st.metric("Mejor Métrica Global (mAP50)", f"{best_global_metric:.4f}")
+
+            if not sweeps_list:
+                st.info("No se encontraron barridos de Optuna activos o archivados en el clúster.")
+            else:
+                for sweep in sweeps_list:
+                    s_name = sweep.get("sweep_name", "Unknown Sweep")
+                    with st.expander(f"📦 Sweep: **{s_name}** ({sweep.get('total_trials', 0)} trials, {sweep.get('active_trials', 0)} activos)", expanded=sweep.get("active_trials", 0) > 0):
+                        c1, c2, c3, c4 = st.columns([2, 1, 1, 1.5])
+                        with c1:
+                            st.write(f"• **Completados:** `{sweep.get('completed_trials', 0)}` | **Fallidos:** `{sweep.get('failed_trials', 0)}`")
+                            if sweep.get("best_metric") is not None:
+                                st.write(f"• **Mejor mAP50:** `{sweep.get('best_metric'):.4f}` (Trial `{sweep.get('best_trial_id', '')[:8]}`)")
+                        with c2:
+                            st.metric("Total Trials", sweep.get("total_trials", 0))
+                        with c3:
+                            st.metric("Activos", sweep.get("active_trials", 0))
+                        with c4:
+                            if sweep.get("active_trials", 0) > 0:
+                                if st.button(f"🛑 Cancelar Sweep", key=f"tview_cancel_sweep_{s_name}", type="secondary", use_container_width=True):
+                                    try:
+                                        c_res = api_client.cancel_optuna_sweep(token, s_name)
+                                        st.success(c_res.get("message", "Sweep cancelado"))
+                                        st.rerun()
+                                    except Exception as ce:
+                                        st.error(f"Error cancelando sweep: {ce}")
+
+                        trials = sweep.get("trials", [])
+                        if trials:
+                            st.markdown("**Detalle de Trials del Sweep:**")
+                            df_tr = pd.DataFrame(trials)
+                            st.dataframe(df_tr, use_container_width=True, hide_index=True)
+        except Exception as sw_err:
+            st.error(f"Error consultando barridos de Optuna: {sw_err}")
+
+    # --- TAB 4: Dead Letter Queue (DLQ) & Quarantine Management (v2.0.0) ---
+    with tab_dlq:
+        st.markdown("#### 🧯 Cola de Cuarentena (Dead Letter Queue - DLQ)")
+        st.caption("Aislamiento preventivo de tareas y estudios con fallos reiterados o excepciones fatales (CUDA asserts, OOM, NaN loss).")
+
+        try:
+            dlq_res = api_client.list_quarantined_tasks(token)
+            dlq_tasks = dlq_res.get("tasks", [])
+            total_dlq = dlq_res.get("total_quarantined", 0)
+
+            if total_dlq > 0:
+                st.error(f"⚠️ **{total_dlq} tarea(s) en cuarentena:** Estos trabajos se han detenido para evitar saturación o caídas en cadena.")
+            else:
+                st.success("✅ **La cola de cuarentena está vacía:** No se detectan tareas venenosas ni excepciones críticas activas.")
+
+            if dlq_tasks:
+                for t in dlq_tasks:
+                    tid = t.get("task_id")
+                    sid = t.get("study_id")
+                    with st.expander(f"🚨 Tarea `{tid}` — {t.get('last_error', 'Error')[:60]}...", expanded=True):
+                        c_q1, c_q2 = st.columns([3, 1])
+                        with c_q1:
+                            st.write(f"• **Study ID:** `{sid}`")
+                            st.write(f"• **Nodo de ejecución:** `{t.get('worker_ip', 'Desconocido')}`")
+                            st.write(f"• **Conteo de reintentos fallidos:** `{t.get('failure_count', 0)}`")
+                            st.write(f"• **Causa raíz diagnosticada:** `{t.get('root_cause', 'N/A')}`")
+                            st.code(t.get("last_error", "No error trace"), language="text")
+                        with c_q2:
+                            if st.button("🔄 Reintentar Trabajo", key=f"dlq_retry_{tid}", use_container_width=True):
+                                try:
+                                    r_res = api_client.retry_quarantined_task(token, tid)
+                                    st.success(r_res.get("message", "Trabajo re-encolado"))
+                                    st.rerun()
+                                except Exception as re:
+                                    st.error(f"Error reintentando tarea: {re}")
+
+                            if st.button("🗑️ Purgar de DLQ", key=f"dlq_purge_{tid}", type="secondary", use_container_width=True):
+                                try:
+                                    p_res = api_client.purge_quarantined_task(token, tid)
+                                    st.success(p_res.get("message", "Tarea purgada"))
+                                    st.rerun()
+                                except Exception as pe:
+                                    st.error(f"Error purgando tarea: {pe}")
+        except Exception as dlq_err:
+            st.error(f"Error consultando cola de cuarentena: {dlq_err}")
+
+    # --- TAB 5: Study History & Diagnostics ---
     with tab_history:
         st.markdown("#### 🔍 Historical Studies & Diagnostics")
 
@@ -465,7 +566,7 @@ def render_tasks(api_client: ClusterApiClient, token: str):
                     except Exception as l_err:
                         st.caption(f"Logs unavailable: {l_err}")
 
-    # --- TAB 4: Optuna Metrics & Learning Curves ---
+    # --- TAB 6: Optuna Metrics & Learning Curves ---
     with tab_metrics:
         st.markdown("#### 📈 Learning Curves & Trial Evolution (Optuna)")
         st.caption("Visualize the objective metric (Accuracy / Fitness / mAP50) across trials.")
