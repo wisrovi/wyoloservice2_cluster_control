@@ -54,6 +54,10 @@ class PhysicalSpecs(BaseModel):
     gpu_memory_total: str
     ram_total: str
     cpu_cores: str
+    gpu_temp_c: Optional[float] = None
+    gpu_power_watts: Optional[float] = None
+    gpu_tdp_watts: Optional[float] = None
+    gpu_compute_util_pct: Optional[float] = None
 
 
 class LimitSpecs(BaseModel):
@@ -352,10 +356,35 @@ class QueueStatusResponse(BaseModel):
     queues: Dict[str, int]
     total_queued: int
     tasks: List[QueuedTaskInfo]
+    global_queues: Dict[str, int] = Field(default_factory=dict)
+    node_queues: Dict[str, int] = Field(default_factory=dict)
+    author_breakdown: Dict[str, int] = Field(default_factory=dict)
+    backlog_eta_minutes: float = 0.0
+    jam_alert: bool = False
+    jam_reason: Optional[str] = None
 
 
 class PromoteTaskRequest(BaseModel):
     target_queue: str = Field("gpus_high", description="Target priority queue (e.g. gpus_high, gpus_medium)")
+
+
+class ReassignTaskRequest(BaseModel):
+    target_queue: str = Field("wyolo_gpu_queue", description="Target queue name (e.g. wyolo_gpu_queue, gpus_high, or node IP)")
+
+
+class RemoteOperationResponse(BaseModel):
+    worker_ip: str
+    operation: str
+    status: str
+    message: str
+
+
+class SmokeTestResponse(BaseModel):
+    status: str
+    total_nodes: int
+    dispatched_nodes: List[str]
+    summary: str
+    results: List[Dict[str, Any]]
 
 
 class TaskDiagnosticsResponse(BaseModel):
