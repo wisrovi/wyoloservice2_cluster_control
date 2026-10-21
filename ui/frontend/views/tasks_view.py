@@ -6,9 +6,9 @@ from frontend.api_client import ClusterApiClient
 
 
 def render_tasks(api_client: ClusterApiClient, token: str):
-    """Renders active training trials, filtered historical studies, and Optuna metrics."""
+    """Renders Celery queues, active training trials with epoch telemetry and live logs, historical studies, and Optuna metrics."""
     st.title("🚀 Training & Task Monitoring")
-    st.caption("Monitor training jobs in real time, filter by submitter or node, and analyze Optuna trials.")
+    st.caption("Monitor Celery queues, track active jobs with epoch-level telemetry and live logs, and diagnose past studies.")
 
     current_user = st.session_state.get("username", "wisrovi")
 
@@ -17,7 +17,6 @@ def render_tasks(api_client: ClusterApiClient, token: str):
         st.write("Dispatch a minimal training run (1–5 epochs) to validate a node's connectivity, GPU, Samba, and MinIO.")
         col_q1, col_q2, col_q3, col_q4 = st.columns([1.5, 1.2, 2, 1])
 
-        # Get invoker list for destination queue selection
         try:
             invokers_list = api_client.list_invokers(token)
             inv_options = ["wyolo_gpu_queue (Global Public Queue)"] + [f"{i['worker_ip']} ({i['hostname']})" for i in invokers_list]
@@ -25,20 +24,19 @@ def render_tasks(api_client: ClusterApiClient, token: str):
             inv_options = ["wyolo_gpu_queue (Global Public Queue)"]
 
         with col_q1:
-            selected_dest = st.selectbox("Target Node / Queue", options=inv_options, key="quick_target_queue")
-            # Parse IP if specific node
+            selected_dest = st.selectbox("Target Node / Queue", options=inv_options, key="tasks_quick_target_queue")
             target_ip = None
             if "(" in selected_dest:
                 target_ip = selected_dest.split(" ")[0].strip()
 
         with col_q2:
-            quick_model = st.selectbox("Base YOLO Model", options=["yolov8n-cls.pt", "yolo26n-cls.pt", "yolov8s-cls.pt"], key="quick_model_sel")
+            quick_model = st.selectbox("Base YOLO Model", options=["yolov8n-cls.pt", "yolo26n-cls.pt", "yolov8s-cls.pt"], key="tasks_quick_model_sel")
 
         with col_q3:
-            quick_dataset = st.text_input("Dataset Path (Samba)", value="/examples/colorball.v8i.multiclass/", key="quick_data_input")
+            quick_dataset = st.text_input("Dataset Path (Samba)", value="/examples/colorball.v8i.multiclass/", key="tasks_quick_data_input")
 
         with col_q4:
-            quick_epochs = st.number_input("Epochs", min_value=1, max_value=5, value=1, step=1, key="quick_epochs_input")
+            quick_epochs = st.number_input("Epochs", min_value=1, max_value=5, value=1, step=1, key="tasks_quick_epochs_input")
 
         # Dynamic Training Duration Estimator (ETA)
         try:
@@ -55,7 +53,7 @@ def render_tasks(api_client: ClusterApiClient, token: str):
         except Exception as ee:
             st.warning(f"Could not estimate duration: {ee}")
 
-        if st.button("🚀 Dispatch Test Now", type="primary", use_container_width=True):
+        if st.button("🚀 Dispatch Test Now", type="primary", use_container_width=True, key="tasks_btn_dispatch"):
             try:
                 res = api_client.quick_launch_task(
                     token=token,
@@ -69,54 +67,177 @@ def render_tasks(api_client: ClusterApiClient, token: str):
             except Exception as qe:
                 st.error(f"Failed to dispatch test: {qe}")
 
-    tab_history, tab_active, tab_metrics = st.tabs([
-        "📜 Study History & Search",
-        "⚡ Active Running Tasks",
-        "📈 Metrics & Learning Curves (Optuna)",
+    tab_queues, tab_active, tab_history, tab_metrics = st.tabs([
+        "📋 Celery Queues & Waitlist",
+        "⚡ Active Tasks & Live Logs",
+        "📜 Study History & Diagnostics",
+        "📈 Optuna Curves & Metrics",
     ])
 
-    # --- TAB 1: Historical Studies with Advanced Filters ---
-    with tab_history:
-        st.markdown("#### 🔍 Advanced Search Filters")
+    # --- TAB 1: Celery Queues & Waitlist Manager ---
+    with tab_queues:
+        st.markdown("#### 📋 Celery Queues & Priority Waitlist")
+        st.caption("Inspect pending tasks across queues, promote priority, or purge waitlisted jobs.")
 
-        # Row 1: Search query & quick 'Only My Studies' toggle
+        try:
+            queues_data = api_client.get_celery_queues(token)
+            q_counts = queues_data.get("queues", {})
+            total_queued = queues_data.get("total_queued", 0)
+            pending_tasks = queues_data.get("tasks", [])
+
+            cols_q = st.columns(max(len(q_counts), 1))
+            for idx, (q_name, count) in enumerate(q_counts.items()):
+                if idx < len(cols_q):
+                    with cols_q[idx]:
+                        st.metric(label=f"Queue: {q_name}", value=count)
+
+            if not pending_tasks:
+                st.info("No pending tasks currently waiting in Celery queues.")
+            else:
+                st.markdown(f"##### Waitlisted Tasks ({len(pending_tasks)} / Total: {total_queued})")
+                for t in pending_tasks:
+                    tid = t.get("task_id", "N/A")
+                    t_study = t.get("study_name", tid)
+                    t_author = t.get("author", "Unknown")
+                    t_prio = t.get("priority", "NORMAL")
+                    t_queue = t.get("queue", "wyolo_gpu_queue")
+                    t_model = t.get("model", "N/A")
+
+                    with st.container(border=True):
+                        col_pt1, col_pt2, col_pt3 = st.columns([3, 1, 1])
+                        with col_pt1:
+                            st.markdown(f"**`{t_study}`** | Priority: `{t_prio}` | Queue: `{t_queue}`")
+                            st.caption(f"Task ID: `{tid}` | Author: `{t_author}` | Model: `{t_model}`")
+                        with col_pt2:
+                            if t_queue != "gpus_high":
+                                if st.button("⚡ Promote to HIGH", key=f"tview_prom_{tid}", use_container_width=True):
+                                    try:
+                                        res = api_client.promote_celery_task(token, tid, target_queue="gpus_high")
+                                        st.success(f"Task promoted: {res.get('status')}")
+                                        st.rerun()
+                                    except Exception as pe:
+                                        st.error(f"Promotion failed: {pe}")
+                        with col_pt3:
+                            if st.button("🗑️ Purge", key=f"tview_del_{tid}", type="secondary", use_container_width=True):
+                                try:
+                                    res = api_client.delete_celery_task(token, tid)
+                                    st.warning(f"Task purged: {res.get('status')}")
+                                    st.rerun()
+                                except Exception as de:
+                                    st.error(f"Purge failed: {de}")
+        except Exception as qe:
+            st.error(f"Failed to load Celery queues: {qe}")
+
+    # --- TAB 2: Active Tasks with Epoch Telemetry and Live Logs ---
+    with tab_active:
+        st.markdown("#### ⚡ Active Running Tasks")
+        st.caption("Real-time progress bars at trial and epoch level, live log streaming, and study cancellation.")
+
+        try:
+            active_tasks = api_client.list_active_tasks(token)
+        except Exception as e:
+            st.error(f"Failed to load active tasks: {e}")
+            active_tasks = []
+
+        if not active_tasks:
+            st.info("No training jobs are currently running on the cluster.")
+        else:
+            for task in active_tasks:
+                study_id = task.get("study_id")
+                study_name = task.get("study_name", study_id)
+                author = task.get("author", "Unknown")
+                dest_node = task.get("destination_node", task.get("invoker", "wyolo_gpu_queue"))
+                model = task.get("model", "N/A")
+                start_time = task.get("start_time", "N/A")
+                progress = task.get("progress", {})
+                completed_trials = progress.get("completed_trials", 0)
+                total_trials = progress.get("total_trials", 1)
+
+                with st.container(border=True):
+                    col_t1, col_t2 = st.columns([3, 1])
+                    with col_t1:
+                        st.markdown(f"### 🎯 Study: `{study_name}`")
+                        st.write(f"• **Submitted by:** `{author}` | **Assigned Node:** `{dest_node}`")
+                        st.write(f"• **Model:** `{model}` | **Dataset:** `{task.get('dataset', 'N/A')}`")
+                        st.write(f"• **Started:** `{start_time}` | **Study ID:** `{study_id}`")
+
+                        if total_trials > 0:
+                            pct = min(completed_trials / total_trials, 1.0)
+                            st.progress(pct, text=f"Trial Progress: {completed_trials}/{total_trials} ({int(pct*100)}%)")
+
+                        # Granular epoch telemetry
+                        epoch_prog = task.get("epoch_progress")
+                        if epoch_prog:
+                            curr_ep = epoch_prog.get("epoch", 0)
+                            tot_ep = max(epoch_prog.get("total_epochs", 1), 1)
+                            ep_pct = min(curr_ep / tot_ep, 1.0)
+                            ep_text = f"Epoch {curr_ep}/{tot_ep}"
+                            if epoch_prog.get("loss") is not None:
+                                ep_text += f" | Loss: {epoch_prog.get('loss'):.4f}"
+                            if epoch_prog.get("top1") is not None:
+                                ep_text += f" | Top-1: {epoch_prog.get('top1')*100:.1f}%"
+                            st.progress(ep_pct, text=ep_text)
+
+                    with col_t2:
+                        st.write(" ")
+                        st.write(" ")
+                        if st.button("🛑 Cancel Study", key=f"tview_cancel_{study_id}", type="secondary", use_container_width=True):
+                            try:
+                                api_client.cancel_task(token, study_id)
+                                st.warning(f"Cancellation signal sent for {study_id}.")
+                                st.rerun()
+                            except Exception as ce:
+                                st.error(f"Failed to cancel: {ce}")
+
+                    # Collapsible Live Logs Viewer
+                    with st.expander(f"📄 Live Logs ({study_id[:8]}...)", expanded=False):
+                        try:
+                            logs_res = api_client.get_task_logs(token, study_id, limit=60)
+                            lines = logs_res.get("logs", logs_res.get("lines", []))
+                            if lines:
+                                st.code("\n".join(lines), language="log")
+                            else:
+                                st.caption("No log stream lines recorded yet.")
+                        except Exception as le:
+                            st.caption(f"Could not load logs: {le}")
+
+    # --- TAB 3: Study History & Diagnostics ---
+    with tab_history:
+        st.markdown("#### 🔍 Historical Studies & Diagnostics")
+
         col_s1, col_s2 = st.columns([3, 1])
         with col_s1:
             search_query = st.text_input(
                 "Text search",
                 placeholder="Search by study name, study ID, dataset, or model...",
-                key="tasks_search_input",
+                key="tview_search_input",
                 label_visibility="collapsed",
             )
         with col_s2:
-            only_mine = st.checkbox("👤 My studies only", value=False, key="cb_only_mine", help="Show only tasks submitted by you")
+            only_mine = st.checkbox("👤 My studies only", value=False, key="tview_cb_only_mine")
 
-        # Retrieve a broad set of studies to extract filter choices dynamically
         try:
             raw_history = api_client.list_task_history(token, limit=100)
         except Exception as he:
             st.error(f"Failed to load study history: {he}")
             raw_history = []
 
-        # Extract available authors and destination nodes
         all_authors = sorted(list({h.get("author", "Unknown") for h in raw_history if h.get("author")}))
         author_options = ["All"] + all_authors
 
         all_nodes = sorted(list({h.get("destination_node", "N/A") for h in raw_history if h.get("destination_node")}))
         node_options = ["All"] + all_nodes
 
-        # Row 2: Secondary filter dropdowns
         col_f1, col_f2, col_f3, col_f4 = st.columns(4)
         with col_f1:
-            sel_author = st.selectbox("Submitter / Author", options=author_options, key="filter_author")
+            sel_author = st.selectbox("Submitter / Author", options=author_options, key="tview_filter_author")
         with col_f2:
-            sel_node = st.selectbox("Assigned Node", options=node_options, key="filter_node")
+            sel_node = st.selectbox("Assigned Node", options=node_options, key="tview_filter_node")
         with col_f3:
-            sel_status = st.selectbox("Status", options=["All", "running", "completed", "failed"], key="filter_status")
+            sel_status = st.selectbox("Status", options=["All", "running", "completed", "failed"], key="tview_filter_status")
         with col_f4:
-            limit_val = st.selectbox("Record Limit", options=[20, 50, 100], index=1, key="filter_limit")
+            limit_val = st.selectbox("Record Limit", options=[20, 50, 100], index=1, key="tview_filter_limit")
 
-        # Apply client-side filters
         filtered_history = raw_history
 
         if only_mine:
@@ -177,20 +298,12 @@ def render_tasks(api_client: ClusterApiClient, token: str):
                 pd.DataFrame(table_data),
                 use_container_width=True,
                 hide_index=True,
-                column_config={
-                    "Study Name": st.column_config.TextColumn(width="medium"),
-                    "Submitted By": st.column_config.TextColumn(width="medium"),
-                    "Target Node": st.column_config.TextColumn(width="medium"),
-                    "Dataset": st.column_config.TextColumn(width="large"),
-                }
             )
 
-            # Detail inspect box
-            st.markdown("##### 🔍 Inspect Study Details")
-            study_choices = [f"{h.get('study_name')} ({h.get('study_id')[:8]})" for h in filtered_history]
-            selected_inspect = st.selectbox("Select a study to view its full configuration:", options=study_choices)
+            st.markdown("##### 🔍 Inspect Study Details & Diagnostics")
+            study_choices = [f"{h.get('study_name', h.get('study_id'))} ({h.get('study_id')[:8]})" for h in filtered_history]
+            selected_inspect = st.selectbox("Select a study to view details:", options=study_choices, key="tview_inspect_sel")
             if selected_inspect:
-                # Find corresponding study
                 selected_idx = study_choices.index(selected_inspect)
                 target_study = filtered_history[selected_idx]
                 col_d1, col_d2 = st.columns([1, 1])
@@ -206,51 +319,31 @@ def render_tasks(api_client: ClusterApiClient, token: str):
                     if target_study.get("error"):
                         st.error(f"Recorded error: {target_study.get('error')}")
 
-    # --- TAB 2: Active Tasks in Progress ---
-    with tab_active:
-        try:
-            active_tasks = api_client.list_active_tasks(token)
-        except Exception as e:
-            st.error(f"Failed to load active tasks: {e}")
-            active_tasks = []
+                # Diagnostics Expander
+                with st.expander("🩺 Root Cause Diagnostics", expanded=(target_study.get("status") == "failed")):
+                    try:
+                        diag = api_client.get_task_diagnostics(token, target_study.get("study_id"))
+                        st.write(f"**Diagnostic Status:** `{diag.get('status')}`")
+                        st.markdown(f"**Root Cause:** {diag.get('root_cause', 'N/A')}")
+                        s_act = diag.get("suggested_action")
+                        if s_act:
+                            st.info(f"💡 **Suggested Action:**\n{s_act}")
+                    except Exception as d_err:
+                        st.caption(f"Diagnostics unavailable: {d_err}")
 
-        if not active_tasks:
-            st.info("No training jobs are currently running on the cluster.")
-        else:
-            for task in active_tasks:
-                study_id = task.get("study_id")
-                study_name = task.get("study_name", study_id)
-                author = task.get("author", "Unknown")
-                dest_node = task.get("destination_node", task.get("invoker", "wyolo_gpu_queue"))
-                model = task.get("model", "N/A")
-                start_time = task.get("start_time", "N/A")
-                progress = task.get("progress", {})
-                completed_trials = progress.get("completed_trials", 0)
-                total_trials = progress.get("total_trials", 1)
+                # Logs Expander
+                with st.expander("📄 Study Execution Logs", expanded=False):
+                    try:
+                        log_res = api_client.get_task_logs(token, target_study.get("study_id"), limit=80)
+                        lines = log_res.get("logs", log_res.get("lines", []))
+                        if lines:
+                            st.code("\n".join(lines), language="log")
+                        else:
+                            st.caption("No log lines stored for this study.")
+                    except Exception as l_err:
+                        st.caption(f"Logs unavailable: {l_err}")
 
-                with st.container(border=True):
-                    col_t1, col_t2 = st.columns([3, 1])
-                    with col_t1:
-                        st.markdown(f"### 🎯 Study: `{study_name}`")
-                        st.write(f"• **Submitted by:** `{author}` | **Assigned Node:** `{dest_node}`")
-                        st.write(f"• **Model:** `{model}` | **Dataset:** `{task.get('dataset', 'N/A')}`")
-                        st.write(f"• **Started:** `{start_time}` | **Study ID:** `{study_id}`")
-
-                        if total_trials > 0:
-                            pct = min(completed_trials / total_trials, 1.0)
-                            st.progress(pct, text=f"Trial Progress: {completed_trials}/{total_trials} ({int(pct*100)}%)")
-                    with col_t2:
-                        st.write(" ")
-                        st.write(" ")
-                        if st.button("🛑 Cancel Study", key=f"btn_cancel_{study_id}", type="secondary"):
-                            try:
-                                api_client.cancel_task(token, study_id)
-                                st.warning(f"Cancellation signal sent for {study_id}.")
-                                st.rerun()
-                            except Exception as ce:
-                                st.error(f"Failed to cancel: {ce}")
-
-    # --- TAB 3: Optuna Metrics & Learning Curves ---
+    # --- TAB 4: Optuna Metrics & Learning Curves ---
     with tab_metrics:
         st.markdown("#### 📈 Learning Curves & Trial Evolution (Optuna)")
         st.caption("Visualize the objective metric (Accuracy / Fitness / mAP50) across trials.")
@@ -265,7 +358,7 @@ def render_tasks(api_client: ClusterApiClient, token: str):
             selected_metric_label = st.selectbox(
                 "Select the study to analyze:",
                 options=list(study_metric_choices.keys()),
-                key="sel_study_metric",
+                key="tview_sel_study_metric",
             )
             selected_metric_id = study_metric_choices[selected_metric_label]
 
