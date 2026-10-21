@@ -33,6 +33,7 @@ class InvokerLimitsUpdate(BaseModel):
     max_gpu_percent: Optional[float] = Field(None, ge=5.0, le=100.0, description="Max GPU/VRAM % (5-100)")
     max_ram: Optional[str] = Field(None, description="Max RAM allocation string (e.g. 16g, 24g)")
     max_cpu_cores: Optional[float] = Field(None, ge=1.0, le=128.0, description="Max CPU cores allocated to executor")
+    shm_size_gb: Optional[float] = Field(None, ge=1.0, le=128.0, description="K8s /dev/shm emptyDir memory limit in GiB")
 
 
 class InvokerPauseRequest(BaseModel):
@@ -45,6 +46,7 @@ class BatchLimitsUpdate(BaseModel):
     max_gpu_percent: Optional[float] = Field(None, ge=5.0, le=100.0)
     max_ram: Optional[str] = None
     max_cpu_cores: Optional[float] = None
+    shm_size_gb: Optional[float] = Field(None, ge=1.0, le=128.0)
     worker_ips: Optional[List[str]] = Field(None, description="Optional target IPs; if empty, applies to all online")
 
 
@@ -64,6 +66,22 @@ class LimitSpecs(BaseModel):
     max_gpu_percent: float
     max_ram: str
     max_cpu_cores: float
+    shm_size_gb: Optional[float] = 8.0
+
+
+class K8sNodeConditions(BaseModel):
+    ready: bool = True
+    disk_pressure: bool = False
+    memory_pressure: bool = False
+    pid_pressure: bool = False
+    network_unavailable: bool = False
+
+
+class K8sGpuPluginStatus(BaseModel):
+    capacity: int = 1
+    allocatable: int = 1
+    allocated: int = 0
+    status: str = "healthy"
 
 
 class InvokerDetailResponse(BaseModel):
@@ -75,6 +93,8 @@ class InvokerDetailResponse(BaseModel):
     orchestration_runtime: Optional[str] = "Docker Standalone"
     physical: PhysicalSpecs
     limits: LimitSpecs
+    k8s_conditions: Optional[K8sNodeConditions] = None
+    k8s_gpu_plugin: Optional[K8sGpuPluginStatus] = None
     last_seen: str
     updated_at: str
 
@@ -96,6 +116,9 @@ class TaskResponse(BaseModel):
     active_trial: Optional[Dict[str, Any]]
     start_time: Optional[str]
     error: Optional[Dict[str, Any]]
+    k8s_pod_name: Optional[str] = None
+    k8s_pod_phase: Optional[str] = None
+    dozzle_url: Optional[str] = None
 
 
 class QuickLaunchRequest(BaseModel):
@@ -402,5 +425,39 @@ class TaskLogsResponse(BaseModel):
     source: str
     logs: List[str]
     total_lines: int
+
+
+# --- K8s Pod Lifecycle & Management Schemas (v1.9.0) ---
+
+class K8sPodEvent(BaseModel):
+    type: str = "Normal"
+    reason: str
+    message: str
+    timestamp: str
+    count: int = 1
+
+
+class K8sPodEventsResponse(BaseModel):
+    study_id: str
+    pod_name: str
+    worker_ip: Optional[str] = None
+    phase: str
+    events: List[K8sPodEvent]
+    total_events: int
+
+
+class KillPodResponse(BaseModel):
+    study_id: str
+    pod_name: str
+    worker_ip: Optional[str] = None
+    status: str
+    message: str
+
+
+class K8sPurgeResponse(BaseModel):
+    status: str
+    purged_pods_count: int
+    purged_pods: List[str]
+    details: str
 
 
