@@ -2,11 +2,16 @@
 
 import streamlit as st
 from frontend.api_client import ClusterApiClient
+from frontend.styles import render_page_header
 
 
 def render_settings(api_client: ClusterApiClient, token: str):
     """Renders global cluster batch controls and user account settings."""
-    st.title("🛠️ Global Cluster & Account Settings")
+    render_page_header(
+        title="Cluster Administration & System Settings",
+        subtitle="Global resource quotas, Day/Night scheduling policies, webhook alerting channels, and support bundle exports.",
+        badge_text="System Control",
+    )
 
     col_batch, col_account = st.columns(2, gap="large")
 
