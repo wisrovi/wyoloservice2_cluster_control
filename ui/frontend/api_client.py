@@ -374,4 +374,62 @@ class ClusterApiClient:
             return resp.json()
         raise ValueError(resp.json().get("detail", "Error getting cluster capabilities"))
 
+    # --- Cluster Admin v1.7.0 Client Methods ---
+
+    def get_node_gpu_processes(self, token: str, worker_ip: str) -> Dict[str, Any]:
+        """Fetches live GPU compute processes and zombie indicators for a worker node."""
+        url = f"{self.base_url}/api/v1/invokers/{worker_ip}/processes"
+        resp = requests.get(url, headers=self._headers(token), timeout=5)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", f"Error getting GPU processes for {worker_ip}"))
+
+    def kill_node_gpu_process(self, token: str, worker_ip: str, pid: int) -> Dict[str, Any]:
+        """Terminates a rogue or zombie GPU process on an invoker node."""
+        url = f"{self.base_url}/api/v1/invokers/{worker_ip}/kill-process/{pid}"
+        resp = requests.post(url, headers=self._headers(token), timeout=10)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", f"Error killing process {pid} on {worker_ip}"))
+
+    def get_celery_queues(self, token: str) -> Dict[str, Any]:
+        """Fetches Celery task queues inspection across priority queues."""
+        url = f"{self.base_url}/api/v1/tasks/queues"
+        resp = requests.get(url, headers=self._headers(token), timeout=5)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", "Error fetching Celery queues"))
+
+    def promote_celery_task(self, token: str, task_id: str, target_queue: str = "gpus_high") -> Dict[str, Any]:
+        """Promotes a pending Celery task to a higher priority queue."""
+        url = f"{self.base_url}/api/v1/tasks/queues/{task_id}/promote"
+        resp = requests.post(url, headers=self._headers(token), json={"target_queue": target_queue}, timeout=5)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", f"Error promoting task {task_id}"))
+
+    def delete_celery_task(self, token: str, task_id: str) -> Dict[str, Any]:
+        """Removes a pending task from the Celery queue."""
+        url = f"{self.base_url}/api/v1/tasks/queues/{task_id}"
+        resp = requests.delete(url, headers=self._headers(token), timeout=5)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", f"Error deleting task {task_id}"))
+
+    def get_task_logs(self, token: str, study_id: str, limit: int = 100) -> Dict[str, Any]:
+        """Fetches live streaming logs for an active or completed training task."""
+        url = f"{self.base_url}/api/v1/tasks/{study_id}/logs"
+        resp = requests.get(url, headers=self._headers(token), params={"limit": limit}, timeout=5)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", f"Error fetching logs for {study_id}"))
+
+    def get_task_diagnostics(self, token: str, study_id: str) -> Dict[str, Any]:
+        """Fetches automated post-mortem root cause diagnostic for a task."""
+        url = f"{self.base_url}/api/v1/tasks/{study_id}/diagnostics"
+        resp = requests.get(url, headers=self._headers(token), timeout=5)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", f"Error fetching diagnostics for {study_id}"))
+
 
