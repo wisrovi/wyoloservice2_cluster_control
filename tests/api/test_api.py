@@ -394,5 +394,101 @@ def test_authenticated_cluster_endpoints(client):
     assert "k8s_conditions" in node_detail
     assert "k8s_gpu_plugin" in node_detail
 
+    # 36. v2.0.0 Optuna Sweeps List & Cancel
+    resp_sweeps = client.get("/api/v1/tasks/sweeps", headers=headers)
+    assert resp_sweeps.status_code == 200, f"Expected 200, got {resp_sweeps.status_code}"
+    sweeps_data = resp_sweeps.json()
+    assert "total_sweeps" in sweeps_data
+    assert "sweeps" in sweeps_data
+
+    resp_cancel_sweep = client.post("/api/v1/tasks/sweeps/test_sweep_01/cancel", headers=headers)
+    assert resp_cancel_sweep.status_code == 200, f"Expected 200, got {resp_cancel_sweep.status_code}"
+    assert resp_cancel_sweep.json()["status"] == "success"
+
+    # 37. v2.0.0 Cluster Docker/K8s Image Status & Broadcast Pull
+    resp_img_status = client.get("/api/v1/cluster/images/status", headers=headers)
+    assert resp_img_status.status_code == 200, f"Expected 200, got {resp_img_status.status_code}"
+    img_data = resp_img_status.json()
+    assert "target_image" in img_data
+    assert "synchronized_nodes" in img_data
+    assert "nodes" in img_data
+
+    resp_broadcast_pull = client.post("/api/v1/cluster/images/broadcast-pull", headers=headers)
+    assert resp_broadcast_pull.status_code == 200, f"Expected 200, got {resp_broadcast_pull.status_code}"
+    bp_data = resp_broadcast_pull.json()
+    assert bp_data["status"] == "dispatched"
+    assert "celery@NAS_Train_service" in bp_data["excluded_nodes"]
+
+    # 38. v2.0.0 Dataset Inspect & Available Datasets
+    resp_avail_ds = client.get("/api/v1/cluster/datasets/available", headers=headers)
+    assert resp_avail_ds.status_code == 200, f"Expected 200, got {resp_avail_ds.status_code}"
+    assert "datasets" in resp_avail_ds.json()
+
+    resp_inspect_ds = client.get("/api/v1/cluster/datasets/inspect?dataset_path=/examples/test_dataset", headers=headers)
+    assert resp_inspect_ds.status_code == 200, f"Expected 200, got {resp_inspect_ds.status_code}"
+    ds_data = resp_inspect_ds.json()
+    assert "valid" in ds_data
+    assert "data_yaml_exists" in ds_data
+
+    resp_validate_ds = client.post("/api/v1/cluster/datasets/validate", headers=headers, json={"dataset_path": "/examples/test_dataset"})
+    assert resp_validate_ds.status_code == 200, f"Expected 200, got {resp_validate_ds.status_code}"
+
+    # 39. v2.0.0 DLQ Quarantine List, Retry, and Purge
+    resp_dlq = client.get("/api/v1/tasks/quarantine", headers=headers)
+    assert resp_dlq.status_code == 200, f"Expected 200, got {resp_dlq.status_code}"
+    dlq_data = resp_dlq.json()
+    assert "total_quarantined" in dlq_data
+    assert "tasks" in dlq_data
+
+    resp_retry_dlq = client.post("/api/v1/tasks/quarantine/task-dlq-01/retry", headers=headers)
+    assert resp_retry_dlq.status_code == 200, f"Expected 200, got {resp_retry_dlq.status_code}"
+    assert resp_retry_dlq.json()["action"] == "retry"
+
+    resp_purge_dlq = client.delete("/api/v1/tasks/quarantine/task-dlq-01", headers=headers)
+    assert resp_purge_dlq.status_code == 200, f"Expected 200, got {resp_purge_dlq.status_code}"
+    assert resp_purge_dlq.json()["action"] == "purge"
+
+    # 40. v2.0.0 Day/Night Scheduler Policy Get, Update, and Apply
+    resp_sched_get = client.get("/api/v1/cluster/scheduler/policy", headers=headers)
+    assert resp_sched_get.status_code == 200, f"Expected 200, got {resp_sched_get.status_code}"
+    sched_data = resp_sched_get.json()
+    assert "policy" in sched_data
+    assert "current_mode" in sched_data
+
+    resp_sched_set = client.post(
+        "/api/v1/cluster/scheduler/policy",
+        headers=headers,
+        json={
+            "enabled": True,
+            "office_start_hour": 9,
+            "office_end_hour": 18,
+            "office_max_gpu_percent": 30.0,
+            "night_max_gpu_percent": 95.0,
+            "weekend_full_throttle": True,
+            "target_worker_ips": ["192.168.1.68"],
+        },
+    )
+    assert resp_sched_set.status_code == 200, f"Expected 200, got {resp_sched_set.status_code}"
+
+    resp_sched_apply = client.post("/api/v1/cluster/scheduler/apply-policy", headers=headers)
+    assert resp_sched_apply.status_code == 200, f"Expected 200, got {resp_sched_apply.status_code}"
+    assert "applied_gpu_percent" in resp_sched_apply.json()
+
+    # 41. v2.0.0 Diagnostic Support Bundle Exporter
+    resp_bundle = client.get("/api/v1/cluster/support-bundle", headers=headers)
+    assert resp_bundle.status_code == 200, f"Expected 200, got {resp_bundle.status_code}"
+    b_data = resp_bundle.json()
+    assert "bundle_id" in b_data
+    assert "cluster_overview" in b_data
+    assert "invokers_snapshot" in b_data
+    assert "active_tasks" in b_data
+
+    # 42. v2.0.0 Rich Webhook Embed Tester
+    resp_rich_wh = client.post("/api/v1/cluster/webhook/test-rich", headers=headers, json={"event_type": "study_completed"})
+    assert resp_rich_wh.status_code == 200, f"Expected 200, got {resp_rich_wh.status_code}"
+    wh_res = resp_rich_wh.json()
+    assert wh_res["status"] == "success"
+    assert "payload_preview" in wh_res
+
 
 
