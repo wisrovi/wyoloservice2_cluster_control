@@ -359,4 +359,40 @@ def test_authenticated_cluster_endpoints(client):
     assert "dispatched_nodes" in smoke_data
     assert "results" in smoke_data
 
+    # 32. v1.9.0 K8s Pod Events
+    resp_k8s_events = client.get(f"/api/v1/tasks/{study_id}/k8s-events", headers=headers)
+    assert resp_k8s_events.status_code == 200, f"Expected 200, got {resp_k8s_events.status_code}"
+    k8s_ev_data = resp_k8s_events.json()
+    assert "study_id" in k8s_ev_data
+    assert "events" in k8s_ev_data
+    assert "pod_name" in k8s_ev_data
+    assert len(k8s_ev_data["events"]) > 0
+
+    # 33. v1.9.0 Kill/Evict K8s Pod
+    resp_kill_pod = client.post(f"/api/v1/tasks/{study_id}/kill-pod", headers=headers)
+    assert resp_kill_pod.status_code == 200, f"Expected 200, got {resp_kill_pod.status_code}"
+    kill_pod_data = resp_kill_pod.json()
+    assert kill_pod_data["status"] == "success"
+    assert "pod_name" in kill_pod_data
+
+    # 34. v1.9.0 Purge Stale K8s Pods
+    resp_purge_pods = client.post("/api/v1/cluster/k8s/purge-stale-pods", headers=headers)
+    assert resp_purge_pods.status_code == 200, f"Expected 200, got {resp_purge_pods.status_code}"
+    purge_data = resp_purge_pods.json()
+    assert purge_data["status"] == "success"
+    assert "purged_pods_count" in purge_data
+
+    # 35. v1.9.0 K8s Node Conditions & Shared Memory (/dev/shm) Update
+    resp_shm_update = client.put(
+        "/api/v1/invokers/192.168.1.68/limits",
+        headers=headers,
+        json={"max_gpu_percent": 85.0, "max_ram": "24g", "max_cpu_cores": 8.0, "shm_size_gb": 16.0},
+    )
+    assert resp_shm_update.status_code == 200, f"Expected 200, got {resp_shm_update.status_code}"
+    node_detail = resp_shm_update.json()["data"]
+    assert node_detail["limits"]["shm_size_gb"] == 16.0
+    assert "k8s_conditions" in node_detail
+    assert "k8s_gpu_plugin" in node_detail
+
+
 
