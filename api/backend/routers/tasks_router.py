@@ -9,12 +9,16 @@ from backend.schemas import (
     K8sPodEventsResponse,
     KillPodResponse,
     PromoteTaskRequest,
+    QuarantineActionResponse,
+    QuarantineListResponse,
     QueueStatusResponse,
     QuickLaunchRequest,
     ReassignTaskRequest,
     ReproducibilityResponse,
     StudyCompareRequest,
     StudyCompareResponse,
+    SweepActionResponse,
+    SweepsListResponse,
     TaskDiagnosticsResponse,
     TaskLogsResponse,
 )
@@ -218,5 +222,52 @@ async def kill_task_pod(
     """Dispatches an immediate K8s Pod eviction / termination signal (gracePeriodSeconds: 0)."""
     repo = ClusterRepository()
     return repo.kill_task_pod(study_id, user=current_user)
+
+
+# --- Enterprise Sweeps & DLQ Quarantine Endpoints (v2.0.0) ---
+
+@router.get("/sweeps", response_model=SweepsListResponse)
+async def get_optuna_sweeps(current_user: str = Depends(get_current_user)):
+    """Retrieves all aggregated Optuna sweeps, trials, and convergence metrics."""
+    repo = ClusterRepository()
+    return repo.list_optuna_sweeps()
+
+
+@router.post("/sweeps/{sweep_name}/cancel", response_model=SweepActionResponse)
+async def cancel_optuna_sweep(
+    sweep_name: str,
+    current_user: str = Depends(get_current_user),
+):
+    """Cancels all active trials running under a specific Optuna sweep."""
+    repo = ClusterRepository()
+    return repo.cancel_optuna_sweep(sweep_name, user=current_user)
+
+
+@router.get("/quarantine", response_model=QuarantineListResponse)
+async def get_quarantined_tasks(current_user: str = Depends(get_current_user)):
+    """Retrieves tasks isolated in the Dead Letter Queue (DLQ)."""
+    repo = ClusterRepository()
+    return repo.list_quarantined_tasks()
+
+
+@router.post("/quarantine/{task_id}/retry", response_model=QuarantineActionResponse)
+async def retry_quarantined_task(
+    task_id: str,
+    current_user: str = Depends(get_current_user),
+):
+    """Releases a quarantined task from DLQ and reschedules it for execution."""
+    repo = ClusterRepository()
+    return repo.retry_quarantined_task(task_id, user=current_user)
+
+
+@router.delete("/quarantine/{task_id}", response_model=QuarantineActionResponse)
+async def purge_quarantined_task(
+    task_id: str,
+    current_user: str = Depends(get_current_user),
+):
+    """Permanently purges a poisoned task from the Dead Letter Queue."""
+    repo = ClusterRepository()
+    return repo.purge_quarantined_task(task_id, user=current_user)
+
 
 
