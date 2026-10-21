@@ -321,4 +321,42 @@ def test_authenticated_cluster_endpoints(client):
     assert "pid" in kill_data
     assert "status" in kill_data
 
+    # 28. v1.8.0 Reassign Task Queue
+    resp_reassign = client.post(
+        "/api/v1/tasks/queues/non-existent-task-id/reassign",
+        headers=headers,
+        json={"target_queue": "wyolo_gpu_queue"},
+    )
+    assert resp_reassign.status_code in [200, 404]
+
+    # Verify enhanced queue fields
+    assert "global_queues" in queues_data
+    assert "node_queues" in queues_data
+    assert "author_breakdown" in queues_data
+    assert "backlog_eta_minutes" in queues_data
+    assert "jam_alert" in queues_data
+
+    # 29. v1.8.0 Remote Node Service Restart
+    resp_restart = client.post("/api/v1/invokers/192.168.1.68/restart-service", headers=headers)
+    assert resp_restart.status_code == 200, f"Expected 200, got {resp_restart.status_code}"
+    restart_data = resp_restart.json()
+    assert restart_data["operation"] == "restart_service"
+    assert "status" in restart_data
+
+    # 30. v1.8.0 Remote Node Docker Prune
+    resp_prune = client.post("/api/v1/invokers/192.168.1.68/prune-docker", headers=headers)
+    assert resp_prune.status_code == 200, f"Expected 200, got {resp_prune.status_code}"
+    prune_data = resp_prune.json()
+    assert prune_data["operation"] == "docker_prune"
+    assert "status" in prune_data
+
+    # 31. v1.8.0 Cluster Smoke Test
+    resp_smoke = client.post("/api/v1/cluster/smoke-test", headers=headers)
+    assert resp_smoke.status_code == 200, f"Expected 200, got {resp_smoke.status_code}"
+    smoke_data = resp_smoke.json()
+    assert "status" in smoke_data
+    assert "total_nodes" in smoke_data
+    assert "dispatched_nodes" in smoke_data
+    assert "results" in smoke_data
+
 
