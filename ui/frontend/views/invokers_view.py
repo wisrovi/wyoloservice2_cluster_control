@@ -167,6 +167,27 @@ def render_invokers(api_client: ClusterApiClient, token: str):
                 st.write(f"• **Orchestration Runtime:** `{inv.get('orchestration_runtime', 'Docker Standalone')}`")
                 st.caption(f"Last sync: {inv.get('updated_at', 'N/A')}")
 
+                # NVML Live GPU Telemetry
+                temp_c = physical.get("gpu_temp_c")
+                power_w = physical.get("gpu_power_watts")
+                tdp_w = physical.get("gpu_tdp_watts")
+                util_pct = physical.get("gpu_compute_util_pct")
+
+                if temp_c is not None or power_w is not None or util_pct is not None:
+                    st.markdown("##### 🌡️ NVML Telemetría en Vivo")
+                    col_nv1, col_nv2, col_nv3 = st.columns(3)
+                    with col_nv1:
+                        t_val = temp_c if temp_c is not None else 0.0
+                        t_color = "🟢" if t_val < 70 else ("🟡" if t_val < 80 else "🔴")
+                        st.metric("Temperatura", f"{t_val:.1f} °C", delta=f"{t_color} Normal" if t_val < 75 else f"{t_color} Caliente", delta_color="off")
+                    with col_nv2:
+                        p_val = power_w if power_w is not None else 0.0
+                        tdp_val = tdp_w if tdp_w is not None else 250.0
+                        st.metric("Potencia (Watts)", f"{p_val:.0f} W / {tdp_val:.0f} W", help="Consumo vs Límite TDP")
+                    with col_nv3:
+                        u_val = util_pct if util_pct is not None else 0.0
+                        st.metric("Cómputo GPU", f"{u_val:.0f}%", help="Utilización de núcleos CUDA")
+
                 # Status Banner
                 st.markdown("##### ⏯️ Public Queue Status & Control")
                 if pause_state == "active":
@@ -231,6 +252,24 @@ def render_invokers(api_client: ClusterApiClient, token: str):
                             st.markdown("**Suggested Actions:**")
                             for act in diag["suggested_actions"]:
                                 st.markdown(f"- `{act}`")
+
+                # Remote Node Maintenance
+                st.markdown("##### 🛠️ Mantenimiento Remoto")
+                col_rem1, col_rem2 = st.columns(2)
+                with col_rem1:
+                    if st.button("🔄 Reiniciar Servicio", key=f"btn_restart_{worker_ip}", use_container_width=True, help="Reinicia el daemon de wyoloservice2_invoker mediante Celery"):
+                        try:
+                            r_res = api_client.restart_node_service(token, worker_ip)
+                            st.info(r_res.get("message", "Señal enviada"))
+                        except Exception as re_e:
+                            st.error(f"Error: {re_e}")
+                with col_rem2:
+                    if st.button("🧹 Prune Docker", key=f"btn_prune_{worker_ip}", use_container_width=True, help="Ejecuta docker system prune -f para liberar espacio en disco"):
+                        try:
+                            p_res = api_client.prune_node_docker(token, worker_ip)
+                            st.success(p_res.get("message", "Docker saneado"))
+                        except Exception as pr_e:
+                            st.error(f"Error: {pr_e}")
 
             with col_controls:
                 st.markdown("#### ⚡ Dynamic Resource Allocation")
