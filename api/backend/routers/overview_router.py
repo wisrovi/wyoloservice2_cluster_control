@@ -13,6 +13,7 @@ from backend.schemas import (
     ElectricityRateUpdate,
     FinOpsReportResponse,
     GreenAiMetricsResponse,
+    K8sPurgeResponse,
     SmokeTestResponse,
     WatchdogAlertResponse,
     WebhookConfigRequest,
@@ -181,6 +182,14 @@ async def run_cluster_smoke_test(current_user: str = Depends(get_current_user)):
     """Executes a 1-click comprehensive smoke test across all online invoker nodes."""
     repo = ClusterRepository()
     return repo.run_cluster_smoke_test(user=current_user)
+
+
+@router.post("/k8s/purge-stale-pods", response_model=K8sPurgeResponse)
+async def purge_stale_k8s_pods(current_user: str = Depends(get_current_user)):
+    """Purges stale, failed, evicted, or terminating K8s pods across all invokers."""
+    repo = ClusterRepository()
+    return repo.purge_stale_k8s_pods(user=current_user)
+
 
 
 
