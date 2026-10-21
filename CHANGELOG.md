@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0] - 2026-10-21
+
+### Added
+- **Clean & Intelligent Celery Queue Architecture:** Overhauled waitlist inspection with 5 human-readable KPI metric cards (`wyolo_gpu_queue`, `gpus_high`, `gpus_low`, Node-Targeted, Backlog ETA), suppressing technical queues (`managers`, `*.pidbox`) and empty node queues.
+- **Task Re-router & Re-queue:** Added `POST /api/v1/tasks/queues/{task_id}/reassign` enabling instant reassignment of tasks stuck in private worker node queues directly to the shared public pool (`wyolo_gpu_queue`) or another node.
+- **Backlog Clearance Estimator & Queue Jam Alert:** Real-time computation of backlog clearance duration based on active worker throughput, paired with proactive detection of queue stalls when tasks are waiting while nodes are paused/offline, including a 1-click "▶️ Reanudar Todos los Nodos" button.
+- **Remote Invoker Operations:** Added endpoints `POST /api/v1/invokers/{worker_ip}/restart-service` and `POST /api/v1/invokers/{worker_ip}/prune-docker` with interactive UI controls for remote Celery daemon reboot and container disk space reclamation.
+- **Live NVML GPU Telemetry:** Added GPU temperature (°C), live power consumption (Watts vs TDP), and CUDA compute utilization (%) to physical hardware cards with thermal alert badges.
+- **1-Click Cluster Smoke Test:** Added `POST /api/v1/cluster/smoke-test` and Operations Center readiness matrix validating Samba CIFS mounts, MinIO S3 accessibility, and GPU availability across all online nodes.
+- **Author Waitlist Breakdown & Filtering:** Aggregated pending tasks by submitting researcher with interactive filtering controls.
+
+### Changed
+- Bumped project version to `1.8.0` across backend, frontend, Docker Compose, and documentation.
+
 ## [1.7.0] - 2026-10-21
 
 ### Added
