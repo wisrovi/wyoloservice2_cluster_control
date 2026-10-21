@@ -13,6 +13,7 @@ from backend.schemas import (
     ElectricityRateUpdate,
     FinOpsReportResponse,
     GreenAiMetricsResponse,
+    SmokeTestResponse,
     WatchdogAlertResponse,
     WebhookConfigRequest,
 )
@@ -173,5 +174,13 @@ async def get_cluster_capabilities(current_user: str = Depends(get_current_user)
     """Admin catalog of official R&D modules, execution engines and extension tiers."""
     repo = ClusterRepository()
     return repo.get_cluster_capabilities()
+
+
+@router.post("/smoke-test", response_model=SmokeTestResponse)
+async def run_cluster_smoke_test(current_user: str = Depends(get_current_user)):
+    """Executes a 1-click comprehensive smoke test across all online invoker nodes."""
+    repo = ClusterRepository()
+    return repo.run_cluster_smoke_test(user=current_user)
+
 
 
