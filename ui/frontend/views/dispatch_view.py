@@ -3,12 +3,16 @@
 import pandas as pd
 import streamlit as st
 from frontend.api_client import ClusterApiClient
+from frontend.styles import render_page_header
 
 
 def render_dispatch(api_client: ClusterApiClient, token: str):
     """Renders smart task dispatcher, duration estimator, and active training progress."""
-    st.title("🚀 Smart Dispatch & Active Tasks")
-    st.caption("Launch training jobs with smart node recommendations and monitor active tasks in real time.")
+    render_page_header(
+        title="Smart Dispatch & Training Launcher",
+        subtitle="Orchestrate training runs with AI node matching, pre-flight dataset verification, and live ETA estimation.",
+        badge_text="Scheduler Studio",
+    )
 
     current_user = st.session_state.get("username", "wisrovi")
 
