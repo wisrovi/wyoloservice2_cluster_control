@@ -6,15 +6,25 @@ from backend.auth import get_current_user
 from backend.redis_client import ClusterRepository
 from backend.schemas import (
     AuditLogResponse,
+    AvailableDatasetsResponse,
+    BroadcastPullResponse,
     ClusterCapabilitiesResponse,
     ClusterHealthResponse,
+    ClusterImagesResponse,
     ClusterOverviewResponse,
     ClusterStorageResponse,
+    DatasetInspectionResponse,
+    DatasetValidationRequest,
     ElectricityRateUpdate,
     FinOpsReportResponse,
     GreenAiMetricsResponse,
     K8sPurgeResponse,
+    RichWebhookResponse,
+    RichWebhookTestRequest,
+    SchedulerPolicy,
+    SchedulerPolicyResponse,
     SmokeTestResponse,
+    SupportBundleResponse,
     WatchdogAlertResponse,
     WebhookConfigRequest,
 )
@@ -189,6 +199,100 @@ async def purge_stale_k8s_pods(current_user: str = Depends(get_current_user)):
     """Purges stale, failed, evicted, or terminating K8s pods across all invokers."""
     repo = ClusterRepository()
     return repo.purge_stale_k8s_pods(user=current_user)
+
+
+# --- Enterprise Management Suite Endpoints (v2.0.0) ---
+
+@router.get("/images/status", response_model=ClusterImagesResponse)
+async def get_cluster_images_status(
+    target_image: str = Query("wisrovi/train_service:worker_executor_v1.0.0"),
+    current_user: str = Depends(get_current_user),
+):
+    """Returns Docker/K8s image synchronization status across all cluster invokers."""
+    repo = ClusterRepository()
+    return repo.get_cluster_images_status(target_image=target_image)
+
+
+@router.post("/images/broadcast-pull", response_model=BroadcastPullResponse)
+async def broadcast_docker_pull(
+    target_image: str = Query("wisrovi/train_service:worker_executor_v1.0.0"),
+    current_user: str = Depends(get_current_user),
+):
+    """Triggers cluster-wide broadcast docker pull strictly excluding the NAS manager."""
+    repo = ClusterRepository()
+    return repo.trigger_broadcast_docker_pull(target_image=target_image, user=current_user)
+
+
+@router.get("/datasets/inspect", response_model=DatasetInspectionResponse)
+async def inspect_dataset(
+    dataset_path: str = Query(..., description="Path to dataset directory"),
+    current_user: str = Depends(get_current_user),
+):
+    """Pre-flight check for dataset directory validating data.yaml, class counts, and train/val splits."""
+    repo = ClusterRepository()
+    return repo.inspect_dataset(dataset_path=dataset_path)
+
+
+@router.post("/datasets/validate", response_model=DatasetInspectionResponse)
+async def validate_dataset(
+    payload: DatasetValidationRequest,
+    current_user: str = Depends(get_current_user),
+):
+    """Validates dataset path and splits prior to study dispatch."""
+    repo = ClusterRepository()
+    return repo.inspect_dataset(dataset_path=payload.dataset_path)
+
+
+@router.get("/datasets/available", response_model=AvailableDatasetsResponse)
+async def get_available_datasets(
+    base_path: str = Query("/examples"),
+    current_user: str = Depends(get_current_user),
+):
+    """Discovers available datasets on local filesystem and CIFS mounts."""
+    repo = ClusterRepository()
+    return repo.list_available_datasets(base_path=base_path)
+
+
+@router.get("/scheduler/policy", response_model=SchedulerPolicyResponse)
+async def get_scheduler_policy(current_user: str = Depends(get_current_user)):
+    """Retrieves the Day/Night automated scheduler policy and active mode."""
+    repo = ClusterRepository()
+    return repo.get_scheduler_policy()
+
+
+@router.post("/scheduler/policy", response_model=SchedulerPolicyResponse)
+async def update_scheduler_policy(
+    payload: SchedulerPolicy,
+    current_user: str = Depends(get_current_user),
+):
+    """Configures and saves Day/Night scheduling profiles in Redis."""
+    repo = ClusterRepository()
+    return repo.set_scheduler_policy(payload.model_dump(), user=current_user)
+
+
+@router.post("/scheduler/apply-policy")
+async def apply_scheduler_policy(current_user: str = Depends(get_current_user)):
+    """Enforces current day/night schedule profile across all target invoker nodes immediately."""
+    repo = ClusterRepository()
+    return repo.apply_scheduler_policy(user=current_user)
+
+
+@router.get("/support-bundle", response_model=SupportBundleResponse)
+async def get_support_bundle(current_user: str = Depends(get_current_user)):
+    """Generates an exportable JSON diagnostic support bundle for offline debugging."""
+    repo = ClusterRepository()
+    return repo.generate_support_bundle(user=current_user)
+
+
+@router.post("/webhook/test-rich", response_model=RichWebhookResponse)
+async def test_rich_webhook(
+    payload: RichWebhookTestRequest,
+    current_user: str = Depends(get_current_user),
+):
+    """Tests rich Discord/Slack embed notification delivery."""
+    repo = ClusterRepository()
+    return repo.send_rich_webhook(event_type=payload.event_type, webhook_url=payload.webhook_url)
+
 
 
 
