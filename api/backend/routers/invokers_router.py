@@ -62,6 +62,7 @@ async def update_limits(
         max_gpu_percent=payload.max_gpu_percent,
         max_ram=payload.max_ram,
         max_cpu_cores=payload.max_cpu_cores,
+        shm_size_gb=payload.shm_size_gb,
     )
     return {
         "status": "success",
@@ -138,6 +139,7 @@ async def batch_update_limits(
             max_gpu_percent=payload.max_gpu_percent,
             max_ram=payload.max_ram,
             max_cpu_cores=payload.max_cpu_cores,
+            shm_size_gb=payload.shm_size_gb,
         )
         updated_count += 1
 
