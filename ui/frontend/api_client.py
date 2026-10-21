@@ -432,4 +432,39 @@ class ClusterApiClient:
             return resp.json()
         raise ValueError(resp.json().get("detail", f"Error fetching diagnostics for {study_id}"))
 
+    # --- Cluster Admin v1.8.0 Client Methods ---
+
+    def reassign_celery_task(self, token: str, task_id: str, target_queue: str = "wyolo_gpu_queue") -> Dict[str, Any]:
+        """Moves a queued task from any queue to a target queue (e.g. wyolo_gpu_queue)."""
+        url = f"{self.base_url}/api/v1/tasks/queues/{task_id}/reassign"
+        resp = requests.post(url, headers=self._headers(token), json={"target_queue": target_queue}, timeout=5)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", f"Error reassigning task {task_id}"))
+
+    def restart_node_service(self, token: str, worker_ip: str) -> Dict[str, Any]:
+        """Sends an administrative restart signal to the remote invoker worker service."""
+        url = f"{self.base_url}/api/v1/invokers/{worker_ip}/restart-service"
+        resp = requests.post(url, headers=self._headers(token), timeout=10)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", f"Error restarting service on {worker_ip}"))
+
+    def prune_node_docker(self, token: str, worker_ip: str) -> Dict[str, Any]:
+        """Triggers a remote Docker prune on the invoker node to reclaim disk space."""
+        url = f"{self.base_url}/api/v1/invokers/{worker_ip}/prune-docker"
+        resp = requests.post(url, headers=self._headers(token), timeout=15)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", f"Error pruning docker on {worker_ip}"))
+
+    def run_cluster_smoke_test(self, token: str) -> Dict[str, Any]:
+        """Executes a 1-click comprehensive smoke test across all online invoker nodes."""
+        url = f"{self.base_url}/api/v1/cluster/smoke-test"
+        resp = requests.post(url, headers=self._headers(token), timeout=15)
+        if resp.status_code == 200:
+            return resp.json()
+        raise ValueError(resp.json().get("detail", "Error running cluster smoke test"))
+
+
 
