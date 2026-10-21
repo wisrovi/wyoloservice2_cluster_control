@@ -15,6 +15,7 @@ from backend.schemas import (
     KillProcessResponse,
     NodeDiagnosticResponse,
     NodeGpuProcessesResponse,
+    RemoteOperationResponse,
 )
 
 
@@ -188,4 +189,37 @@ async def kill_node_gpu_process(
             detail=f"Invoker {worker_ip} not found",
         )
     return repo.kill_node_gpu_process(worker_ip=worker_ip, pid=pid, user=current_user)
+
+
+@router.post("/{worker_ip}/restart-service", response_model=RemoteOperationResponse)
+async def restart_node_service(
+    worker_ip: str,
+    current_user: str = Depends(get_current_user),
+):
+    """Sends a remote restart signal to the invoker worker service."""
+    repo = ClusterRepository()
+    existing = repo.get_invoker(worker_ip)
+    if not existing:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Invoker {worker_ip} not found",
+        )
+    return repo.restart_node_service(worker_ip, user=current_user)
+
+
+@router.post("/{worker_ip}/prune-docker", response_model=RemoteOperationResponse)
+async def prune_node_docker(
+    worker_ip: str,
+    current_user: str = Depends(get_current_user),
+):
+    """Triggers an administrative Docker system prune on the remote invoker to free up disk space."""
+    repo = ClusterRepository()
+    existing = repo.get_invoker(worker_ip)
+    if not existing:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Invoker {worker_ip} not found",
+        )
+    return repo.prune_node_docker(worker_ip, user=current_user)
+
 
