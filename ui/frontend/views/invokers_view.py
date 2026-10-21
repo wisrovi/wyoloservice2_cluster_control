@@ -3,12 +3,16 @@
 import re
 import streamlit as st
 from frontend.api_client import ClusterApiClient
+from frontend.styles import render_page_header
 
 
 def render_invokers(api_client: ClusterApiClient, token: str):
     """Renders the invokers management view with multi-field filters, presets and controls."""
-    st.title("⚙️ Invoker Resource Management")
-    st.caption("Adjust GPU, RAM, and CPU limits in real time, apply predefined profiles, and manage queues.")
+    render_page_header(
+        title="Invoker Nodes & Resource Allocation",
+        subtitle="Fine-tune compute profiles (VRAM, RAM, CPU), inspect live NVML thermals, and orchestrate queues.",
+        badge_text="Compute Fabric",
+    )
 
     try:
         invokers = api_client.list_invokers(token)
