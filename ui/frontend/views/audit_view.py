@@ -3,12 +3,16 @@
 import pandas as pd
 import streamlit as st
 from frontend.api_client import ClusterApiClient
+from frontend.styles import render_page_header
 
 
 def render_audit(api_client: ClusterApiClient, token: str):
     """Renders the Cluster Audit Trail, Security and Administrative Events dashboard."""
-    st.markdown("## 📜 Audit & Security Log")
-    st.caption("Immutable traceability of every administrative action performed on the cluster (limit changes, pauses, drains, purges).")
+    render_page_header(
+        title="Audit Trail & Security Governance",
+        subtitle="Immutable chronological ledger of all operator interventions, resource limit modifications, and security actions.",
+        badge_text="Security Audit",
+    )
 
     tab_timeline, tab_security = st.tabs([
         "🕒 Administrative Operations Timeline",
