@@ -135,6 +135,32 @@ def render_history(api_client: ClusterApiClient, token: str):
                     except Exception as rpe:
                         st.warning(f"Could not generate the reproducibility manifest: {rpe}")
 
+                # Root Cause Diagnostics Expander
+                with st.expander("🩺 Root Cause Failure Diagnostics", expanded=(target_study.get("status") == "failed")):
+                    try:
+                        diag = api_client.get_task_diagnostics(token, target_study.get("study_id"))
+                        st.write(f"**Diagnostic Status:** `{diag.get('status')}`")
+                        st.markdown(f"**Root Cause:** {diag.get('root_cause', 'N/A')}")
+                        s_act = diag.get("suggested_action")
+                        if s_act:
+                            st.info(f"💡 **Suggested Action:**\n{s_act}")
+                        if diag.get("error"):
+                            st.code(diag.get("error"), language="text")
+                    except Exception as d_err:
+                        st.caption(f"Diagnostics not available: {d_err}")
+
+                # Task Execution Logs Expander
+                with st.expander("📄 Task Execution Logs", expanded=False):
+                    try:
+                        log_res = api_client.get_task_logs(token, target_study.get("study_id"), limit=100)
+                        lines = log_res.get("logs", log_res.get("lines", []))
+                        if lines:
+                            st.code("\n".join(lines), language="log")
+                        else:
+                            st.caption("No log lines stored for this study.")
+                    except Exception as l_err:
+                        st.caption(f"Logs unavailable: {l_err}")
+
 
     # --- TAB 2: Optuna Learning Curves ---
     with tab_metrics:
