@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0] - 2026-10-21
+
+### Added
+- **Kubernetes Pod Lifecycle & Event Streamer:** Added `GET /api/v1/tasks/{study_id}/k8s-events` endpoint and UI events table displaying real-time Pod lifecycle events (`Scheduled`, `Pulled`, `Created`, `Started`, `OOMKilled`, `CrashLoopBackOff`) directly in active training views.
+- **1-Click K8s Pod Eviction / Termination:** Added `POST /api/v1/tasks/{study_id}/kill-pod` endpoint with interactive UI button `💥 Desalojar Pod K8s` to immediately evict stuck or frozen training pods (`gracePeriodSeconds: 0`).
+- **Cluster-Wide Stale K8s Pod Purge:** Added `POST /api/v1/cluster/k8s/purge-stale-pods` endpoint and UI maintenance button to purge pods in `Failed`, `Evicted`, or `Terminating` states, freeing GPU allocations and hostPath directory locks.
+- **K8s Node Conditions Monitor:** Implemented per-node health tracking for Kubernetes pressure taints (`DiskPressure`, `MemoryPressure`, `PIDPressure`, `Ready`) to prevent sudden training pod evictions.
+- **NVIDIA Device Plugin K8s Telemetry:** Visualized `nvidia.com/gpu` Allocatable vs Capacity metrics per node, with alerts for offline or degraded device plugins.
+- **Dynamic PyTorch Shared Memory Allocator (`/dev/shm`):** Added `shm_size_gb` setting to node resource controls and schemas to properly size `emptyDir` memory limits and eliminate PyTorch DataLoader bus errors.
+- **Dozzle K8s Web UI Deep Links:** Embedded direct links to live node-level and pod-level Dozzle streams (`http://{worker_ip}:8888`).
+
+### Changed
+- Bumped project version to `1.9.0` across backend, frontend, Docker Compose, and documentation.
+
 ## [1.8.0] - 2026-10-21
 
 ### Added
