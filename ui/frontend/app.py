@@ -5,6 +5,7 @@ import streamlit as st
 from frontend import __version__
 
 from frontend.api_client import ClusterApiClient
+from frontend.styles import apply_custom_theme
 from frontend.views.audit_view import render_audit
 from frontend.views.benchmarks_view import render_benchmarks
 from frontend.views.capabilities_view import render_capabilities
@@ -27,6 +28,9 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# Apply 5-Star Enterprise Dark Glassmorphism Styling
+apply_custom_theme()
+
 # Initialize API client
 api_client = ClusterApiClient()
 
@@ -41,18 +45,29 @@ else:
     with st.sidebar:
         st.markdown(
             f"""
-            <div style="display: flex; align-items: center; margin-bottom: 20px;">
-                <span style="font-size: 2.2em; margin-right: 10px;">🧠</span>
-                <div>
-                    <h3 style="margin: 0; padding: 0;">NeuralForge</h3>
-                    <p style="color: #6c757d; margin: 0; font-size: 0.85em;">Cluster Admin Platform <span style="background-color: #3b82f6; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: bold;">v{__version__}</span></p>
+            <div style="background: linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.9) 100%); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 14px 16px; margin-bottom: 20px; box-shadow: 0 4px 20px -2px rgba(0,0,0,0.4);">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%); width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);">
+                        🧠
+                    </div>
+                    <div>
+                        <div style="font-size: 1.15rem; font-weight: 800; color: #FFFFFF; letter-spacing: -0.01em; line-height: 1.2;">NeuralForge</div>
+                        <div style="display: flex; align-items: center; gap: 6px; margin-top: 3px;">
+                            <span style="font-size: 0.72rem; color: #94A3B8; font-weight: 600; text-transform: uppercase;">Cluster Admin</span>
+                            <span style="background: rgba(59, 130, 246, 0.2); color: #60A5FA; border: 1px solid rgba(59, 130, 246, 0.3); font-size: 0.68rem; font-weight: 700; padding: 1px 5px; border-radius: 4px;">v{__version__}</span>
+                        </div>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 6px; margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.06);">
+                    <span class="pulse-dot pulse-green"></span>
+                    <span style="font-size: 0.72rem; font-weight: 700; color: #10B981; letter-spacing: 0.04em;">CLUSTER ACTIVE • 22 GPUS</span>
                 </div>
             </div>
             """,
             unsafe_allow_html=True,
         )
 
-        st.caption(f"👤 Signed in as: **{username}** (Admin)")
+        st.caption("🧭 **NAVIGATION**")
 
         page = st.radio(
             "Navigation:",
@@ -74,6 +89,23 @@ else:
         )
 
         st.divider()
+
+        # User Profile Footer
+        avatar_initial = username[:1].upper() if username else "A"
+        st.markdown(
+            f"""
+            <div style="background: rgba(18, 24, 38, 0.6); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
+                <div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #10B981 0%, #059669 100%); display: flex; align-items: center; justify-content: center; font-weight: 700; color: #FFFFFF; font-size: 0.9rem;">
+                    {avatar_initial}
+                </div>
+                <div style="flex: 1; min-width: 0;">
+                    <div style="font-size: 0.85rem; font-weight: 700; color: #FFFFFF; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{username}</div>
+                    <div style="font-size: 0.7rem; color: #94A3B8; text-transform: uppercase; font-weight: 600;">Cluster Operator</div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
         if st.button("🚪 Sign Out", use_container_width=True, type="secondary"):
             st.session_state["authenticated"] = False
