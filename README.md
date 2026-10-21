@@ -1,6 +1,6 @@
 # 🎛️ NeuralForge Cluster Admin (`wyoloservice2_cluster_control`)
 
-![Version](https://img.shields.io/badge/version-1.7.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.8.0-blue.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 ![Python](https://img.shields.io/badge/python-3.10-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker)
@@ -219,12 +219,16 @@ make coverage  # o ./coverage.sh
 | `PUT` | `/api/v1/invokers/{ip}/limits` | Modifica `max_gpu_percent`, `max_ram` y `max_cpu_cores` | Sí |
 | `POST` | `/api/v1/invokers/{ip}/pause` | Pausa o reanuda la cola pública de un invoker | Sí |
 | `POST` | `/api/v1/invokers/{ip}/drain` | Pone el nodo en modo drenado (finaliza tareas y pausa) | Sí |
+| `POST` | `/api/v1/invokers/{ip}/restart-service` | Reinicio remoto del servicio Celery del nodo invoker | Sí |
+| `POST` | `/api/v1/invokers/{ip}/prune-docker` | Limpieza remota de imágenes y contenedores huérfanos (`docker system prune`) | Sí |
+| `POST` | `/api/v1/cluster/smoke-test` | Smoke test integral 1-click validando CIFS, S3 y GPUs de todos los nodos | Sí |
 | `GET` | `/api/v1/cluster/storage/inspect` | Inspección profunda de almacenamiento: CIFS/Samba, MinIO S3 y latencias I/O | Sí |
 | `GET` | `/api/v1/cluster/finops` | Análisis FinOps de costes eléctricos reales (€), kWh por GPU y proyecciones | Sí |
 | `POST` | `/api/v1/cluster/finops/rate` | Configuración de tarifa eléctrica dinámica (€/kWh) con registro de auditoría | Sí |
 | `GET` | `/api/v1/cluster/audit/logs` | Registro inmutable de auditoría administrativa (`cluster:audit:logs`) | Sí |
 | `GET` | `/api/v1/cluster/capabilities` | Catálogo de capacidades del clúster y los 12 módulos de I+D (XAI, CVPR, NeurIPS) | Sí |
 | `GET` | `/api/v1/tasks/queues` | Inspección en tiempo real de colas Celery y lista de espera de tareas | Sí |
+| `POST` | `/api/v1/tasks/queues/{id}/reassign` | Reasignación inmediata de una tarea privada a la cola global pública | Sí |
 | `POST` | `/api/v1/tasks/queues/{id}/promote` | Promoción de prioridad de una tarea en cola Celery a HIGH | Sí |
 | `DELETE` | `/api/v1/tasks/queues/{id}` | Purga/eliminación de una tarea en cola Celery antes de su inicio | Sí |
 | `GET` | `/api/v1/tasks/active` | Lista entrenamientos en ejecución en tiempo real | Sí |
@@ -249,6 +253,14 @@ make coverage  # o ./coverage.sh
 
 ## 📝 Changelog
 
+*   **v1.8.0 (2026-10-21):**
+    *   **Gestión Inteligente de Colas Celery:** Rediseño comprensible en 5 tarjetas KPI (`wyolo_gpu_queue`, `gpus_high`, `gpus_low`, encoladas a nodos y tiempo estimado de backlog ETA), eliminando colas técnicas ruidosas (`managers`, `*.pidbox`) y ocultando nodos sin carga.
+    *   **Reasignador Inmediato de Tareas (`/tasks/queues/{id}/reassign`):** Botón `🔀 A Cola Pública` que transfiere tareas retenidas en colas privadas de nodos hacia la cola global pública para su consumo por cualquier trabajador disponible.
+    *   **Estimador de Vaciado de Backlog y Detector de Atascos (Jam Alert):** Alerta proactiva cuando existen tareas en espera mientras los nodos están pausados o desconectados, con botón `▶️ Reanudar Todos los Nodos`.
+    *   **Mantenimiento Remoto de Nodos (`/invokers/{ip}/restart-service`, `/prune-docker`):** Botones administrativos para reinicio del servicio de Celery y ejecución de `docker system prune` para liberar espacio en disco remotamente.
+    *   **Telemetría NVML en Vivo:** Visualización de temperatura (°C), consumo de potencia (Watts vs TDP) y porcentaje de utilización de cómputo GPU con indicadores semafóricos.
+    *   **Smoke Test del Clúster en 1-Click (`/cluster/smoke-test`):** Validación integral y matriz de estado probando conectividad CIFS Samba, MinIO S3 y GPUs operativas en todos los nodos.
+    *   **Desglose y Filtrado por Autor en Lista de Espera:** Agrupación y filtro dinámico por investigador.
 *   **v1.7.0 (2026-10-21):**
     *   **Live Task Log Viewer (`/tasks/{study_id}/logs`):** Transmisión de logs de entrenamiento en tiempo real directamente desde la interfaz web (evita accesos manuales por SSH a nodos de cálculo).
     *   **Monitoreo de Procesos GPU y Detección de Zombies (`/invokers/{ip}/processes`):** Desglose detallado de procesos que consumen VRAM por GPU (`nvidia-smi`), banderas de alerta para procesos zombies inactivos por más de 24h y botón de terminación administrativa en 1-click.
