@@ -501,5 +501,37 @@ def test_authenticated_cluster_endpoints(client):
     assert drain_resp_data["status"] == "success"
     assert "draining" in drain_resp_data["message"]
 
+    # 44. v3.0.2 Invoker Temporal Pause Mode with Configurable Hours
+    resp_pause_temporal = client.post(
+        "/api/v1/invokers/192.168.1.68/pause",
+        headers=headers,
+        json={"action": "pause", "mode": "temporal", "hours": 4.0},
+    )
+    assert resp_pause_temporal.status_code == 200, f"Expected 200, got {resp_pause_temporal.status_code}"
+    temporal_data = resp_pause_temporal.json()
+    assert temporal_data["status"] == "success"
+    assert "pause" in temporal_data["message"]
+
+    # 45. v3.0.2 Invoker Perpetual Pause Mode (Indefinite until Operator Resumes)
+    resp_pause_perpetual = client.post(
+        "/api/v1/invokers/192.168.1.68/pause",
+        headers=headers,
+        json={"action": "pause", "mode": "perpetual"},
+    )
+    assert resp_pause_perpetual.status_code == 200, f"Expected 200, got {resp_pause_perpetual.status_code}"
+    perpetual_data = resp_pause_perpetual.json()
+    assert perpetual_data["status"] == "success"
+
+    # 46. v3.0.2 Invoker Resume Action (Clears Pause & Draining States)
+    resp_resume = client.post(
+        "/api/v1/invokers/192.168.1.68/pause",
+        headers=headers,
+        json={"action": "resume"},
+    )
+    assert resp_resume.status_code == 200, f"Expected 200, got {resp_resume.status_code}"
+    resume_data = resp_resume.json()
+    assert resume_data["status"] == "success"
+    assert "resume" in resume_data["message"]
+
 
 
