@@ -53,6 +53,11 @@ window.ViewOverview = {
           <div class="metric-value" id="metric-active" style="color: #38BDF8;">--</div>
           <div class="metric-sub">Running training trials</div>
         </div>
+        <div class="metric-card">
+          <div class="metric-label">Queued Backlog</div>
+          <div class="metric-value" id="metric-queued" style="color: #F59E0B;">--</div>
+          <div class="metric-sub" id="metric-queued-sub">Pending in Celery</div>
+        </div>
       </div>
 
       <!-- Live Active Workloads Table -->
@@ -77,6 +82,38 @@ window.ViewOverview = {
             </thead>
             <tbody id="overview-active-tasks-body">
               <tr><td colspan="8" style="text-align: center; color: var(--vscode-fg-muted); padding: 16px;">Scanning active workloads...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Queued Workloads & Backlog Table -->
+      <div class="card-section" style="margin-bottom: 20px;">
+        <div class="card-title">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span>⏳ Queued Workloads & Celery Backlog (En Espera)</span>
+            <span class="badge badge-amber" id="queued-workloads-badge">0 Queued</span>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="window.workbench.switchView('tasks')">
+            <span>📋</span> Open Tasks & Queues
+          </button>
+        </div>
+        <div class="table-responsive">
+          <table class="vscode-table">
+            <thead>
+              <tr>
+                <th>Study / Project Name</th>
+                <th>Author</th>
+                <th>Target Queue / Node</th>
+                <th>Model</th>
+                <th>Dataset Path</th>
+                <th>Priority</th>
+                <th>Queued At</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="overview-queued-tasks-body">
+              <tr><td colspan="8" style="text-align: center; color: var(--vscode-fg-muted); padding: 16px;">Scanning queued workloads...</td></tr>
             </tbody>
           </table>
         </div>
@@ -216,7 +253,70 @@ window.ViewOverview = {
         }).join("");
       }
 
-      // 2. Render Nodes Topology
+      // 2. Render Queued Workloads & Backlog
+      let queuedTasks = [];
+      let totalQueuedCount = 0;
+      try {
+        const qRes = await window.apiClient.getQueues();
+        queuedTasks = qRes.tasks || [];
+        totalQueuedCount = qRes.total_queued !== undefined ? qRes.total_queued : queuedTasks.length;
+      } catch (_) {}
+
+      const metricQueued = document.getElementById("metric-queued");
+      const metricQueuedSub = document.getElementById("metric-queued-sub");
+      if (metricQueued) metricQueued.textContent = totalQueuedCount;
+      if (metricQueuedSub) metricQueuedSub.textContent = `${queuedTasks.length} Visible Tasks`;
+
+      const queuedBadge = document.getElementById("queued-workloads-badge");
+      const queuedTbody = document.getElementById("overview-queued-tasks-body");
+      if (queuedBadge) queuedBadge.textContent = `${totalQueuedCount} Queued`;
+
+      if (queuedTbody) {
+        if (!queuedTasks.length) {
+          queuedTbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--vscode-fg-muted); padding: 16px;">No workloads currently waiting in queues.</td></tr>`;
+        } else {
+          queuedTbody.innerHTML = queuedTasks.map(t => {
+            const studyName = t.study_name || t.task_id || "Queued Job";
+            const author = t.author || "Unknown";
+            const qName = t.queue_name || "wyolo_gpu_queue";
+            const isNodeQueue = qName.includes(".") || qName.startsWith("192.") || qName.startsWith("worker");
+            const qBadge = isNodeQueue
+              ? `<span class="badge badge-green" title="Direct Node Queue">${escapeHtml(qName)}</span>`
+              : `<span class="badge badge-blue" title="Public Celery Queue">${escapeHtml(qName)}</span>`;
+            const model = t.model || "yolo";
+            const dataset = t.dataset || "N/A";
+            const prio = (t.priority || "NORMAL").toUpperCase();
+            const prioBadge = prio === "HIGH"
+              ? `<span class="badge badge-amber">${prio}</span>`
+              : `<span class="badge badge-blue">${prio}</span>`;
+            const queuedAt = t.queued_at || "Recently";
+
+            return `
+              <tr>
+                <td>
+                  <div><strong>${escapeHtml(studyName)}</strong></div>
+                  <div style="font-size: 10px; color: var(--vscode-fg-muted); font-family: var(--vscode-mono-family);">${escapeHtml(t.task_id || '')}</div>
+                </td>
+                <td><span style="color: var(--vscode-fg-muted); font-size: 12px;">${escapeHtml(author)}</span></td>
+                <td>${qBadge}</td>
+                <td><span class="badge badge-blue">${escapeHtml(model)}</span></td>
+                <td style="max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(dataset)}">
+                  <code>${escapeHtml(dataset)}</code>
+                </td>
+                <td>${prioBadge}</td>
+                <td><span style="font-size: 11px; color: var(--vscode-fg-muted);">${escapeHtml(queuedAt)}</span></td>
+                <td>
+                  <button class="btn btn-danger btn-sm" onclick="window.ViewOverview.cancelQueuedTask('${t.task_id}')" title="Cancel queued task">
+                    🗑️ Cancel
+                  </button>
+                </td>
+              </tr>
+            `;
+          }).join("");
+        }
+      }
+
+      // 3. Render Nodes Topology
       const tbody = document.getElementById("overview-nodes-body");
       if (!nodes.length) {
         tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--vscode-fg-muted); padding: 20px;">No invokers reported.</td></tr>`;
@@ -311,6 +411,19 @@ window.ViewOverview = {
     } catch (e) {
       window.workbench.logTerminal("ERROR", `Failed to cancel workload: ${e.message}`);
       alert(`Cancel failed: ${e.message}`);
+    }
+  },
+
+  async cancelQueuedTask(taskId) {
+    if (!confirm(`Cancel and remove queued task '${taskId}' from queue?`)) return;
+    window.workbench.logTerminal("WARN", `Removing queued task ${taskId}...`);
+    try {
+      await window.apiClient.deleteQueuedTask(taskId);
+      window.workbench.logTerminal("SUCCESS", `Queued task ${taskId} removed successfully.`);
+      await this.load();
+    } catch (e) {
+      window.workbench.logTerminal("ERROR", `Failed to remove queued task: ${e.message}`);
+      alert(`Remove failed: ${e.message}`);
     }
   }
 };
