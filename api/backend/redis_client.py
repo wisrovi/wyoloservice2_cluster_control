@@ -685,21 +685,61 @@ class ClusterRepository:
         dataset: str = "/examples/colorball.v8i.multiclass/",
         epochs: int = 1,
         priority: str = "NORMAL",
+        task: Optional[str] = None,
+        imgsz: Optional[int] = None,
+        batch_size: Optional[int] = None,
     ) -> Dict[str, Any]:
-        """Dispatches a quick 1-trial test job to verify node/cluster execution."""
+        """Dispatches a quick test/training job to verify node/cluster execution across CV tasks."""
         study_id = str(uuid.uuid4())
         study_name = f"quick_test_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         target_queue = worker_ip if worker_ip else "wyolo_gpu_queue"
 
+        # Auto-detect computer vision task if not explicitly passed
+        model_lower = model.lower()
+        if not task:
+            if "-seg" in model_lower or "seg" in model_lower:
+                cv_task = "segment"
+            elif "-pose" in model_lower or "pose" in model_lower:
+                cv_task = "pose"
+            elif "-obb" in model_lower or "obb" in model_lower:
+                cv_task = "obb"
+            elif "-cls" in model_lower or "classify" in model_lower:
+                cv_task = "classify"
+            else:
+                cv_task = "detect"
+        else:
+            cv_task = task.lower().strip()
+
+        # Fitness metric & default image resolution based on task
+        if cv_task == "classify":
+            fitness_metric = "metrics/accuracy_top1"
+            default_imgsz = 224
+        elif cv_task == "segment":
+            fitness_metric = "metrics/mAP50(M)"
+            default_imgsz = 640
+        elif cv_task == "pose":
+            fitness_metric = "metrics/mAP50-95(P)"
+            default_imgsz = 640
+        elif cv_task == "obb":
+            fitness_metric = "metrics/mAP50(B)"
+            default_imgsz = 640
+        else:  # detect or custom
+            fitness_metric = "metrics/mAP50(B)"
+            default_imgsz = 640
+
+        final_imgsz = int(imgsz) if (imgsz is not None and int(imgsz) > 0) else default_imgsz
+        final_batch = int(batch_size) if batch_size is not None else -1
+
         config_payload = {
             "model": model,
+            "task": cv_task,
             "type": "yolo",
             "priority": priority.upper(),
             "train": {
-                "batch": -1,
+                "batch": final_batch,
                 "data": dataset,
                 "epochs": epochs,
-                "imgsz": 224,
+                "imgsz": final_imgsz,
                 "plots": False,
             },
             "sweeper": {
@@ -707,7 +747,7 @@ class ClusterRepository:
                 "algorithm": "optuna",
                 "direction": "maximize",
                 "study_name": study_name,
-                "fitness": "metrics/accuracy_top1",
+                "fitness": fitness_metric,
                 "tune": False,
                 "sampler": "TPESampler",
                 "n_trials": 1,
@@ -720,8 +760,9 @@ class ClusterRepository:
                 "gpu": {"id": 0, "limit": 0.50}
             },
             "metadata": {
-                "content": f"Quick Verification Test [{priority.upper()}] dispatched from Cluster Control UI",
+                "content": f"Quick Verification Test [{priority.upper()}] ({cv_task.upper()}) dispatched from Cluster Control UI",
                 "author": user,
+                "task": cv_task,
                 "priority": priority.upper(),
                 "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             },
@@ -746,9 +787,13 @@ class ClusterRepository:
             "target_queue": target_queue,
             "author": user,
             "task_dispatched": task_sent,
+            "task": cv_task,
             "model": model,
             "dataset": dataset,
             "epochs": epochs,
+            "imgsz": final_imgsz,
+            "batch_size": final_batch,
+            "fitness": fitness_metric,
         }
 
     def get_study_trials_metrics(self, study_id: str) -> List[Dict[str, Any]]:
@@ -1507,24 +1552,38 @@ class ClusterRepository:
     # --- Training Duration Estimator (ETA) ---
 
     def estimate_training_duration(self, model: str, epochs: int, dataset: str = "") -> Dict[str, Any]:
-        """Calculates estimated duration based on model complexity and historical trial durations."""
-        # Baseline seconds per epoch based on model size
+        """Calculates estimated duration based on model complexity, vision task, and historical trial durations."""
+        # Baseline seconds per epoch based on model size and family
         base_sec_per_epoch = 15.0
         rec_gpu = "RTX 3060 / 4060 (≥8GB)"
         throughput = 28
         model_lower = model.lower()
-        if "yolov8x" in model_lower or "yolo26x" in model_lower:
+
+        if any(x in model_lower for x in ["yolov8x", "yolo11x", "yolov10x", "yolov9e", "yolo26x", "5xu", "5x"]):
             base_sec_per_epoch = 45.0
             rec_gpu = "RTX 3090 / 4090 / A5000 (≥24GB)"
             throughput = 12
-        elif "yolov8m" in model_lower or "yolo26m" in model_lower:
+        elif any(x in model_lower for x in ["yolov8l", "yolo11l", "yolov10l", "yolov9c", "5lu", "5l"]):
+            base_sec_per_epoch = 32.0
+            rec_gpu = "RTX 3080Ti / 4080 (≥16GB)"
+            throughput = 15
+        elif any(x in model_lower for x in ["yolov8m", "yolo11m", "yolov10m", "yolov10b", "yolov9m", "yolo26m", "5mu", "5m"]):
             base_sec_per_epoch = 25.0
             rec_gpu = "RTX 3080 / 4070 (≥12GB)"
             throughput = 18
-        elif "yolov8s" in model_lower or "yolo26s" in model_lower:
+        elif any(x in model_lower for x in ["yolov8s", "yolo11s", "yolov10s", "yolov9s", "yolo26s", "5su", "5s"]):
             base_sec_per_epoch = 18.0
             rec_gpu = "RTX 3070 / 4060Ti (≥12GB)"
             throughput = 22
+        elif any(x in model_lower for x in ["yolov8n", "yolo11n", "yolov10n", "yolov9t", "yolo26n", "5nu", "5n"]):
+            base_sec_per_epoch = 12.0
+            rec_gpu = "RTX 3060 / 4060 / GTX 1660 (≥6GB)"
+            throughput = 35
+
+        # Heuristic multiplier for segmentation, pose, and obb tasks
+        if any(k in model_lower for k in ["-seg", "seg", "-pose", "pose", "-obb", "obb"]):
+            base_sec_per_epoch *= 1.25
+            throughput = max(8, int(throughput * 0.8))
 
         est_seconds = int(base_sec_per_epoch * epochs)
         minutes = max(0.5, round(est_seconds / 60.0, 1))
