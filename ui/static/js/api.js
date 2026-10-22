@@ -331,6 +331,13 @@ class ClusterApiClient {
     });
   }
 
+  async deleteQueuedTasksBatch(taskIds) {
+    return this.request("/api/v1/tasks/queues/batch-delete", {
+      method: "POST",
+      body: JSON.stringify({ task_ids: taskIds }),
+    });
+  }
+
   async getSweeps() {
     return this.request("/api/v1/tasks/sweeps");
   }
