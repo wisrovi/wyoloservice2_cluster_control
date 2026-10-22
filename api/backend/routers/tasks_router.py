@@ -6,6 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from backend.auth import get_current_user
 from backend.redis_client import ClusterRepository
 from backend.schemas import (
+    BatchDeleteQueuedTasksRequest,
+    BatchDeleteQueuedTasksResponse,
     K8sPodEventsResponse,
     KillPodResponse,
     PromoteTaskRequest,
@@ -163,6 +165,16 @@ async def delete_celery_task(task_id: str, current_user: str = Depends(get_curre
             detail=res.get("message", "Task not found in queues"),
         )
     return res
+
+
+@router.post("/queues/batch-delete", response_model=BatchDeleteQueuedTasksResponse)
+async def batch_delete_celery_tasks(
+    payload: BatchDeleteQueuedTasksRequest,
+    current_user: str = Depends(get_current_user),
+):
+    """Cancels and removes multiple pending tasks from Celery queues."""
+    repo = ClusterRepository()
+    return repo.delete_celery_tasks_batch(payload.task_ids, user=current_user)
 
 
 @router.post("/queues/{task_id}/reassign")
