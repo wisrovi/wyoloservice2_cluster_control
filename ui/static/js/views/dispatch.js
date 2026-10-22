@@ -704,6 +704,7 @@ window.ViewDispatch = {
     const priority = document.getElementById("ql-priority").value;
 
     const payload = {
+      study_name: studyName,
       task: task,
       model: model,
       dataset: datasetPath,
