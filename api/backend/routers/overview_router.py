@@ -82,7 +82,7 @@ async def test_webhook_notification(current_user: str = Depends(get_current_user
 @router.get("/estimate-duration")
 async def estimate_duration(
     model: str = Query("yolov8n-cls.pt"),
-    epochs: int = Query(1, ge=1, le=500),
+    epochs: int = Query(1, ge=1, le=1000),
     dataset: str = Query("/examples/"),
     current_user: str = Depends(get_current_user),
 ):
