@@ -197,6 +197,10 @@ class ClusterApiClient {
   }
 
   // --- Invokers ---
+  async getInvokers() {
+    return this.request("/api/v1/invokers");
+  }
+
   async getInvoker(ip) {
     return this.request(`/api/v1/invokers/${encodeURIComponent(ip)}`);
   }
@@ -208,22 +212,46 @@ class ClusterApiClient {
     });
   }
 
-  async drainInvoker(ip, drain = true) {
-    return this.request(`/api/v1/invokers/${encodeURIComponent(ip)}/drain`, {
+  async drainInvoker(ip, drain = true, reason = "Maintenance", evict = true) {
+    if (drain) {
+      return this.request(`/api/v1/invokers/${encodeURIComponent(ip)}/drain`, {
+        method: "POST",
+        body: JSON.stringify({ reason, evict }),
+      });
+    } else {
+      // Undraining is performed by calling resume
+      return this.pauseInvoker(ip, false);
+    }
+  }
+
+  async pauseInvoker(ip, pause = true, mode = "perpetual", hours = 4.0) {
+    const payload = pause
+      ? { action: "pause", mode: mode, hours: hours }
+      : { action: "resume" };
+    return this.request(`/api/v1/invokers/${encodeURIComponent(ip)}/pause`, {
       method: "POST",
-      body: JSON.stringify({ drain }),
+      body: JSON.stringify(payload),
     });
   }
 
-  async pauseInvoker(ip, paused = true) {
-    return this.request(`/api/v1/invokers/${encodeURIComponent(ip)}/pause`, {
+  async getNodeProcesses(ip) {
+    return this.request(`/api/v1/invokers/${encodeURIComponent(ip)}/processes`);
+  }
+
+  async killNodeProcess(ip, pid) {
+    return this.request(`/api/v1/invokers/${encodeURIComponent(ip)}/kill-process/${encodeURIComponent(pid)}`, {
       method: "POST",
-      body: JSON.stringify({ paused }),
     });
   }
 
   async pruneDocker(ip) {
     return this.request(`/api/v1/invokers/${encodeURIComponent(ip)}/prune-docker`, {
+      method: "POST",
+    });
+  }
+
+  async restartNodeService(ip) {
+    return this.request(`/api/v1/invokers/${encodeURIComponent(ip)}/restart-service`, {
       method: "POST",
     });
   }
