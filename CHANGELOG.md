@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.2] - 2026-10-22
+
+### Added
+- **Temporal & Perpetual Pause Dual Support:** Added comprehensive support for both pause modalities across backend and VSCode Workbench frontend:
+  - **⏱️ Pausa Temporal:** Allows operators to pause task consumption on invokers for a specified duration (quick chips for 1h, 2h, 4h, 8h, 24h, plus custom float input).
+  - **Auto-Expiration Engine:** Backend checks `pause_until` unix epoch timestamp on telemetry refresh and automatically restores Celery queue consumption once the interval elapses.
+  - **⏹️ Pausa Perpetua / Indefinida:** Indefinite pause mode that disconnects public queues (`gpus_high`, `gpus_medium`, `gpus_low`, `wyolo_gpu_queue`) until explicit manual resumption.
+  - **Interactive Pause Modal:** Intuitive modal overlay in `nodes.js` providing clear visual selection between temporal with duration selector and perpetual mode.
+  - **Live Table Status & Real-Time Countdown:** Added human-readable badges (`⏱️ Pausa Temp (Xh Ym)`, `⏹️ Pausa Indef.`) and live countdown calculation in `nodes.js`.
+  - **Batch Duration Controls:** Toolbar updated with `⏸️ Pause 4h (All)`, `⏹️ Pause Indef. (All)`, and `▶️ Resume All`.
+- **Dockerized Unit Tests:** Added test coverage for temporal pause, perpetual pause, and node resumption in `tests/api/test_api.py`.
+
+### Changed
+- Bumped project version to `3.0.2` across backend, frontend, server, Docker Compose, and documentation.
+
 ## [3.0.1] - 2026-10-22
 
 ### Added
