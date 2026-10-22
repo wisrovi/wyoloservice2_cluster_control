@@ -1,5 +1,6 @@
 /**
- * GPU Benchmarks View (benchmarks.gpu)
+ * Cluster GPU Benchmarks & Throughput Leaderboard View (benchmarks.gpu)
+ * Live performance profiles, measured image throughput, epoch duration, and node mapping.
  */
 
 window.ViewBenchmarks = {
@@ -14,10 +15,10 @@ window.ViewBenchmarks = {
       <div class="view-header">
         <div class="view-title-group">
           <h1><span>🏆</span> Cluster GPU Benchmarks & Throughput Leaderboard</h1>
-          <p>Compute performance analysis, tensor operations throughput, and memory bandwidth rankings</p>
+          <p>Empirical performance analysis, tensor operations throughput, and measured 100-epoch training benchmarks</p>
         </div>
         <div class="view-actions">
-          <button class="btn btn-primary btn-sm" onclick="window.workbench.refreshCurrentView()">
+          <button class="btn btn-primary btn-sm" onclick="window.ViewBenchmarks.load()">
             <span>🔄</span> Refresh Benchmarks
           </button>
         </div>
@@ -25,43 +26,47 @@ window.ViewBenchmarks = {
 
       <div class="metrics-ribbon">
         <div class="metric-card">
-          <div class="metric-label">Cluster Total FP32 TFLOPS</div>
-          <div class="metric-value">648.2</div>
-          <div class="metric-sub">Theoretical peak</div>
+          <div class="metric-label">Top Measured Throughput</div>
+          <div class="metric-value" id="bench-top-tput" style="color: #10B981;">128.5 img/s</div>
+          <div class="metric-sub">NVIDIA RTX 4090</div>
         </div>
         <div class="metric-card">
-          <div class="metric-label">Aggregated VRAM Bandwidth</div>
-          <div class="metric-value">14.2 TB/s</div>
-          <div class="metric-sub">PCIe Gen4 / GDDR6X</div>
+          <div class="metric-label">Fastest 100-Epoch Duration</div>
+          <div class="metric-value" id="bench-fastest-time" style="color: #007ACC;">7.0 min</div>
+          <div class="metric-sub">4.2s per epoch</div>
         </div>
         <div class="metric-card">
-          <div class="metric-label">Average Batch Latency</div>
-          <div class="metric-value">12.4 ms</div>
-          <div class="metric-sub">YOLOv8 FP16</div>
+          <div class="metric-label">Benchmarked Hardware Classes</div>
+          <div class="metric-value" id="bench-gpu-classes">6 Models</div>
+          <div class="metric-sub">Empirically profiled</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Total Completed Studies</div>
+          <div class="metric-value" id="bench-total-studies">349 Studies</div>
+          <div class="metric-sub">Historical test baseline</div>
         </div>
       </div>
 
       <div class="card-section">
-        <div class="card-title"><span>Node Compute Leaderboard</span></div>
+        <div class="card-title">
+          <span>GPU Architecture Performance Rankings</span>
+          <span class="badge badge-blue" id="bench-updated-badge">Empirical</span>
+        </div>
         <div class="table-responsive">
           <table class="vscode-table">
             <thead>
               <tr>
-                <th>Rank</th>
-                <th>Node IP</th>
-                <th>GPU Model</th>
-                <th>FP32 TFLOPS</th>
-                <th>Tensor Cores</th>
-                <th>Inference FPS (Batch 32)</th>
-                <th>Status</th>
+                <th style="width: 50px;">Rank</th>
+                <th>GPU Model & Architecture</th>
+                <th>Avg Throughput (img/s)</th>
+                <th>Avg Epoch Time</th>
+                <th>Est. 100 Epochs</th>
+                <th>Benchmark Sample Studies</th>
+                <th>Deployed Nodes (Cluster Equipment)</th>
               </tr>
             </thead>
             <tbody id="benchmarks-tbody">
-              <tr><td>🥇 #1</td><td><code>192.168.1.80</code></td><td>NVIDIA RTX 4090</td><td>82.6 TFLOPS</td><td>512 (4th Gen)</td><td>4,120 fps</td><td><span class="badge badge-green">Online</span></td></tr>
-              <tr><td>🥈 #2</td><td><code>192.168.1.81</code></td><td>NVIDIA RTX 3090</td><td>35.6 TFLOPS</td><td>328 (3rd Gen)</td><td>2,450 fps</td><td><span class="badge badge-green">Online</span></td></tr>
-              <tr><td>🥉 #3</td><td><code>192.168.1.82</code></td><td>NVIDIA RTX 3080 Ti</td><td>34.1 TFLOPS</td><td>320 (3rd Gen)</td><td>2,380 fps</td><td><span class="badge badge-amber">Draining</span></td></tr>
-              <tr><td>#4</td><td><code>192.168.1.83</code></td><td>NVIDIA RTX 3080</td><td>29.8 TFLOPS</td><td>272 (3rd Gen)</td><td>2,100 fps</td><td><span class="badge badge-green">Online</span></td></tr>
-              <tr><td>#5</td><td><code>192.168.1.84</code></td><td>NVIDIA RTX 3070</td><td>20.3 TFLOPS</td><td>184 (3rd Gen)</td><td>1,420 fps</td><td><span class="badge badge-green">Online</span></td></tr>
+              <tr><td colspan="7" style="text-align: center; color: var(--vscode-fg-muted); padding: 16px;">Loading empirical benchmark data...</td></tr>
             </tbody>
           </table>
         </div>
@@ -70,9 +75,53 @@ window.ViewBenchmarks = {
   },
 
   async load() {
+    const tbody = document.getElementById("benchmarks-tbody");
     try {
       const data = await window.apiClient.getGpuBenchmarks();
-      // Benchmarks loaded
-    } catch (_) {}
+      const list = data?.benchmarks || [];
+
+      if (!list.length) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--vscode-fg-muted); padding: 16px;">No empirical benchmark profiles available.</td></tr>`;
+        return;
+      }
+
+      // Update summary cards
+      const topTput = Math.max(...list.map(b => b.avg_throughput_img_s || 0));
+      const fastest = Math.min(...list.map(b => b.estimated_100_epochs_min || 999));
+      const totalStudies = list.reduce((acc, b) => acc + (b.completed_studies_count || 0), 0);
+
+      document.getElementById("bench-top-tput").textContent = `${topTput.toFixed(1)} img/s`;
+      document.getElementById("bench-fastest-time").textContent = `${fastest.toFixed(1)} min`;
+      document.getElementById("bench-gpu-classes").textContent = `${list.length} Models`;
+      document.getElementById("bench-total-studies").textContent = `${totalStudies} Studies`;
+      if (data.updated_at) {
+        document.getElementById("bench-updated-badge").textContent = `Updated: ${data.updated_at.split(" ")[0]}`;
+      }
+
+      const medals = ["🥇 #1", "🥈 #2", "🥉 #3", "#4", "#5", "#6", "#7"];
+
+      tbody.innerHTML = list.map((b, idx) => {
+        const medal = medals[idx] || `#${idx + 1}`;
+        const workers = (b.sample_workers || []).map(ip => `<code>${ip}</code>`).join(", ") || '<span style="color: var(--vscode-fg-muted);">Unassigned</span>';
+
+        return `
+          <tr style="${idx === 0 ? 'background: rgba(16, 185, 129, 0.08); font-weight: 500;' : ''}">
+            <td style="font-weight: 600; color: ${idx === 0 ? '#10B981' : 'inherit'};">${medal}</td>
+            <td>
+              <div style="font-weight: 600; color: var(--vscode-fg-bright);">${b.gpu_model}</div>
+            </td>
+            <td>
+              <span style="color: #10B981; font-weight: 600;">${b.avg_throughput_img_s} img/s</span>
+            </td>
+            <td><code>${b.avg_epoch_seconds}s</code> / epoch</td>
+            <td><strong>~${b.estimated_100_epochs_min} min</strong></td>
+            <td><span class="badge badge-blue">${b.completed_studies_count} studies</span></td>
+            <td>${workers}</td>
+          </tr>
+        `;
+      }).join("");
+    } catch (e) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--vscode-btn-danger); padding: 16px;">Failed to load benchmarks: ${e.message}</td></tr>`;
+    }
   }
 };
