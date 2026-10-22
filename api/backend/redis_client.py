@@ -679,6 +679,7 @@ class ClusterRepository:
 
     def quick_launch_test(
         self,
+        study_name: Optional[str] = None,
         worker_ip: Optional[str] = None,
         user: str = "wisrovi",
         model: str = "yolov8n-cls.pt",
@@ -691,7 +692,7 @@ class ClusterRepository:
     ) -> Dict[str, Any]:
         """Dispatches a quick test/training job to verify node/cluster execution across CV tasks."""
         study_id = str(uuid.uuid4())
-        study_name = f"quick_test_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        final_study_name = study_name.strip() if (study_name and study_name.strip()) else f"quick_test_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         target_queue = worker_ip if worker_ip else "wyolo_gpu_queue"
 
         # Auto-detect computer vision task if not explicitly passed
@@ -747,7 +748,7 @@ class ClusterRepository:
                 "version": 1,
                 "algorithm": "optuna",
                 "direction": "maximize",
-                "study_name": study_name,
+                "study_name": final_study_name,
                 "fitness": fitness_metric,
                 "tune": False,
                 "sampler": "TPESampler",
@@ -761,6 +762,7 @@ class ClusterRepository:
                 "gpu": {"id": 0, "limit": 0.50}
             },
             "metadata": {
+                "study_name": final_study_name,
                 "content": f"Quick Verification Test [{priority.upper()}] ({cv_task.upper()}) dispatched from Cluster Control UI",
                 "author": user,
                 "task": cv_task,
@@ -784,7 +786,7 @@ class ClusterRepository:
 
         return {
             "study_id": study_id,
-            "study_name": study_name,
+            "study_name": final_study_name,
             "target_queue": target_queue,
             "author": user,
             "task_dispatched": task_sent,
