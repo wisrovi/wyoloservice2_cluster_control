@@ -1,6 +1,6 @@
 # 🎛️ NeuralForge Cluster Admin (`wyoloservice2_cluster_control`)
 
-![Version](https://img.shields.io/badge/version-3.0.2-blue.svg)
+![Version](https://img.shields.io/badge/version-3.1.0-blue.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 ![Python](https://img.shields.io/badge/python-3.10-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker)
@@ -275,6 +275,15 @@ make coverage  # o ./coverage.sh
 
 ## 📝 Changelog
 
+*   **v3.1.0 (2026-10-22):**
+    *   **Suite Completa de Funcionalidades y Telemetría en Vivo (100% Cobertura):**
+        *   **📈 Historial y Estudio de Analítica Optuna (`history.js`):** Filtros dinámicos (autor, nodo, estado, límite, "Mis estudios"), modal de inspección con Manifiesto de Reproducibilidad (comando `docker run` y YAML copiables en 1 clic), Diagnóstico de Causa Raíz con recomendaciones, Visor de Logs en vivo, Curvas de Aprendizaje de Optuna interactivas en SVG, Comparador Frente a Frente de 2 a 5 estudios, y Exportador de Reportes a Markdown y JSON.
+        *   **🚀 Lanzador Inteligente de Tareas (`dispatch.js`):** Validación Pre-Vuelo de Dataset contra Samba CIFS, Recomendador de Nodos por IA con puntuación, Estimador Dinámico de Duración (ETA) y throughput (img/s), selector de prioridades (NORMAL, URGENT, BATCH) y monitor de entrenamientos activos con cancelación directa.
+        *   **🛠️ Ajustes y Gobernanza Operacional (`settings.js`):** Ajuste de límites en lote (`MAX_GPU %` y RAM) en todo el clúster con 1 clic, Políticas Horarias Automatizadas Día/Noche con botón de aplicación forzada, Exportador de "Caja Negra" Diagnostic Support Bundle (.json) en 1 clic, Mantenimiento y Purga de Estudios Obsoletos de Redis, y canales de alertas Webhook y Watchdog.
+        *   **🏆 Benchmarks de GPUs en Vivo (`benchmarks.js`):** Leaderboard dinámico conectado al endpoint del clúster con throughput real y mapeo de hardware desplegado.
+        *   **🌿 FinOps y Green AI (`finops.js`):** Monitorización de kWh reales, costes acumulados, proyecciones mensuales, huella de carbono CO2e y actualización interactiva de tarifa eléctrica (€/kWh).
+        *   **🔬 Catálogo R&D y Capacidades (`capabilities.js`):** Visualización de los 12 módulos de investigación y matriz de arquitecturas y precisiones CUDA (FP32/FP16/BF16/FP8).
+        *   **📁 Almacenamiento y MinIO S3 (`storage.js`):** Lectura dinámica de volúmenes Samba compartidos, latencias I/O, estado de buckets MinIO S3 y validador de rutas.
 *   **v3.0.2 (2026-10-22):**
     *   **Soporte Integral para Pausa Temporal y Perpetua:** Incorporación en el backend y la interfaz SPA VSCode Workbench de modalidades completas de pausa:
         *   **⏱️ Pausa Temporal con Horas Configurables:** Permite detener el consumo de tareas públicas en invokers por un periodo determinado mediante botones directos (1h, 2h, 4h, 8h, 24h) o entrada personalizada.
