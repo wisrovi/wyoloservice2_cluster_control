@@ -6,6 +6,7 @@ from frontend import __version__
 from frontend.api_client import ClusterApiClient
 from frontend.styles import (
     apply_custom_theme,
+    clean_html,
     render_vscode_breadcrumbs,
     render_vscode_statusbar,
     render_vscode_titlebar,
@@ -44,6 +45,7 @@ ACTIVITY_GROUPS = {
         "title": "EXPLORER",
         "icon": "📁",
         "short_name": "Explorer",
+        "description": "Cluster Topology & Storage",
         "badge": "22 GPUs",
         "views": [
             {
@@ -73,6 +75,7 @@ ACTIVITY_GROUPS = {
         "title": "RUN & DISPATCH",
         "icon": "🚀",
         "short_name": "Run",
+        "description": "Workload Scheduler & History",
         "badge": "HPO",
         "views": [
             {
@@ -95,6 +98,7 @@ ACTIVITY_GROUPS = {
         "title": "TASKS & QUEUES",
         "icon": "📋",
         "short_name": "Queues",
+        "description": "Task Monitor & Benchmarks",
         "badge": "CELERY",
         "views": [
             {
@@ -117,6 +121,7 @@ ACTIVITY_GROUPS = {
         "title": "TELEMETRY & SPECS",
         "icon": "🌿",
         "short_name": "Telemetry",
+        "description": "Green AI & Hardware Specs",
         "badge": "GREEN AI",
         "views": [
             {
@@ -139,6 +144,7 @@ ACTIVITY_GROUPS = {
         "title": "ADMIN & SECURITY",
         "icon": "⚙️",
         "short_name": "Settings",
+        "description": "Audit & System Configuration",
         "badge": "RBAC",
         "views": [
             {
@@ -191,7 +197,7 @@ else:
     with st.sidebar:
         # VSCode Brand & Activity Bar Header
         st.markdown(
-            f"""
+            clean_html(f"""
             <div style="background: #1F1F1F; border: 1px solid #2B2B2B; border-radius: 4px; padding: 10px 12px; margin-bottom: 12px;">
                 <div style="display: flex; align-items: center; justify-content: space-between;">
                     <div style="display: flex; align-items: center; gap: 8px;">
@@ -204,7 +210,7 @@ else:
                     <span style="background: #007ACC; color: #FFFFFF; font-size: 0.65rem; font-weight: 700; padding: 2px 6px; border-radius: 3px;">22 GPUs</span>
                 </div>
             </div>
-            """,
+            """),
             unsafe_allow_html=True,
         )
 
@@ -231,14 +237,14 @@ else:
 
         # Section Header with VSCode Action Bar
         st.markdown(
-            f"""
+            clean_html(f"""
             <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 10px; margin-bottom: 6px; padding: 2px 0;">
                 <span style="font-size: 0.72rem; font-weight: 800; color: #BBBBBB; letter-spacing: 0.05em; text-transform: uppercase;">
                     {current_act['title']}
                 </span>
-                <span style="font-size: 0.7rem; color: #858585;">{current_act['description']}</span>
+                <span style="font-size: 0.7rem; color: #858585;">{current_act.get('description', '')}</span>
             </div>
-            """,
+            """),
             unsafe_allow_html=True,
         )
 
@@ -279,7 +285,7 @@ else:
                 is_selected = (v["name"] == st.session_state["active_page"])
                 bg_item = "background: #37373D; border-left: 2px solid #007ACC;" if is_selected else "background: transparent;"
                 st.markdown(
-                    f"""
+                    clean_html(f"""
                     <div style="display: flex; align-items: center; justify-content: space-between; {bg_item} padding: 4px 6px; border-radius: 3px; font-size: 0.74rem; font-family: var(--vscode-font-code); color: #CCCCCC; margin-top: 2px;">
                         <div style="display: flex; align-items: center; gap: 6px;">
                             <span style="color: #6E7681;">├─</span>
@@ -289,7 +295,7 @@ else:
                             {v['badge']}
                         </span>
                     </div>
-                    """,
+                    """),
                     unsafe_allow_html=True,
                 )
 
@@ -318,7 +324,7 @@ else:
         # VSCode Collapsible Tree View: CLUSTER TELEMETRY OUTLINE
         with st.expander("▼ CLUSTER TELEMETRY", expanded=False):
             st.markdown(
-                """
+                clean_html("""
                 <div style="font-size: 0.74rem; font-family: var(--vscode-font-code); color: #858585; line-height: 1.6;">
                     <div>├─ <span style="color: #60A5FA;">Nodes Online:</span> 11 / 11</div>
                     <div>├─ <span style="color: #34D399;">Active GPUs:</span> 22 Units</div>
@@ -326,7 +332,7 @@ else:
                     <div>├─ <span style="color: #F59E0B;">Samba Share:</span> /datasets (Mounted)</div>
                     <div>└─ <span style="color: #EC4899;">Orchestration:</span> K8s & Docker</div>
                 </div>
-                """,
+                """),
                 unsafe_allow_html=True,
             )
 
@@ -335,7 +341,7 @@ else:
         # User Profile Footer
         avatar_initial = username[:1].upper() if username else "A"
         st.markdown(
-            f"""
+            clean_html(f"""
             <div style="background: #1F1F1F; border: 1px solid #2B2B2B; border-radius: 4px; padding: 8px 10px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <div style="width: 24px; height: 24px; border-radius: 50%; background: #007ACC; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #FFFFFF; font-size: 0.75rem;">
@@ -348,7 +354,7 @@ else:
                 </div>
                 <span class="pulse-dot pulse-green"></span>
             </div>
-            """,
+            """),
             unsafe_allow_html=True,
         )
 
@@ -419,7 +425,7 @@ else:
         st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
         with st.container(border=True):
             st.markdown(
-                """
+                clean_html("""
                 <div style="background: #252526; border-bottom: 1px solid #2B2B2B; padding: 4px 10px; margin: -0.8rem -0.8rem 0.6rem -0.8rem; display: flex; align-items: center; justify-content: space-between;">
                     <div style="display: flex; align-items: center; gap: 14px; font-size: 0.75rem; font-weight: 700; color: #CCCCCC; text-transform: uppercase;">
                         <span style="color: #FFFFFF; border-bottom: 2px solid #007ACC; padding-bottom: 2px;">OUTPUT</span>
@@ -429,7 +435,7 @@ else:
                     </div>
                     <span style="font-size: 0.7rem; color: #858585; font-family: monospace;">bash / cluster_admin_api:8001</span>
                 </div>
-                """,
+                """),
                 unsafe_allow_html=True,
             )
 
