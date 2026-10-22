@@ -1,6 +1,6 @@
 # 🎛️ NeuralForge Cluster Admin (`wyoloservice2_cluster_control`)
 
-![Version](https://img.shields.io/badge/version-3.1.3-blue.svg)
+![Version](https://img.shields.io/badge/version-3.1.4-blue.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 ![Python](https://img.shields.io/badge/python-3.10-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker)
@@ -275,6 +275,9 @@ make coverage  # o ./coverage.sh
 
 ## 📝 Changelog
 
+*   **v3.1.4 (2026-10-22):**
+    *   **Visibilidad Completa de Tareas en Cola (Queued Workloads):** Incorporación de la tabla interactiva de tareas en espera en la vista principal `Overview` (directamente debajo de las tareas activas) y en la vista `Tasks & Queues`, mostrando `study_name`, nodo de destino, modelo, autor, prioridad y acciones de gestión en tiempo real (promover a alta prioridad, reasignar cola y cancelar).
+    *   **Fallback para Estudios Heredados en Redis:** Extracción resiliente de metadatos y configuración de estudios creados por el manager en `wyolo:request:*` para alimentar los paneles de telemetría sin pérdida de fidelidad.
 *   **v3.1.3 (2026-10-22):**
     *   **Persistencia de Nombre Personalizado de Estudio:** Integración del campo `study_name` en el esquema `QuickLaunchRequest`, API router y cliente Redis, asegurando que el nombre del proyecto digitado por el operador se preserve íntegramente en la configuración del barrido de Optuna y en la carga de Celery.
 *   **v3.1.2 (2026-10-22):**
