@@ -1,6 +1,7 @@
 """Login view for Streamlit application with VSCode Workbench styling."""
 
 import streamlit as st
+from frontend import __version__
 from frontend.api_client import ClusterApiClient
 from frontend.styles import apply_custom_theme, clean_html
 
@@ -25,7 +26,7 @@ def render_login(api_client: ClusterApiClient):
                 <div style="display: inline-flex; gap: 6px; margin-top: 8px;">
                     <span style="background: #252526; color: #60A5FA; border: 1px solid #3C3C3C; font-size: 0.72rem; font-weight: 700; padding: 2px 7px; border-radius: 3px;">☸️ K8s / Docker</span>
                     <span style="background: #252526; color: #34D399; border: 1px solid #3C3C3C; font-size: 0.72rem; font-weight: 700; padding: 2px 7px; border-radius: 3px;">⚡ 22 GPUs</span>
-                    <span style="background: #252526; color: #007ACC; border: 1px solid #3C3C3C; font-size: 0.72rem; font-weight: 700; padding: 2px 7px; border-radius: 3px;">VSCode v2.2.0</span>
+                    <span style="background: #252526; color: #007ACC; border: 1px solid #3C3C3C; font-size: 0.72rem; font-weight: 700; padding: 2px 7px; border-radius: 3px;">VSCode v{__version__}</span>
                 </div>
             </div>
             """),
