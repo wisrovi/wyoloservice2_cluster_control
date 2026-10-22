@@ -92,6 +92,7 @@ async def quick_launch_task(
     """Launches a quick 1-trial test job to verify node/cluster execution."""
     repo = ClusterRepository()
     result = repo.quick_launch_test(
+        study_name=payload.study_name,
         worker_ip=payload.worker_ip,
         user=current_user,
         model=payload.model,
