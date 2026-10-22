@@ -1,5 +1,5 @@
 /**
- * NeuralForge Cluster Admin v3.0.0 — REST Client
+ * NeuralForge Cluster Admin v3.1.8 — REST Client
  * Communicates directly with FastAPI backend on :8001
  */
 
