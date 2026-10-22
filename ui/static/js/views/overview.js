@@ -137,7 +137,14 @@ window.ViewOverview = {
           <button class="btn btn-secondary btn-sm" onclick="window.ViewOverview.clearQueuedFilters()" title="Limpiar filtros">
             ✕ Limpiar
           </button>
+
+          <button id="overview-btn-cancel-filtered" class="btn btn-danger btn-sm" style="display: none;" onclick="window.ViewOverview.cancelAllFilteredQueued()" title="Cancelar y eliminar de la cola todas las tareas que coinciden con los filtros actuales">
+            🗑️ Cancelar Filtradas (0)
+          </button>
         </div>
+
+        <!-- Feedback Toast Banner -->
+        <div id="overview-queued-toast" style="display: none; padding: 10px 14px; border-radius: 4px; margin-bottom: 12px; font-size: 13px; align-items: center; justify-content: space-between;"></div>
 
         <div class="table-responsive">
           <table class="vscode-table">
@@ -497,6 +504,17 @@ window.ViewOverview = {
     const totalCount = (this.queuedData || []).length;
     const filteredCount = filtered.length;
 
+    const hasFilter = !!(q || queueFilter !== "All" || prioFilter !== "All" || modelFilter !== "All");
+    const btnCancelFiltered = document.getElementById("overview-btn-cancel-filtered");
+    if (btnCancelFiltered) {
+      if (hasFilter && filteredCount > 0) {
+        btnCancelFiltered.style.display = "inline-flex";
+        btnCancelFiltered.textContent = `🗑️ Cancelar Filtradas (${filteredCount})`;
+      } else {
+        btnCancelFiltered.style.display = "none";
+      }
+    }
+
     if (badge) {
       badge.textContent = `${totalCount} Queued` + (filteredCount !== totalCount ? ` (${filteredCount} filtrados)` : "");
     }
@@ -559,13 +577,35 @@ window.ViewOverview = {
           <td>${prioBadge}</td>
           <td><span style="font-size: 11px; color: var(--vscode-fg-muted);">${escapeHtml(queuedAt)}</span></td>
           <td>
-            <button class="btn btn-danger btn-sm" onclick="window.ViewOverview.cancelQueuedTask('${t.task_id}')" title="Cancelar y eliminar de cola">
+            <button class="btn btn-danger btn-sm" id="btn-cancel-q-${t.task_id}" onclick="window.ViewOverview.cancelQueuedTask('${t.task_id}', '${escapeHtml(studyName)}')" title="Cancelar y eliminar de cola">
               🗑️ Cancel
             </button>
           </td>
         </tr>
       `;
     }).join("");
+  },
+
+  showQueuedToast(type, message) {
+    const toast = document.getElementById("overview-queued-toast");
+    if (!toast) return;
+    toast.style.display = "flex";
+    if (type === "success") {
+      toast.style.background = "rgba(16, 185, 129, 0.15)";
+      toast.style.border = "1px solid #10B981";
+      toast.style.color = "#10B981";
+    } else {
+      toast.style.background = "rgba(239, 68, 68, 0.15)";
+      toast.style.border = "1px solid #EF4444";
+      toast.style.color = "#EF4444";
+    }
+    toast.innerHTML = `
+      <span>${escapeHtml(message)}</span>
+      <span style="cursor: pointer; font-weight: bold; margin-left: 12px;" onclick="document.getElementById('overview-queued-toast').style.display='none'">✕</span>
+    `;
+    setTimeout(() => {
+      if (toast) toast.style.display = "none";
+    }, 6000);
   },
 
   async refreshQueues() {
@@ -597,16 +637,88 @@ window.ViewOverview = {
     }
   },
 
-  async cancelQueuedTask(taskId) {
-    if (!confirm(`Cancel and remove queued task '${taskId}' from queue?`)) return;
-    window.workbench.logTerminal("WARN", `Removing queued task ${taskId}...`);
+  async cancelQueuedTask(taskId, studyName = "") {
+    const label = studyName ? `'${studyName}' (${taskId.slice(0, 8)}...)` : `'${taskId}'`;
+    if (!confirm(`¿Estás seguro de que deseas cancelar y eliminar de la cola la tarea ${label}?`)) return;
+
+    const btn = document.getElementById(`btn-cancel-q-${taskId}`);
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "⏳ Cancelando...";
+    }
+    window.workbench.logTerminal("WARN", `Eliminando tarea ${taskId} de las colas...`);
+
     try {
       await window.apiClient.deleteQueuedTask(taskId);
-      window.workbench.logTerminal("SUCCESS", `Queued task ${taskId} removed successfully.`);
-      await this.load();
+      window.workbench.logTerminal("SUCCESS", `Tarea ${taskId} eliminada exitosamente.`);
+      this.showQueuedToast("success", `✅ Tarea ${label} cancelada y eliminada de la cola con éxito.`);
+      await this.refreshQueues();
     } catch (e) {
-      window.workbench.logTerminal("ERROR", `Failed to remove queued task: ${e.message}`);
-      alert(`Remove failed: ${e.message}`);
+      window.workbench.logTerminal("ERROR", `Error eliminando tarea: ${e.message}`);
+      this.showQueuedToast("error", `❌ Error al eliminar tarea ${label}: ${e.message}`);
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "🗑️ Cancel";
+      }
+    }
+  },
+
+  async cancelAllFilteredQueued() {
+    const q = (document.getElementById("overview-queued-search")?.value || "").toLowerCase().trim();
+    const queueFilter = document.getElementById("overview-queued-filter-queue")?.value || "All";
+    const prioFilter = document.getElementById("overview-queued-filter-priority")?.value || "All";
+    const modelFilter = document.getElementById("overview-queued-filter-model")?.value || "All";
+
+    const filtered = (this.queuedData || []).filter(t => {
+      if (queueFilter !== "All" && (t.queue_name || "wyolo_gpu_queue") !== queueFilter) return false;
+      if (prioFilter !== "All" && ((t.priority || "NORMAL").toUpperCase()) !== prioFilter) return false;
+      if (modelFilter !== "All" && (t.model || "yolo") !== modelFilter) return false;
+      if (q) {
+        const text = [
+          t.study_name || "",
+          t.task_id || "",
+          t.author || "",
+          t.model || "",
+          t.dataset || "",
+          t.queue_name || ""
+        ].join(" ").toLowerCase();
+        if (!text.includes(q)) return false;
+      }
+      return true;
+    });
+
+    if (!filtered.length) {
+      alert("No hay tareas que coincidan con los filtros actuales.");
+      return;
+    }
+
+    const filterDesc = q ? `'${q}'` : (queueFilter !== "All" ? `cola '${queueFilter}'` : "los filtros seleccionados");
+    if (!confirm(`¿Estás seguro de que deseas cancelar y eliminar de la cola TODAS las ${filtered.length} tareas que coinciden con ${filterDesc}?`)) {
+      return;
+    }
+
+    const btn = document.getElementById("overview-btn-cancel-filtered");
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "⏳ Cancelando lote...";
+    }
+
+    window.workbench.logTerminal("WARN", `Cancelando en lote ${filtered.length} tareas filtradas...`);
+    const taskIds = filtered.map(t => t.task_id);
+
+    try {
+      const res = await window.apiClient.deleteQueuedTasksBatch(taskIds);
+      const deletedCount = res.deleted_count !== undefined ? res.deleted_count : taskIds.length;
+      window.workbench.logTerminal("SUCCESS", `Lote completado: ${deletedCount} tareas eliminadas.`);
+      this.showQueuedToast("success", `✅ Se cancelaron y eliminaron ${deletedCount} tareas de la cola exitosamente.`);
+      await this.refreshQueues();
+    } catch (e) {
+      window.workbench.logTerminal("ERROR", `Error en cancelación por lote: ${e.message}`);
+      this.showQueuedToast("error", `❌ Error al cancelar tareas en lote: ${e.message}`);
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+      }
     }
   }
 };
