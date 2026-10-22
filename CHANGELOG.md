@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.1] - 2026-10-22
+
+### Added
+- **Complete Hardware Telemetry & GPU Allocation Restoration:** Restored full fidelity of real hardware telemetry across Operations Center (`overview.js`) and Nodes & Invokers (`nodes.js`):
+  - **Live Active Workloads Table:** Fixed active workloads counter and mounted real-time active training trials table with study name, author, assigned node, model, dataset path, trial/epoch progress, and K8s pod name.
+  - **Node Pause & Drain States:** Added prominent state badges (`🟢 Active`, `⏸️ Paused`, `🛡️ Draining`) and an interactive filter toolbar (`🔘 All`, `🟢 Active Only`, `⏸️ Paused Only`, `🛡️ Draining`) with 0ms client-side filtering.
+  - **GPU Sharing vs Total Capacity:** Added dedicated compute allocation column displaying K8s allocated GPUs vs total GPU capacity and VRAM sharing cap (`MAX_GPU %`) with visual progress bar.
+  - **VRAM & NVML Thermals:** Extracted real physical VRAM total, compute utilization percentage, and live power draw vs TDP with GPU temperature.
+  - **RAM Limits & Host Memory:** Displayed container limit (`max_ram`) alongside host system total RAM and allocated CPU cores.
+  - **Live GPU Processes & Zombie Monitor:** Added interactive modal (`🔍 Procs`) allowing real-time inspection of running GPU PIDs, process names, VRAM usage, and one-click termination (`🛑 Kill PID`).
+  - **Batch Node Controls:** Added one-click `⏸️ Pause All` and `▶️ Resume All` operations.
+
+### Changed
+- Bumped project version to `3.0.1` across backend, frontend, server, and documentation.
+
 ## [3.0.0] - 2026-10-22
 
 ### Added
