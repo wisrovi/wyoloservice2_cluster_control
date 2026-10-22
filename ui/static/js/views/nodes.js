@@ -1,6 +1,6 @@
 /**
  * Nodes & Invokers Management View (nodes.invokers)
- * Complete hardware telemetry, GPU sharing allocation, pause controls, and live process inspection
+ * Complete hardware telemetry, GPU sharing allocation, temporal/perpetual pause controls, and live process inspection
  */
 
 window.ViewNodes = {
@@ -20,7 +20,7 @@ window.ViewNodes = {
       <div class="view-header">
         <div class="view-title-group">
           <h1><span>⚙️</span> Invoker Hardware Nodes & GPU Allocation Fabric</h1>
-          <p>Configure resource caps (VRAM %, RAM, CPU), manage pause/drain states, inspect live GPU processes, and trigger maintenance</p>
+          <p>Configure resource caps (VRAM %, RAM, CPU), manage temporal/perpetual pause and drain states, inspect live GPU processes, and trigger maintenance</p>
         </div>
         <div class="view-actions">
           <button class="btn btn-secondary btn-sm" onclick="window.workbench.broadcastDockerPullPrompt()">
@@ -32,7 +32,7 @@ window.ViewNodes = {
         </div>
       </div>
 
-      <!-- Filter Toolbar -->
+      <!-- Filter & Batch Toolbar -->
       <div class="card-section" style="margin-bottom: 16px; padding: 12px 16px;">
         <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;">
           <div style="display: flex; gap: 8px; flex: 1; min-width: 280px; max-width: 400px;">
@@ -57,8 +57,11 @@ window.ViewNodes = {
 
           <!-- Batch Action Controls -->
           <div style="display: flex; gap: 6px;">
-            <button class="btn btn-secondary btn-sm" onclick="window.ViewNodes.batchPause(true)" title="Pause public queues on all nodes">
-              ⏸️ Pause All
+            <button class="btn btn-secondary btn-sm" onclick="window.ViewNodes.batchPause(true, 'temporal', 4.0)" title="Temporarily pause all nodes for 4 hours">
+              ⏸️ Pause 4h (All)
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="window.ViewNodes.batchPause(true, 'perpetual')" title="Pause all nodes indefinitely">
+              ⏹️ Pause Indef. (All)
             </button>
             <button class="btn btn-secondary btn-sm" onclick="window.ViewNodes.batchPause(false)" title="Resume task consumption on all nodes">
               ▶️ Resume All
@@ -78,7 +81,7 @@ window.ViewNodes = {
             <thead>
               <tr>
                 <th>Node / Hostname</th>
-                <th>State & Health</th>
+                <th>State & Pause Mode</th>
                 <th>GPU Model</th>
                 <th>GPU Sharing vs Total</th>
                 <th>VRAM & NVML Thermals</th>
@@ -90,6 +93,66 @@ window.ViewNodes = {
               <tr><td colspan="7" style="text-align: center; color: var(--vscode-fg-muted); padding: 20px;">Fetching invoker nodes...</td></tr>
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- Pause Options Modal Overlay (Temporal vs Perpetual) -->
+      <div id="pause-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 6000; justify-content: center; align-items: center;">
+        <div style="width: 460px; max-width: 90vw; background: var(--vscode-bg-sidebar); border: 1px solid var(--vscode-border-light); border-radius: 6px; padding: 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.8);">
+          <div style="font-size: 14px; font-weight: 600; color: var(--vscode-fg-bright); margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+            <span id="pause-modal-title">⏸️ Configurar Pausa del Nodo</span>
+            <span style="cursor: pointer; color: var(--vscode-fg-muted);" onclick="document.getElementById('pause-modal').style.display='none'">✕</span>
+          </div>
+          <input type="hidden" id="pause-node-ip">
+
+          <p style="font-size: 12px; color: var(--vscode-fg-muted); margin-bottom: 14px;">
+            Al pausar el nodo, se desconecta de las colas públicas globales. Selecciona si la pausa es temporal o indefinida:
+          </p>
+
+          <div class="form-group">
+            <label class="form-label" style="font-weight: 600;">Modo de Pausa:</label>
+            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 6px;">
+              <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; padding: 10px; background: #2D2D2D; border-radius: 4px; border-left: 3px solid #007ACC;">
+                <input type="radio" name="pause-mode" value="temporal" checked onchange="document.getElementById('pause-hours-container').style.display='block'">
+                <div>
+                  <div style="font-weight: 600; color: var(--vscode-fg-bright);">⏱️ Pausa Temporal (Reanudación Automática)</div>
+                  <div style="font-size: 11px; color: var(--vscode-fg-muted); margin-top: 2px;">
+                    El nodo se reactiva automáticamente al vencer el temporizador.
+                  </div>
+                </div>
+              </label>
+
+              <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; padding: 10px; background: #2D2D2D; border-radius: 4px; border-left: 3px solid #EF4444;">
+                <input type="radio" name="pause-mode" value="perpetual" onchange="document.getElementById('pause-hours-container').style.display='none'">
+                <div>
+                  <div style="font-weight: 600; color: var(--vscode-fg-bright);">⏹️ Pausa Perpetua / Indefinida</div>
+                  <div style="font-size: 11px; color: var(--vscode-fg-muted); margin-top: 2px;">
+                    Permanece pausado indefinidamente hasta que un operador presione Reanudar.
+                  </div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <div class="form-group" id="pause-hours-container" style="margin-top: 12px;">
+            <label class="form-label">Duración de la Pausa Temporal:</label>
+            <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('pause-hours-input').value=1">1h</button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('pause-hours-input').value=2">2h</button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('pause-hours-input').value=4">4h</button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('pause-hours-input').value=8">8h</button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('pause-hours-input').value=24">24h</button>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <input type="number" id="pause-hours-input" class="form-control" min="0.5" max="168" step="0.5" value="4.0" style="width: 100px;">
+              <span style="font-size: 12px; color: var(--vscode-fg-muted);">horas</span>
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px;">
+            <button class="btn btn-secondary btn-sm" onclick="document.getElementById('pause-modal').style.display='none'">Cancelar</button>
+            <button class="btn btn-primary btn-sm" onclick="window.ViewNodes.confirmPause()">Confirmar Pausa</button>
+          </div>
         </div>
       </div>
 
@@ -108,17 +171,11 @@ window.ViewNodes = {
               <span id="limits-gpu-pct-val" style="font-weight: 600; color: #38BDF8;">50%</span>
             </div>
             <input type="range" id="limits-max-gpu" class="form-control" min="10" max="100" step="5" value="50" oninput="document.getElementById('limits-gpu-pct-val').textContent = this.value + '%'">
-            <div style="font-size: 11px; color: var(--vscode-fg-muted); margin-top: 3px;">
-              Percentage of total GPU VRAM allocated to training containers.
-            </div>
           </div>
 
           <div class="form-group">
             <label class="form-label">Container RAM Limit (e.g. 12g, 16g, 24g):</label>
             <input type="text" id="limits-max-ram" class="form-control" placeholder="12g">
-            <div style="font-size: 11px; color: var(--vscode-fg-muted); margin-top: 3px;">
-              Maximum system RAM allowed for the container before cgroup limits apply.
-            </div>
           </div>
 
           <div class="form-group">
@@ -135,9 +192,6 @@ window.ViewNodes = {
               <span id="limits-shm-val" style="font-weight: 600; color: #38BDF8;">8.0 GiB</span>
             </div>
             <input type="range" id="limits-shm" class="form-control" min="2" max="64" step="2" value="8" oninput="document.getElementById('limits-shm-val').textContent = this.value + ' GiB'">
-            <div style="font-size: 11px; color: var(--vscode-fg-muted); margin-top: 3px;">
-              Shared memory size in emptyDir to prevent PyTorch DataLoader Bus errors.
-            </div>
           </div>
 
           <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px;">
@@ -269,17 +323,27 @@ window.ViewNodes = {
       const k8sAllocated = k8s.allocated !== undefined ? k8s.allocated : 0;
       const k8sCapacity = k8s.capacity !== undefined ? k8s.capacity : gpuCount;
 
-      // Status Badges
+      // Status & Pause Mode Badges
       const pauseState = node.pause_state || "active";
+      const pauseUntil = node.pause_until || "";
+
       let statusBadge = `<span class="badge badge-green">🟢 Active</span>`;
-      let pauseActionBtn = `<button class="btn btn-secondary btn-sm" onclick="window.ViewNodes.togglePause('${ip}', true)">⏸️ Pause</button>`;
+      let pauseActionsHtml = `
+        <button class="btn btn-secondary btn-sm" onclick="window.ViewNodes.openPauseModal('${ip}', '${escapeHtml(hostname)}')">
+          ⏸️ Pausar...
+        </button>
+      `;
 
       if (pauseState === "draining") {
         statusBadge = `<span class="badge badge-amber" style="background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.4);">🛡️ Draining</span>`;
-        pauseActionBtn = `<button class="btn btn-sm" style="background: #10B981; color: white;" onclick="window.ViewNodes.toggleDrain('${ip}', false)">✅ Undrain</button>`;
-      } else if (pauseState.includes("pause")) {
-        statusBadge = `<span class="badge badge-amber">⏸️ Paused</span>`;
-        pauseActionBtn = `<button class="btn btn-sm" style="background: #10B981; color: white;" onclick="window.ViewNodes.togglePause('${ip}', false)">▶️ Resume</button>`;
+        pauseActionsHtml = `<button class="btn btn-sm" style="background: #10B981; color: white;" onclick="window.ViewNodes.toggleDrain('${ip}', false)">✅ Undrain</button>`;
+      } else if (pauseState === "paused_temporal") {
+        const remainingStr = formatRemainingTime(pauseUntil);
+        statusBadge = `<span class="badge badge-amber" title="Pausa Temporal hasta: ${pauseUntil}">⏱️ Pausa Temp (${remainingStr})</span>`;
+        pauseActionsHtml = `<button class="btn btn-sm" style="background: #10B981; color: white;" onclick="window.ViewNodes.resumeNode('${ip}')">▶️ Reanudar</button>`;
+      } else if (pauseState === "paused_perpetual" || pauseState.includes("pause")) {
+        statusBadge = `<span class="badge badge-amber" title="Pausado indefinidamente">⏹️ Pausa Indef.</span>`;
+        pauseActionsHtml = `<button class="btn btn-sm" style="background: #10B981; color: white;" onclick="window.ViewNodes.resumeNode('${ip}')">▶️ Reanudar</button>`;
       } else if (node.status === "offline") {
         statusBadge = `<span class="badge badge-red">Offline</span>`;
       }
@@ -330,7 +394,7 @@ window.ViewNodes = {
           </td>
           <td>
             <div style="display: flex; flex-wrap: wrap; gap: 4px;">
-              ${pauseActionBtn}
+              ${pauseActionsHtml}
               ${drainBtn}
               <button class="btn btn-secondary btn-sm" onclick="window.ViewNodes.openLimitsModal('${ip}', ${maxGpuPct}, '${maxRam}', ${typeof maxCpu === 'number' ? maxCpu : 8}, ${shmGb})">
                 Limits
@@ -348,24 +412,52 @@ window.ViewNodes = {
     }).join("");
   },
 
-  async togglePause(ip, shouldPause) {
-    const actionStr = shouldPause ? "PAUSE" : "RESUME";
-    window.workbench.logTerminal("WARN", `Triggering ${actionStr} for node ${ip}...`);
+  openPauseModal(ip, hostname) {
+    document.getElementById("pause-node-ip").value = ip;
+    document.getElementById("pause-modal-title").textContent = `⏸️ Configurar Pausa: ${hostname} (${ip})`;
+    document.getElementById("pause-hours-input").value = "4.0";
+    document.getElementById("pause-hours-container").style.display = "block";
+    document.querySelectorAll("input[name='pause-mode']")[0].checked = true;
+    document.getElementById("pause-modal").style.display = "flex";
+  },
+
+  async confirmPause() {
+    const ip = document.getElementById("pause-node-ip").value;
+    const modeEl = document.querySelector("input[name='pause-mode']:checked");
+    const mode = modeEl ? modeEl.value : "temporal";
+    const hours = parseFloat(document.getElementById("pause-hours-input").value) || 4.0;
+
+    const desc = mode === "temporal" ? `Temporal (${hours}h)` : "Perpetua (Indefinida)";
+    window.workbench.logTerminal("WARN", `Aplicando pausa ${desc} al nodo ${ip}...`);
+
     try {
-      await window.apiClient.pauseInvoker(ip, shouldPause);
-      window.workbench.logTerminal("SUCCESS", `Node ${ip} ${actionStr} executed successfully.`);
+      await window.apiClient.pauseInvoker(ip, true, mode, hours);
+      window.workbench.logTerminal("SUCCESS", `Pausa ${desc} configurada exitosamente en ${ip}.`);
+      document.getElementById("pause-modal").style.display = "none";
       await this.load();
     } catch (e) {
-      window.workbench.logTerminal("ERROR", `Failed to ${actionStr} node ${ip}: ${e.message}`);
-      alert(`Error updating pause state: ${e.message}`);
+      window.workbench.logTerminal("ERROR", `Error pausando ${ip}: ${e.message}`);
+      alert(`Error al pausar: ${e.message}`);
+    }
+  },
+
+  async resumeNode(ip) {
+    window.workbench.logTerminal("INFO", `Reanudando nodo ${ip}...`);
+    try {
+      await window.apiClient.pauseInvoker(ip, false);
+      window.workbench.logTerminal("SUCCESS", `Nodo ${ip} reanudado exitosamente.`);
+      await this.load();
+    } catch (e) {
+      window.workbench.logTerminal("ERROR", `Error reanudando ${ip}: ${e.message}`);
+      alert(`Error al reanudar: ${e.message}`);
     }
   },
 
   async toggleDrain(ip, shouldDrain) {
     const action = shouldDrain ? "DRAIN" : "UNDRAIN";
     const confirmMsg = shouldDrain
-      ? `Are you sure you want to DRAIN node ${ip}?\nThis halts public queues, evicts active workloads immediately with SIGKILL, and halts new task scheduling.`
-      : `Resume scheduling and undrain node ${ip}?`;
+      ? `¿Estás seguro de que deseas DRENAR el nodo ${ip}?\nEsto cancelará las colas públicas, desalojará entrenamientos activos con SIGKILL y no aceptará más tareas.`
+      : `¿Reanudar el nodo ${ip} y quitar drenado?`;
 
     if (!confirm(confirmMsg)) return;
 
@@ -380,23 +472,26 @@ window.ViewNodes = {
     }
   },
 
-  async batchPause(shouldPause) {
-    const actionStr = shouldPause ? "PAUSE ALL" : "RESUME ALL";
-    if (!confirm(`Are you sure you want to ${actionStr} invoker nodes across the cluster?`)) return;
+  async batchPause(shouldPause, mode = "temporal", hours = 4.0) {
+    const actionStr = shouldPause
+      ? (mode === "temporal" ? `PAUSA TEMPORAL (${hours}h)` : "PAUSA PERPETUA")
+      : "REANUDAR";
 
-    window.workbench.logTerminal("WARN", `Executing ${actionStr} across cluster invokers...`);
+    if (!confirm(`¿Estás seguro de que deseas ejecutar ${actionStr} en todos los nodos invoker?`)) return;
+
+    window.workbench.logTerminal("WARN", `Ejecutando ${actionStr} en lote...`);
     try {
       for (const node of this.invokersData) {
         const ip = node.worker_ip || node.ip;
         if (ip) {
-          await window.apiClient.pauseInvoker(ip, shouldPause);
+          await window.apiClient.pauseInvoker(ip, shouldPause, mode, hours);
         }
       }
-      window.workbench.logTerminal("SUCCESS", `Completed ${actionStr} across all nodes.`);
+      window.workbench.logTerminal("SUCCESS", `Completado ${actionStr} en todos los nodos.`);
       await this.load();
     } catch (e) {
-      window.workbench.logTerminal("ERROR", `Batch pause error: ${e.message}`);
-      alert(`Batch pause error: ${e.message}`);
+      window.workbench.logTerminal("ERROR", `Error en pausa por lote: ${e.message}`);
+      alert(`Error en pausa por lote: ${e.message}`);
     }
   },
 
@@ -443,7 +538,7 @@ window.ViewNodes = {
     const summary = document.getElementById("processes-modal-summary");
     const tbody = document.getElementById("processes-tbody");
 
-    title.textContent = `🔍 Live GPU Processes & Zombie Monitor: ${hostname} (${ip})`;
+    title.textContent = `🔍 Live GPU Compute Processes & Zombie Monitor: ${hostname} (${ip})`;
     summary.innerHTML = `Querying NVML processes on <code>${ip}</code>...`;
     tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--vscode-fg-muted); padding: 16px;">Scanning GPU memory...</td></tr>`;
     modal.style.display = "flex";
@@ -520,3 +615,17 @@ window.ViewNodes = {
     }
   }
 };
+
+function formatRemainingTime(pauseUntil) {
+  if (!pauseUntil) return "Temp";
+  const num = parseFloat(pauseUntil);
+  if (!isNaN(num) && num > 1000000000) {
+    const diffSec = num - (Date.now() / 1000);
+    if (diffSec <= 0) return "Expirando";
+    const hours = Math.floor(diffSec / 3600);
+    const mins = Math.floor((diffSec % 3600) / 60);
+    if (hours > 0) return `${hours}h ${mins}m`;
+    return `${mins}m`;
+  }
+  return String(pauseUntil);
+}
