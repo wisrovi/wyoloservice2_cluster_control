@@ -257,12 +257,18 @@ class ClusterApiClient {
   }
 
   // --- Tasks & Queues ---
+  // --- Tasks & History ---
   async getActiveTasks() {
     return this.request("/api/v1/tasks/active");
   }
 
-  async getTaskHistory(limit = 50) {
-    return this.request(`/api/v1/tasks/history?limit=${limit}`);
+  async getTaskHistory(limit = 50, search = null, author = null, workerIp = null, status = null) {
+    let url = `/api/v1/tasks/history?limit=${limit}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+    if (author && author !== "All") url += `&author=${encodeURIComponent(author)}`;
+    if (workerIp && workerIp !== "All") url += `&worker_ip=${encodeURIComponent(workerIp)}`;
+    if (status && status !== "All") url += `&status=${encodeURIComponent(status)}`;
+    return this.request(url);
   }
 
   async cancelTask(studyId) {
@@ -275,6 +281,29 @@ class ClusterApiClient {
     return this.request("/api/v1/tasks/quick-launch", {
       method: "POST",
       body: JSON.stringify(payload),
+    });
+  }
+
+  async getStudyReproducibility(studyId) {
+    return this.request(`/api/v1/tasks/${encodeURIComponent(studyId)}/reproducibility`);
+  }
+
+  async getStudyMetrics(studyId) {
+    return this.request(`/api/v1/tasks/${encodeURIComponent(studyId)}/metrics`);
+  }
+
+  async getTaskLogs(studyId, limit = 200) {
+    return this.request(`/api/v1/tasks/${encodeURIComponent(studyId)}/logs?limit=${limit}`);
+  }
+
+  async getTaskDiagnostics(studyId) {
+    return this.request(`/api/v1/tasks/${encodeURIComponent(studyId)}/diagnostics`);
+  }
+
+  async compareStudies(studyIds) {
+    return this.request("/api/v1/tasks/compare", {
+      method: "POST",
+      body: JSON.stringify({ study_ids: studyIds }),
     });
   }
 
@@ -293,6 +322,78 @@ class ClusterApiClient {
   async retryQuarantine(taskId) {
     return this.request(`/api/v1/tasks/quarantine/${encodeURIComponent(taskId)}/retry`, {
       method: "POST",
+    });
+  }
+
+  // --- Smart Dispatch & Pre-flight ---
+  async inspectDataset(path) {
+    return this.request(`/api/v1/cluster/datasets/inspect?dataset_path=${encodeURIComponent(path)}`);
+  }
+
+  async recommendNode(model = "yolov8n-cls.pt") {
+    return this.request(`/api/v1/cluster/recommend-node?model=${encodeURIComponent(model)}`);
+  }
+
+  async estimateDuration(model = "yolov8n-cls.pt", epochs = 1, dataset = "/examples/") {
+    return this.request(`/api/v1/cluster/estimate-duration?model=${encodeURIComponent(model)}&epochs=${epochs}&dataset=${encodeURIComponent(dataset)}`);
+  }
+
+  // --- Settings & Batch Governance ---
+  async batchUpdateLimits(maxGpuPercent, maxRam) {
+    return this.request("/api/v1/invokers/batch-limits", {
+      method: "POST",
+      body: JSON.stringify({ max_gpu_percent: maxGpuPercent, max_ram: maxRam }),
+    });
+  }
+
+  async applySchedulerPolicy() {
+    return this.request("/api/v1/cluster/scheduler/apply-policy", {
+      method: "POST",
+    });
+  }
+
+  async getSupportBundle() {
+    return this.request("/api/v1/cluster/support-bundle");
+  }
+
+  async getHousekeepingPreview() {
+    return this.request("/api/v1/cluster/housekeeping/preview");
+  }
+
+  async purgeHousekeeping() {
+    return this.request("/api/v1/cluster/housekeeping/purge", {
+      method: "POST",
+    });
+  }
+
+  async getWebhookConfig() {
+    return this.request("/api/v1/cluster/webhook");
+  }
+
+  async saveWebhookConfig(webhookUrl, enabled = true) {
+    return this.request("/api/v1/cluster/webhook", {
+      method: "POST",
+      body: JSON.stringify({ webhook_url: webhookUrl, enabled }),
+    });
+  }
+
+  async testRichWebhook(eventType = "study_completed", webhookUrl = null) {
+    return this.request("/api/v1/cluster/webhook/test-rich", {
+      method: "POST",
+      body: JSON.stringify({ event_type: eventType, webhook_url: webhookUrl }),
+    });
+  }
+
+  async triggerWatchdogAlert() {
+    return this.request("/api/v1/cluster/watchdog/check-and-alert", {
+      method: "POST",
+    });
+  }
+
+  async updateFinopsRate(rateEur) {
+    return this.request("/api/v1/cluster/finops/rate", {
+      method: "POST",
+      body: JSON.stringify({ rate_eur_per_kwh: rateEur }),
     });
   }
 }
