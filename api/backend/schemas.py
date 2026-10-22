@@ -400,6 +400,17 @@ class ReassignTaskRequest(BaseModel):
     target_queue: str = Field("wyolo_gpu_queue", description="Target queue name (e.g. wyolo_gpu_queue, gpus_high, or node IP)")
 
 
+class BatchDeleteQueuedTasksRequest(BaseModel):
+    task_ids: List[str] = Field(..., description="List of task IDs to remove from Celery queues")
+
+
+class BatchDeleteQueuedTasksResponse(BaseModel):
+    status: str
+    deleted_count: int
+    deleted_tasks: List[str] = Field(default_factory=list)
+    remaining_count: int = 0
+
+
 class RemoteOperationResponse(BaseModel):
     worker_ip: str
     operation: str
