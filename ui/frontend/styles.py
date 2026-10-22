@@ -1,5 +1,6 @@
 """VSCode Workbench styling and UI component helpers for NeuralForge Cluster Admin."""
 
+import textwrap
 import streamlit as st
 from typing import Any, Dict, List, Optional
 
@@ -311,6 +312,11 @@ def apply_custom_theme():
     st.markdown(custom_css, unsafe_allow_html=True)
 
 
+def clean_html(html_str: str) -> str:
+    """Strips leading and trailing whitespace from every line to ensure Markdown never treats indented HTML as pre/code blocks."""
+    return "\n".join(line.strip() for line in html_str.strip().splitlines())
+
+
 def render_vscode_titlebar(cluster_name: str = "production-cima", active_view: str = "Operations Center", username: str = "admin"):
     """Renders the signature VSCode Title Bar with Command Center search bar."""
     html = f"""
@@ -352,7 +358,7 @@ def render_vscode_titlebar(cluster_name: str = "production-cima", active_view: s
         </div>
     </div>
     """
-    st.markdown(html, unsafe_allow_html=True)
+    st.markdown(clean_html(html), unsafe_allow_html=True)
 
 
 def render_vscode_breadcrumbs(category: str, view_name: str, file_name: str):
@@ -368,7 +374,7 @@ def render_vscode_breadcrumbs(category: str, view_name: str, file_name: str):
         <span style="color: #E2E8F0; font-weight: 500;">{view_name}</span>
     </div>
     """
-    st.markdown(html, unsafe_allow_html=True)
+    st.markdown(clean_html(html), unsafe_allow_html=True)
 
 
 def render_page_header(title: str, subtitle: str, badge_text: str = "VSCode v2.2.0", badge_color: str = "#007ACC"):
@@ -390,7 +396,7 @@ def render_page_header(title: str, subtitle: str, badge_text: str = "VSCode v2.2
         </div>
     </div>
     """
-    st.markdown(html, unsafe_allow_html=True)
+    st.markdown(clean_html(html), unsafe_allow_html=True)
 
 
 def render_cluster_pulse_bar(overview: Dict[str, Any], health: Optional[Dict[str, Any]] = None):
@@ -443,7 +449,7 @@ def render_cluster_pulse_bar(overview: Dict[str, Any], health: Optional[Dict[str
         </div>
     </div>
     """
-    st.markdown(html, unsafe_allow_html=True)
+    st.markdown(clean_html(html), unsafe_allow_html=True)
 
 
 def render_vscode_statusbar(overview: Dict[str, Any], health: Optional[Dict[str, Any]] = None):
@@ -489,4 +495,4 @@ def render_vscode_statusbar(overview: Dict[str, Any], health: Optional[Dict[str,
         </div>
     </div>
     """
-    st.markdown(html, unsafe_allow_html=True)
+    st.markdown(clean_html(html), unsafe_allow_html=True)
