@@ -288,10 +288,10 @@ def render_invokers(api_client: ClusterApiClient, token: str):
                         except Exception as pe:
                             st.error(f"Error: {pe}")
                 with col_p4:
-                    if st.button("🛡️ Drain", key=f"btn_drain_{worker_ip}", use_container_width=True):
+                    if st.button("🛡️ Drain", key=f"btn_drain_{worker_ip}", use_container_width=True, help="Halts queue consumption and terminates/evicts active training workloads immediately"):
                         try:
-                            api_client.drain_invoker(token, worker_ip, reason="Manual graceful drain")
-                            st.info(f"Node {worker_ip} is draining.")
+                            api_client.drain_invoker(token, worker_ip, reason="Manual graceful drain & evict", evict=True)
+                            st.info(f"Node {worker_ip} is draining; active workloads are evicted.")
                             st.rerun()
                         except Exception as de:
                             st.error(f"Failed to drain node: {de}")
