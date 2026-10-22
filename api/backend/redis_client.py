@@ -297,40 +297,203 @@ class ClusterRepository:
             self.client.delete(until_key)
             self.client.hset(res_key, mapping={"pause_state": "active", "pause_until": ""})
 
+    def resolve_celery_worker_names(self, worker_ip: str) -> List[str]:
+        """Resolves active Celery worker destination names for a given worker IP.
+
+        Checks active Celery queues to find workers subscribed to the private
+        queue (worker_ip). Falls back to cached mappings, Redis heartbeat, and default pattern.
+        """
+        found_nodes = []
+
+        # 1. Check persistent/cached mapping in Redis
+        cached_node = self.client.get(f"invoker:{worker_ip}:celery_node_name")
+        if cached_node:
+            c_str = cached_node.decode() if isinstance(cached_node, bytes) else str(cached_node)
+            if c_str:
+                found_nodes.append(c_str)
+
+        # 2. Inspect active queues from Celery
+        try:
+            app = get_celery_app()
+            insp = app.control.inspect(timeout=1.5)
+            active_queues = insp.active_queues() or {}
+            for node_name, q_list in active_queues.items():
+                for q in q_list:
+                    if q.get("name") == worker_ip:
+                        found_nodes.append(node_name)
+                        self.client.set(f"invoker:{worker_ip}:celery_node_name", node_name, ex=86400 * 7)
+                        break
+        except Exception as e:
+            print(f"[CELERY RESOLVE] Warning: Failed to inspect active queues for {worker_ip}: {e}")
+
+        if not found_nodes:
+            # Fallback 1: check Redis heartbeat
+            hb = self.client.get(f"invoker:{worker_ip}:heartbeat")
+            if hb:
+                try:
+                    hb_data = json.loads(hb)
+                    if hb_data.get("hostname"):
+                        found_nodes.append(hb_data["hostname"])
+                except Exception:
+                    pass
+
+        if not found_nodes:
+            # Fallback 2: resources hostname if it starts with celery@
+            res_host = self.client.hget(f"invoker:{worker_ip}:resources", "hostname")
+            if res_host:
+                h_str = res_host.decode() if isinstance(res_host, bytes) else res_host
+                if h_str.startswith("celery@"):
+                    found_nodes.append(h_str)
+
+        if not found_nodes:
+            # Fallback 3: classic pattern
+            found_nodes.append(f"celery@wyolo_invoker_{worker_ip}")
+
+        return list(set(found_nodes))
+
+    def set_invoker_pause(
+        self,
+        worker_ip: str,
+        action: str,
+        mode: str = "temporal",
+        hours: float = 4.0,
+    ) -> Dict[str, Any]:
+        """Pauses or resumes an invoker node and sends Celery signals."""
+        state_key = f"invoker:{worker_ip}:pause_state"
+        until_key = f"invoker:{worker_ip}:pause_until"
+        res_key = f"invoker:{worker_ip}:resources"
+
+        self.log_admin_action(
+            user="wisrovi",
+            action="SET_PAUSE" if action == "pause" else "RESUME",
+            target=worker_ip,
+            details=f"Action: {action}, Mode: {mode}, Hours: {hours}",
+        )
+
+        if action == "pause":
+            if mode == "temporal":
+                pause_until = time.time() + (hours * 3600)
+                self.client.set(state_key, "paused_temporal")
+                self.client.set(until_key, str(pause_until))
+                self.client.hset(res_key, mapping={"pause_state": "paused_temporal", "pause_until": str(pause_until)})
+            else:
+                self.client.set(state_key, "paused_perpetual")
+                self.client.delete(until_key)
+                self.client.hset(res_key, mapping={"pause_state": "paused_perpetual", "pause_until": ""})
+        else:
+            self.client.set(state_key, "active")
+            self.client.delete(until_key)
+            self.client.delete(f"invoker:{worker_ip}:drain")
+            self.client.delete(f"invoker:{worker_ip}:cancel_active")
+            self.client.hset(res_key, mapping={"pause_state": "active", "pause_until": "", "drain_reason": ""})
+
         # Send Celery control signal to cancel/add consumers
         try:
             app = get_celery_app()
-            node_name = f"celery@wyolo_invoker_{worker_ip}"
-            public_queues = ["gpus_high", "gpus_medium", "gpus_low"]
-            for q in public_queues:
+            destinations = self.resolve_celery_worker_names(worker_ip)
+            queues_to_manage = ["gpus_high", "gpus_medium", "gpus_low", "wyolo_gpu_queue"]
+            if action != "pause":
+                queues_to_manage.append(worker_ip)
+            for q in queues_to_manage:
                 if action == "pause":
-                    app.control.cancel_consumer(q, destination=[node_name], timeout=1.0)
+                    app.control.cancel_consumer(q, destination=destinations, timeout=1.0)
                 else:
-                    app.control.add_consumer(q, destination=[node_name], timeout=1.0)
+                    app.control.add_consumer(q, destination=destinations, timeout=1.0)
         except Exception as e:
             print(f"[CELERY SIGNAL] Warning: Failed to send Celery signal to {worker_ip}: {e}")
 
         return self.get_invoker(worker_ip) or {}
 
-    def set_invoker_drain(self, worker_ip: str, reason: str = "Maintenance") -> Dict[str, Any]:
-        """Marks an invoker node in draining mode: finishes active tasks and halts public consumption."""
+    def set_invoker_drain(self, worker_ip: str, reason: str = "Maintenance", evict: bool = True) -> Dict[str, Any]:
+        """Marks an invoker node in draining mode: halts public/private consumption and optionally evicts active workloads."""
         res_key = f"invoker:{worker_ip}:resources"
         state_key = f"invoker:{worker_ip}:pause_state"
         drain_key = f"invoker:{worker_ip}:drain"
 
         self.client.set(state_key, "draining")
-        self.client.set(drain_key, json.dumps({"draining": True, "reason": reason, "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}))
+        self.client.set(drain_key, json.dumps({
+            "draining": True,
+            "reason": reason,
+            "evict": evict,
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }))
         self.client.hset(res_key, mapping={"pause_state": "draining", "drain_reason": reason})
 
-        # Cancel Celery consumer on public queues immediately so no new tasks are accepted
+        # Node-level cancellation flag watched by orchestrator
+        if evict:
+            self.client.set(f"invoker:{worker_ip}:cancel_active", "1", ex=600)
+
+        # Log admin action
+        self.log_admin_action(
+            user="wisrovi",
+            action="DRAIN_NODE",
+            target=worker_ip,
+            details=f"Reason: {reason}, Evict active: {evict}",
+        )
+
+        destinations = self.resolve_celery_worker_names(worker_ip)
+
+        # Cancel Celery consumer on public and private queues immediately so no new tasks are accepted
         try:
             app = get_celery_app()
-            node_name = f"celery@wyolo_invoker_{worker_ip}"
-            public_queues = ["gpus_high", "gpus_medium", "gpus_low", "wyolo_gpu_queue"]
-            for q in public_queues:
-                app.control.cancel_consumer(q, destination=[node_name], timeout=1.0)
+            queues_to_cancel = ["gpus_high", "gpus_medium", "gpus_low", "wyolo_gpu_queue", worker_ip]
+            for q in queues_to_cancel:
+                app.control.cancel_consumer(q, destination=destinations, timeout=1.0)
         except Exception as e:
             print(f"[CELERY SIGNAL] Warning: Failed to cancel consumers for drain on {worker_ip}: {e}")
+
+        # If evict is True, terminate running workloads on this node
+        if evict:
+            # 1. Celery inspect active tasks on destination workers and revoke them
+            try:
+                app = get_celery_app()
+                insp = app.control.inspect(timeout=1.5)
+                active_map = insp.active() or {}
+                for dest in destinations:
+                    for t in active_map.get(dest, []):
+                        t_id = t.get("id")
+                        if t_id:
+                            self.client.set(f"wyolo:task:{t_id}:cancel", "1", ex=86400)
+                            self.client.set(f"task:{t_id}:cancel", "1", ex=86400)
+                            args = t.get("args") or []
+                            if args and isinstance(args[0], dict):
+                                st_id = args[0].get("study_id")
+                                if st_id:
+                                    self.client.set(f"study:{st_id}:cancel", "1", ex=86400)
+                                    self.client.set(f"wyolo:study:{st_id}:cancel", "1", ex=86400)
+                                    self.client.set(f"study:{st_id}:cancelled", "true", ex=86400)
+                                    self.client.delete(f"study:{st_id}:active_trial")
+                            # Revoke task with SIGKILL
+                            app.control.revoke(t_id, destination=[dest], terminate=True, signal="SIGKILL")
+                            print(f"[DRAIN] Revoked active Celery task {t_id} on {dest}")
+            except Exception as rev_err:
+                print(f"[DRAIN] Warning: Failed to revoke Celery tasks: {rev_err}")
+
+            # 2. Redis active trials for this worker
+            try:
+                active_trials = [k.decode("utf-8") for k in self.client.keys("study:*:active_trial")]
+                for at_key in active_trials:
+                    val = self.client.get(at_key)
+                    if val:
+                        data = json.loads(val)
+                        if data.get("invoker") == worker_ip or data.get("details", {}).get("worker_host") == worker_ip:
+                            tr_id = data.get("trial_id")
+                            st_id = at_key.split(":")[1]
+                            if tr_id:
+                                self.client.set(f"wyolo:task:{tr_id}:cancel", "1", ex=86400)
+                                self.client.set(f"task:{tr_id}:cancel", "1", ex=86400)
+                                try:
+                                    app = get_celery_app()
+                                    app.control.revoke(tr_id, destination=destinations, terminate=True, signal="SIGKILL")
+                                except Exception:
+                                    pass
+                            if st_id:
+                                self.client.set(f"study:{st_id}:cancel", "1", ex=86400)
+                                self.client.set(f"wyolo:study:{st_id}:cancel", "1", ex=86400)
+                                self.client.set(f"study:{st_id}:cancelled", "true", ex=86400)
+                                self.client.delete(at_key)
+            except Exception as red_err:
+                print(f"[DRAIN] Warning: Failed to clean active trials from Redis: {red_err}")
 
         return self.get_invoker(worker_ip) or {}
 
@@ -633,12 +796,28 @@ class ClusterRepository:
         return points
 
     def cancel_study(self, study_id: str) -> bool:
-        """Cancels a running study and notifies Celery workers."""
+        """Cancels a running study, notifies Celery workers, and terminates executing tasks."""
         self.client.set(f"study:{study_id}:cancelled", "true", ex=86400)
+        self.client.set(f"study:{study_id}:cancel", "1", ex=86400)
+        self.client.set(f"wyolo:study:{study_id}:cancel", "1", ex=86400)
         self.client.delete(f"study:{study_id}:active_trial")
         try:
             app = get_celery_app()
             app.control.broadcast("stop_study", arguments={"study_id": study_id})
+            # Inspect active tasks across all nodes and revoke any task matching study_id
+            insp = app.control.inspect(timeout=1.5)
+            active_map = insp.active() or {}
+            for node, tasks in active_map.items():
+                for t in tasks:
+                    args = t.get("args") or []
+                    if args and isinstance(args[0], dict):
+                        t_study_id = args[0].get("study_id")
+                        if t_study_id == study_id:
+                            t_id = t.get("id")
+                            if t_id:
+                                self.client.set(f"wyolo:task:{t_id}:cancel", "1", ex=86400)
+                                self.client.set(f"task:{t_id}:cancel", "1", ex=86400)
+                                app.control.revoke(t_id, destination=[node], terminate=True, signal="SIGKILL")
         except Exception:
             pass
         return True
