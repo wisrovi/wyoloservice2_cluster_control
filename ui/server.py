@@ -28,7 +28,7 @@ class WorkbenchHttpHandler(SimpleHTTPRequestHandler):
             self.send_header("Content-Type", "application/json")
             self.send_header("Cache-Control", "no-cache")
             self.end_headers()
-            payload = json.dumps({"status": "healthy", "service": "cluster_admin_ui", "version": "3.1.1"})
+            payload = json.dumps({"status": "healthy", "service": "cluster_admin_ui", "version": "3.1.2"})
             self.wfile.write(payload.encode("utf-8"))
             return
 
