@@ -128,10 +128,10 @@ class ClusterApiClient:
             return resp.json()
         raise ValueError(resp.json().get("detail", "Error batch updating limits"))
 
-    def drain_invoker(self, token: str, worker_ip: str, reason: str = "Maintenance") -> Dict[str, Any]:
-        """Puts an invoker node in graceful drain mode."""
+    def drain_invoker(self, token: str, worker_ip: str, reason: str = "Maintenance", evict: bool = True) -> Dict[str, Any]:
+        """Puts an invoker node in graceful drain mode with workload eviction."""
         url = f"{self.base_url}/api/v1/invokers/{worker_ip}/drain"
-        resp = requests.post(url, headers=self._headers(token), json={"reason": reason}, timeout=5)
+        resp = requests.post(url, headers=self._headers(token), json={"reason": reason, "evict": evict}, timeout=8)
         if resp.status_code == 200:
             return resp.json()
         raise ValueError(resp.json().get("detail", f"Error draining invoker {worker_ip}"))
