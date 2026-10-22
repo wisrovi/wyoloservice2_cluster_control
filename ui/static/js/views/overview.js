@@ -8,6 +8,9 @@ window.ViewOverview = {
   icon: "📊",
   file: "overview.cluster",
   category: "cluster",
+  queuedData: [],
+  queuedPage: 1,
+  queuedPageSize: 5,
 
   render() {
     return `
@@ -94,10 +97,48 @@ window.ViewOverview = {
             <span>⏳ Queued Workloads & Celery Backlog (En Espera)</span>
             <span class="badge badge-amber" id="queued-workloads-badge">0 Queued</span>
           </div>
-          <button class="btn btn-secondary btn-sm" onclick="window.workbench.switchView('tasks')">
-            <span>📋</span> Open Tasks & Queues
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <button class="btn btn-secondary btn-sm" onclick="window.ViewOverview.refreshQueues()" title="Refrescar tareas en cola">
+              <span>🔄</span> Refrescar
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="window.workbench.switchView('tasks')">
+              <span>📋</span> Open Tasks & Queues
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter Bar -->
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; background: rgba(0,0,0,0.15); padding: 8px 12px; border-radius: 4px; border: 1px solid var(--vscode-border-light);">
+          <div style="flex: 1; min-width: 180px;">
+            <input type="text" id="overview-queued-search" class="form-control form-control-sm" placeholder="🔍 Filtrar por estudio, tarea, autor, dataset..." oninput="window.ViewOverview.onQueuedFilterChange()" style="width: 100%;">
+          </div>
+
+          <select id="overview-queued-filter-queue" class="form-control form-control-sm" style="width: 160px;" onchange="window.ViewOverview.onQueuedFilterChange()">
+            <option value="All">Todas las Colas / Nodos</option>
+          </select>
+
+          <select id="overview-queued-filter-priority" class="form-control form-control-sm" style="width: 130px;" onchange="window.ViewOverview.onQueuedFilterChange()">
+            <option value="All">Todas Prioridades</option>
+            <option value="NORMAL">NORMAL</option>
+            <option value="HIGH">HIGH</option>
+          </select>
+
+          <select id="overview-queued-filter-model" class="form-control form-control-sm" style="width: 130px;" onchange="window.ViewOverview.onQueuedFilterChange()">
+            <option value="All">Todos los Modelos</option>
+          </select>
+
+          <select id="overview-queued-page-size" class="form-control form-control-sm" style="width: 95px;" onchange="window.ViewOverview.onQueuedPageSizeChange()">
+            <option value="5" selected>5 por pág</option>
+            <option value="10">10 por pág</option>
+            <option value="25">25 por pág</option>
+            <option value="50">50 por pág</option>
+          </select>
+
+          <button class="btn btn-secondary btn-sm" onclick="window.ViewOverview.clearQueuedFilters()" title="Limpiar filtros">
+            ✕ Limpiar
           </button>
         </div>
+
         <div class="table-responsive">
           <table class="vscode-table">
             <thead>
@@ -116,6 +157,16 @@ window.ViewOverview = {
               <tr><td colspan="8" style="text-align: center; color: var(--vscode-fg-muted); padding: 16px;">Scanning queued workloads...</td></tr>
             </tbody>
           </table>
+        </div>
+
+        <!-- Pagination Bar -->
+        <div id="overview-queued-pagination" style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; font-size: 12px; color: var(--vscode-fg-muted); padding: 4px 6px;">
+          <div id="overview-queued-page-info">Mostrando 0 de 0</div>
+          <div style="display: flex; gap: 6px; align-items: center;">
+            <button class="btn btn-secondary btn-sm" id="overview-queued-btn-prev" onclick="window.ViewOverview.changeQueuedPage(-1)">◀ Anterior</button>
+            <span id="overview-queued-page-number" style="font-weight: 600; color: var(--vscode-fg-bright); padding: 0 4px;">Pág. 1 / 1</span>
+            <button class="btn btn-secondary btn-sm" id="overview-queued-btn-next" onclick="window.ViewOverview.changeQueuedPage(1)">Siguiente ▶</button>
+          </div>
         </div>
       </div>
 
@@ -254,67 +305,20 @@ window.ViewOverview = {
       }
 
       // 2. Render Queued Workloads & Backlog
-      let queuedTasks = [];
       let totalQueuedCount = 0;
       try {
         const qRes = await window.apiClient.getQueues();
-        queuedTasks = qRes.tasks || [];
-        totalQueuedCount = qRes.total_queued !== undefined ? qRes.total_queued : queuedTasks.length;
+        this.queuedData = qRes.tasks || [];
+        totalQueuedCount = qRes.total_queued !== undefined ? qRes.total_queued : this.queuedData.length;
       } catch (_) {}
 
       const metricQueued = document.getElementById("metric-queued");
       const metricQueuedSub = document.getElementById("metric-queued-sub");
       if (metricQueued) metricQueued.textContent = totalQueuedCount;
-      if (metricQueuedSub) metricQueuedSub.textContent = `${queuedTasks.length} Visible Tasks`;
+      if (metricQueuedSub) metricQueuedSub.textContent = `${this.queuedData.length} Visible Tasks`;
 
-      const queuedBadge = document.getElementById("queued-workloads-badge");
-      const queuedTbody = document.getElementById("overview-queued-tasks-body");
-      if (queuedBadge) queuedBadge.textContent = `${totalQueuedCount} Queued`;
-
-      if (queuedTbody) {
-        if (!queuedTasks.length) {
-          queuedTbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--vscode-fg-muted); padding: 16px;">No workloads currently waiting in queues.</td></tr>`;
-        } else {
-          queuedTbody.innerHTML = queuedTasks.map(t => {
-            const studyName = t.study_name || t.task_id || "Queued Job";
-            const author = t.author || "Unknown";
-            const qName = t.queue_name || "wyolo_gpu_queue";
-            const isNodeQueue = qName.includes(".") || qName.startsWith("192.") || qName.startsWith("worker");
-            const qBadge = isNodeQueue
-              ? `<span class="badge badge-green" title="Direct Node Queue">${escapeHtml(qName)}</span>`
-              : `<span class="badge badge-blue" title="Public Celery Queue">${escapeHtml(qName)}</span>`;
-            const model = t.model || "yolo";
-            const dataset = t.dataset || "N/A";
-            const prio = (t.priority || "NORMAL").toUpperCase();
-            const prioBadge = prio === "HIGH"
-              ? `<span class="badge badge-amber">${prio}</span>`
-              : `<span class="badge badge-blue">${prio}</span>`;
-            const queuedAt = t.queued_at || "Recently";
-
-            return `
-              <tr>
-                <td>
-                  <div><strong>${escapeHtml(studyName)}</strong></div>
-                  <div style="font-size: 10px; color: var(--vscode-fg-muted); font-family: var(--vscode-mono-family);">${escapeHtml(t.task_id || '')}</div>
-                </td>
-                <td><span style="color: var(--vscode-fg-muted); font-size: 12px;">${escapeHtml(author)}</span></td>
-                <td>${qBadge}</td>
-                <td><span class="badge badge-blue">${escapeHtml(model)}</span></td>
-                <td style="max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(dataset)}">
-                  <code>${escapeHtml(dataset)}</code>
-                </td>
-                <td>${prioBadge}</td>
-                <td><span style="font-size: 11px; color: var(--vscode-fg-muted);">${escapeHtml(queuedAt)}</span></td>
-                <td>
-                  <button class="btn btn-danger btn-sm" onclick="window.ViewOverview.cancelQueuedTask('${t.task_id}')" title="Cancel queued task">
-                    🗑️ Cancel
-                  </button>
-                </td>
-              </tr>
-            `;
-          }).join("");
-        }
-      }
+      this.populateQueuedDropdowns(this.queuedData);
+      this.renderQueuedTable();
 
       // 3. Render Nodes Topology
       const tbody = document.getElementById("overview-nodes-body");
@@ -401,6 +405,182 @@ window.ViewOverview = {
           Failed to load telemetry: ${e.message}
         </td></tr>
       `;
+    }
+  },
+
+  populateQueuedDropdowns(tasks) {
+    const queueSel = document.getElementById("overview-queued-filter-queue");
+    const modelSel = document.getElementById("overview-queued-filter-model");
+
+    if (queueSel) {
+      const curr = queueSel.value || "All";
+      const queues = Array.from(new Set(tasks.map(t => t.queue_name || "wyolo_gpu_queue"))).filter(Boolean).sort();
+      queueSel.innerHTML = `<option value="All">Todas las Colas / Nodos</option>` +
+        queues.map(q => `<option value="${escapeHtml(q)}">${escapeHtml(q)}</option>`).join("");
+      queueSel.value = queues.includes(curr) ? curr : "All";
+    }
+
+    if (modelSel) {
+      const curr = modelSel.value || "All";
+      const models = Array.from(new Set(tasks.map(t => t.model || "yolo"))).filter(Boolean).sort();
+      modelSel.innerHTML = `<option value="All">Todos los Modelos</option>` +
+        models.map(m => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join("");
+      modelSel.value = models.includes(curr) ? curr : "All";
+    }
+  },
+
+  onQueuedFilterChange() {
+    this.queuedPage = 1;
+    this.renderQueuedTable();
+  },
+
+  onQueuedPageSizeChange() {
+    const sel = document.getElementById("overview-queued-page-size");
+    this.queuedPageSize = parseInt(sel?.value || "5", 10);
+    this.queuedPage = 1;
+    this.renderQueuedTable();
+  },
+
+  clearQueuedFilters() {
+    const searchInput = document.getElementById("overview-queued-search");
+    const queueSel = document.getElementById("overview-queued-filter-queue");
+    const prioSel = document.getElementById("overview-queued-filter-priority");
+    const modelSel = document.getElementById("overview-queued-filter-model");
+
+    if (searchInput) searchInput.value = "";
+    if (queueSel) queueSel.value = "All";
+    if (prioSel) prioSel.value = "All";
+    if (modelSel) modelSel.value = "All";
+
+    this.queuedPage = 1;
+    this.renderQueuedTable();
+  },
+
+  changeQueuedPage(delta) {
+    this.queuedPage += delta;
+    this.renderQueuedTable();
+  },
+
+  renderQueuedTable() {
+    const tbody = document.getElementById("overview-queued-tasks-body");
+    const pageInfo = document.getElementById("overview-queued-page-info");
+    const pageNumber = document.getElementById("overview-queued-page-number");
+    const btnPrev = document.getElementById("overview-queued-btn-prev");
+    const btnNext = document.getElementById("overview-queued-btn-next");
+    const badge = document.getElementById("queued-workloads-badge");
+
+    if (!tbody) return;
+
+    const q = (document.getElementById("overview-queued-search")?.value || "").toLowerCase().trim();
+    const queueFilter = document.getElementById("overview-queued-filter-queue")?.value || "All";
+    const prioFilter = document.getElementById("overview-queued-filter-priority")?.value || "All";
+    const modelFilter = document.getElementById("overview-queued-filter-model")?.value || "All";
+
+    const filtered = (this.queuedData || []).filter(t => {
+      if (queueFilter !== "All" && (t.queue_name || "wyolo_gpu_queue") !== queueFilter) return false;
+      if (prioFilter !== "All" && ((t.priority || "NORMAL").toUpperCase()) !== prioFilter) return false;
+      if (modelFilter !== "All" && (t.model || "yolo") !== modelFilter) return false;
+      if (q) {
+        const text = [
+          t.study_name || "",
+          t.task_id || "",
+          t.author || "",
+          t.model || "",
+          t.dataset || "",
+          t.queue_name || ""
+        ].join(" ").toLowerCase();
+        if (!text.includes(q)) return false;
+      }
+      return true;
+    });
+
+    const totalCount = (this.queuedData || []).length;
+    const filteredCount = filtered.length;
+
+    if (badge) {
+      badge.textContent = `${totalCount} Queued` + (filteredCount !== totalCount ? ` (${filteredCount} filtrados)` : "");
+    }
+
+    if (!filteredCount) {
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--vscode-fg-muted); padding: 16px;">
+        ${totalCount === 0 ? "No hay cargas de trabajo esperando en colas actualmente." : "No hay tareas en cola que coincidan con los filtros aplicados."}
+      </td></tr>`;
+      if (pageInfo) pageInfo.textContent = `Mostrando 0 de ${totalCount} tareas`;
+      if (pageNumber) pageNumber.textContent = "Pág. 1 / 1";
+      if (btnPrev) btnPrev.disabled = true;
+      if (btnNext) btnNext.disabled = true;
+      return;
+    }
+
+    const totalPages = Math.ceil(filteredCount / this.queuedPageSize) || 1;
+    if (this.queuedPage > totalPages) this.queuedPage = totalPages;
+    if (this.queuedPage < 1) this.queuedPage = 1;
+
+    const startIdx = (this.queuedPage - 1) * this.queuedPageSize;
+    const endIdx = Math.min(startIdx + this.queuedPageSize, filteredCount);
+    const pagedTasks = filtered.slice(startIdx, endIdx);
+
+    if (pageInfo) {
+      pageInfo.textContent = `Mostrando ${startIdx + 1}–${endIdx} de ${filteredCount} tareas` +
+        (filteredCount !== totalCount ? ` (filtradas de ${totalCount} en total)` : "");
+    }
+    if (pageNumber) pageNumber.textContent = `Pág. ${this.queuedPage} / ${totalPages}`;
+    if (btnPrev) btnPrev.disabled = (this.queuedPage <= 1);
+    if (btnNext) btnNext.disabled = (this.queuedPage >= totalPages);
+
+    tbody.innerHTML = pagedTasks.map(t => {
+      const studyName = t.study_name || t.task_id || "Queued Job";
+      const author = t.author || "Unknown";
+      const qName = t.queue_name || "wyolo_gpu_queue";
+      const isNodeQueue = qName.includes(".") || qName.startsWith("192.") || qName.startsWith("worker");
+      const qBadge = isNodeQueue
+        ? `<span class="badge badge-green" title="Direct Node Queue">${escapeHtml(qName)}</span>`
+        : `<span class="badge badge-blue" title="Public Celery Queue">${escapeHtml(qName)}</span>`;
+      const model = t.model || "yolo";
+      const dataset = t.dataset || "N/A";
+      const prio = (t.priority || "NORMAL").toUpperCase();
+      const prioBadge = prio === "HIGH"
+        ? `<span class="badge badge-amber">${prio}</span>`
+        : `<span class="badge badge-blue">${prio}</span>`;
+      const queuedAt = t.queued_at || "Recently";
+
+      return `
+        <tr>
+          <td>
+            <div><strong>${escapeHtml(studyName)}</strong></div>
+            <div style="font-size: 10px; color: var(--vscode-fg-muted); font-family: var(--vscode-mono-family);">${escapeHtml(t.task_id || '')}</div>
+          </td>
+          <td><span style="color: var(--vscode-fg-muted); font-size: 12px;">${escapeHtml(author)}</span></td>
+          <td>${qBadge}</td>
+          <td><span class="badge badge-blue">${escapeHtml(model)}</span></td>
+          <td style="max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(dataset)}">
+            <code>${escapeHtml(dataset)}</code>
+          </td>
+          <td>${prioBadge}</td>
+          <td><span style="font-size: 11px; color: var(--vscode-fg-muted);">${escapeHtml(queuedAt)}</span></td>
+          <td>
+            <button class="btn btn-danger btn-sm" onclick="window.ViewOverview.cancelQueuedTask('${t.task_id}')" title="Cancelar y eliminar de cola">
+              🗑️ Cancel
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join("");
+  },
+
+  async refreshQueues() {
+    try {
+      const qRes = await window.apiClient.getQueues();
+      this.queuedData = qRes.tasks || [];
+      const totalQueuedCount = qRes.total_queued !== undefined ? qRes.total_queued : this.queuedData.length;
+      const metricQueued = document.getElementById("metric-queued");
+      const metricQueuedSub = document.getElementById("metric-queued-sub");
+      if (metricQueued) metricQueued.textContent = totalQueuedCount;
+      if (metricQueuedSub) metricQueuedSub.textContent = `${this.queuedData.length} Visible Tasks`;
+      this.populateQueuedDropdowns(this.queuedData);
+      this.renderQueuedTable();
+    } catch (e) {
+      window.workbench?.logTerminal("WARN", `Error actualizando colas: ${e.message}`);
     }
   },
 
