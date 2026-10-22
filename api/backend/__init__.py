@@ -1,3 +1,3 @@
 """NeuralForge Cluster Admin - FastAPI Backend Package."""
 
-__version__ = "3.1.6"
+__version__ = "3.1.7"
