@@ -47,9 +47,16 @@ def apply_custom_theme():
       color: var(--vscode-text-main) !important;
     }
 
+    /* Hide Streamlit default header so VSCode Top Bar sits at the very top */
+    header[data-testid="stHeader"] {
+      display: none !important;
+    }
+
     .main .block-container {
-      padding-top: 1.2rem !important;
+      padding-top: 0.2rem !important;
       padding-bottom: 3.5rem !important;
+      padding-left: 0.8rem !important;
+      padding-right: 0.8rem !important;
       max-width: 100% !important;
     }
 
@@ -362,75 +369,124 @@ def apply_custom_theme():
       color: #FFFFFF !important;
     }
 
-    /* Activity Bar vertical rail styling (Left column in sidebar) */
-    [data-testid="stSidebar"] [data-testid="column"]:first-child {
-      border-right: 1px solid #333333 !important;
-      padding-right: 4px !important;
-      background: #2D2D2D !important;
-      border-radius: 4px 0 0 4px !important;
-      padding-top: 4px !important;
-    }
-
-    [data-testid="stSidebar"] [data-testid="column"]:first-child button {
-      padding: 8px 2px !important;
-      font-size: 1.25rem !important;
-      height: 40px !important;
-      min-height: 40px !important;
-      border-radius: 0 !important;
-      border: none !important;
-      box-shadow: none !important;
-      margin-bottom: 4px !important;
-    }
-
-    [data-testid="stSidebar"] [data-testid="column"]:first-child button[kind="primary"] {
-      background: #1E1E1E !important;
-      border-left: 3px solid #007ACC !important;
-      color: #FFFFFF !important;
-    }
-
-    [data-testid="stSidebar"] [data-testid="column"]:first-child button[kind="secondary"] {
-      background: transparent !important;
-      border-left: 3px solid transparent !important;
+    /* Sidebar Navigation Button Styles */
+    .sidebar-group-title {
+      font-size: 0.68rem !important;
+      font-weight: 800 !important;
       color: #858585 !important;
-    }
-
-    [data-testid="stSidebar"] [data-testid="column"]:first-child button[kind="secondary"]:hover {
-      background: #252526 !important;
-      color: #FFFFFF !important;
-    }
-
-    /* Primary Sidebar Pane (Right column in sidebar) */
-    [data-testid="stSidebar"] [data-testid="column"]:last-child {
+      letter-spacing: 0.08em !important;
+      text-transform: uppercase !important;
+      margin-top: 14px !important;
+      margin-bottom: 4px !important;
       padding-left: 6px !important;
     }
 
-    [data-testid="stSidebar"] [data-testid="column"]:last-child button {
+    [data-testid="stSidebar"] button {
       text-align: left !important;
       justify-content: flex-start !important;
-      font-size: 0.8rem !important;
-      padding: 4px 8px !important;
-      border-radius: 3px !important;
-      height: 28px !important;
-      min-height: 28px !important;
+      font-size: 0.84rem !important;
+      padding: 6px 10px !important;
+      border-radius: 4px !important;
+      height: 34px !important;
+      min-height: 34px !important;
       box-shadow: none !important;
+      border: 1px solid transparent !important;
+      transition: all 0.15s ease !important;
+      margin-bottom: 2px !important;
+      width: 100% !important;
     }
 
-    [data-testid="stSidebar"] [data-testid="column"]:last-child button[kind="primary"] {
+    [data-testid="stSidebar"] button[kind="primary"] {
       background: #37373D !important;
-      border-left: 2px solid #007ACC !important;
+      border-left: 3px solid #007ACC !important;
       color: #FFFFFF !important;
       font-weight: 600 !important;
     }
 
-    [data-testid="stSidebar"] [data-testid="column"]:last-child button[kind="secondary"] {
+    [data-testid="stSidebar"] button[kind="secondary"] {
       background: transparent !important;
-      border: 1px solid transparent !important;
       color: #CCCCCC !important;
     }
 
-    [data-testid="stSidebar"] [data-testid="column"]:last-child button[kind="secondary"]:hover {
+    [data-testid="stSidebar"] button[kind="secondary"]:hover {
       background: #2A2D2E !important;
       color: #FFFFFF !important;
+    }
+
+    /* VSCode Top Bar Popovers (Archivo, Editar, Ver, Ejecutar, Terminal, Ayuda) */
+    div[data-testid="stPopover"] {
+      display: inline-block !important;
+      width: 100% !important;
+    }
+
+    div[data-testid="stPopover"] > button {
+      background: transparent !important;
+      border: 1px solid transparent !important;
+      box-shadow: none !important;
+      color: #CCCCCC !important;
+      font-size: 0.82rem !important;
+      font-weight: 500 !important;
+      padding: 2px 6px !important;
+      height: 28px !important;
+      min-height: 28px !important;
+      border-radius: 3px !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      transition: background 0.15s ease, color 0.15s ease !important;
+      width: 100% !important;
+    }
+
+    div[data-testid="stPopover"] > button:hover {
+      background: #333333 !important;
+      color: #FFFFFF !important;
+    }
+
+    div[data-testid="stPopover"] > button:focus {
+      box-shadow: none !important;
+      border-color: transparent !important;
+    }
+
+    div[data-testid="stPopover"] > button svg {
+      display: none !important; /* Hide chevron icon */
+    }
+
+    /* Floating Context Menu Body */
+    div[data-testid="stPopoverBody"] {
+      background: #252526 !important;
+      border: 1px solid #3C3C3C !important;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6) !important;
+      border-radius: 5px !important;
+      padding: 6px 4px !important;
+      min-width: 250px !important;
+    }
+
+    div[data-testid="stPopoverBody"] button {
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      color: #CCCCCC !important;
+      text-align: left !important;
+      justify-content: flex-start !important;
+      font-size: 0.82rem !important;
+      padding: 6px 12px !important;
+      height: 32px !important;
+      min-height: 32px !important;
+      border-radius: 3px !important;
+      width: 100% !important;
+      display: flex !important;
+      align-items: center !important;
+      gap: 8px !important;
+    }
+
+    div[data-testid="stPopoverBody"] button:hover {
+      background: #007ACC !important;
+      color: #FFFFFF !important;
+    }
+
+    div[data-testid="stPopoverBody"] hr {
+      margin: 4px 0 !important;
+      border-color: #3C3C3C !important;
     }
     </style>
     """
@@ -443,52 +499,8 @@ def clean_html(html_str: str) -> str:
 
 
 def render_vscode_titlebar(cluster_name: str = "production-cima", active_view: str = "Operations Center", username: str = "admin"):
-    """Renders the signature VSCode Title Bar with Command Center search bar and window controls."""
-    html = f"""
-    <div style="background: #1F1F1F; border-bottom: 1px solid #2B2B2B; padding: 5px 14px; margin: -1.2rem -1rem 0.4rem -1rem; display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem; user-select: none;">
-        <!-- Left: Logo & Window Title -->
-        <div style="display: flex; align-items: center; gap: 8px; min-width: 240px;">
-            <span style="font-size: 1.15rem;">🧠</span>
-            <div style="display: flex; align-items: center; gap: 6px;">
-                <span style="font-weight: 700; color: #FFFFFF; letter-spacing: -0.01em;">NeuralForge</span>
-                <span style="color: #6E7681; font-size: 0.76rem;">[{cluster_name}]</span>
-                <span style="color: #484F58;">—</span>
-                <span style="color: #8B949E; font-size: 0.78rem;">{active_view}</span>
-            </div>
-        </div>
-
-        <!-- Center: VSCode Command Center Search Pill -->
-        <div style="flex: 1; max-width: 520px; margin: 0 16px;">
-            <div style="background: #2D2D2D; border: 1px solid #3C3C3C; border-radius: 6px; padding: 3px 12px; display: flex; align-items: center; justify-content: space-between; color: #CCCCCC; font-size: 0.76rem;">
-                <div style="display: flex; align-items: center; gap: 6px;">
-                    <span style="font-size: 0.8rem; color: #858585;">🔍</span>
-                    <span>neuralforge-cluster &gt; Quick Open, nodes, actions...</span>
-                </div>
-                <span style="background: #1E1E1E; border: 1px solid #3C3C3C; border-radius: 3px; padding: 1px 4px; font-size: 0.65rem; color: #858585; font-family: monospace;">Ctrl+P</span>
-            </div>
-        </div>
-
-        <!-- Right: Layout, User Pill and Window Controls -->
-        <div style="display: flex; align-items: center; gap: 10px; min-width: 240px; justify-content: flex-end;">
-            <div style="display: flex; align-items: center; gap: 4px; background: rgba(0, 122, 204, 0.15); border: 1px solid rgba(0, 122, 204, 0.3); padding: 2px 7px; border-radius: 3px; font-size: 0.7rem; color: #60A5FA; font-weight: 600;">
-                <span class="pulse-dot pulse-blue"></span>
-                <span>WSL: Ubuntu-22.04</span>
-            </div>
-            <div style="display: flex; align-items: center; gap: 5px; color: #CCCCCC; font-size: 0.74rem;">
-                <span style="background: #007ACC; color: #FFFFFF; font-weight: 700; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.68rem;">
-                    {username[:1].upper() if username else 'A'}
-                </span>
-                <span style="font-weight: 600;">{username}</span>
-            </div>
-            <div style="display: flex; gap: 8px; margin-left: 8px; color: #6E7681; font-size: 0.75rem;">
-                <span title="Minimize">🗕</span>
-                <span title="Maximize">🗖</span>
-                <span title="Close" style="color: #F14C4C;">✕</span>
-            </div>
-        </div>
-    </div>
-    """
-    st.markdown(clean_html(html), unsafe_allow_html=True)
+    """Backward compatibility stub; titlebar is now integrated seamlessly into render_vscode_menubar."""
+    pass
 
 
 def render_vscode_menubar(
@@ -497,92 +509,126 @@ def render_vscode_menubar(
     on_select_page,
     on_toggle_panel,
     on_logout,
+    cluster_name: str = "production-cima",
+    username: str = "admin",
 ):
-    """Renders the signature interactive VSCode Menu Bar (File, Edit, Selection, View, Go, Run, Terminal, Help)."""
-    c_file, c_edit, c_sel, c_view, c_go, c_run, c_term, c_help, c_space = st.columns(
-        [0.65, 0.65, 0.95, 0.7, 0.55, 0.65, 0.9, 0.65, 8.5]
+    """Renders the authentic VSCode Top Bar combining the brand logo, classic Menu Bar (Archivo, Editar, Ver, Ejecutar, Terminal, Ayuda), Command Center search, and status pill."""
+    col_logo, col_arch, col_edit, col_ver, col_ejec, col_term, col_ayud, col_search, col_user = st.columns(
+        [1.6, 0.85, 0.8, 0.75, 0.95, 0.95, 0.8, 3.8, 2.2],
+        gap="small",
     )
 
-    with c_file:
-        with st.popover("File"):
-            st.markdown("<div style='font-size: 0.7rem; color: #858585; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;'>File Menu</div>", unsafe_allow_html=True)
-            if st.button("🚀 New Workload Dispatch", key="m_file_disp", use_container_width=True):
+    with col_logo:
+        st.markdown(
+            clean_html(f"""
+            <div style="display: flex; align-items: center; gap: 8px; padding-top: 3px;">
+                <span style="font-size: 1.15rem;">🧠</span>
+                <div style="display: flex; align-items: baseline; gap: 5px;">
+                    <span style="font-size: 0.88rem; font-weight: 800; color: #FFFFFF; letter-spacing: -0.01em;">NeuralForge</span>
+                    <span style="font-size: 0.65rem; color: #007ACC; font-weight: 700; background: rgba(0,122,204,0.15); padding: 1px 4px; border-radius: 2px;">v{__version__}</span>
+                </div>
+            </div>
+            """),
+            unsafe_allow_html=True,
+        )
+
+    with col_arch:
+        with st.popover("Archivo"):
+            st.markdown("<div style='font-size: 0.68rem; color: #858585; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; padding: 2px 8px;'>Archivo (File)</div>", unsafe_allow_html=True)
+            if st.button("🚀 Nuevo Despacho de Cargas", key="m_file_disp", use_container_width=True):
                 on_select_page("🚀 Dispatch & Scheduler")
-            if st.button("📁 Open Storage Volumes", key="m_file_stor", use_container_width=True):
+            if st.button("📁 Explorar Volúmenes Samba / S3", key="m_file_stor", use_container_width=True):
                 on_select_page("📁 Storage & Volumes")
-            if st.button("🔄 Reload Cluster Telemetry", key="m_file_reload", use_container_width=True):
+            if st.button("🔄 Refrescar Telemetría del Clúster", key="m_file_reload", use_container_width=True):
                 st.rerun()
             st.divider()
-            if st.button("🚪 Sign Out (Exit)", key="m_file_out", use_container_width=True):
+            if st.button("🚪 Cerrar Sesión (Salir)", key="m_file_out", use_container_width=True):
                 on_logout()
 
-    with c_edit:
-        with st.popover("Edit"):
-            st.markdown("<div style='font-size: 0.7rem; color: #858585; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;'>Edit Menu</div>", unsafe_allow_html=True)
-            if st.button("⚙️ Edit Cluster Settings", key="m_edit_cfg", use_container_width=True):
+    with col_edit:
+        with st.popover("Editar"):
+            st.markdown("<div style='font-size: 0.68rem; color: #858585; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; padding: 2px 8px;'>Editar (Edit)</div>", unsafe_allow_html=True)
+            if st.button("⚙️ Configuración del Clúster", key="m_edit_cfg", use_container_width=True):
                 on_select_page("🛠️ Maintenance & Settings")
-            if st.button("📋 Copy API Endpoint (localhost:8001)", key="m_edit_cp", use_container_width=True):
+            if st.button("📋 Copiar API URL (:8001)", key="m_edit_cp", use_container_width=True):
                 st.toast("API URL: http://localhost:8001")
+            if st.button("🔒 Gestionar Roles y RBAC", key="m_edit_rbac", use_container_width=True):
+                on_select_page("📜 Audit & Security")
 
-    with c_sel:
-        with st.popover("Selection"):
-            st.markdown("<div style='font-size: 0.7rem; color: #858585; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;'>Selection Menu</div>", unsafe_allow_html=True)
-            if st.button("⚙️ Select All Invoker Nodes", key="m_sel_nod", use_container_width=True):
-                on_select_page("⚙️ Nodes & Invokers")
-            if st.button("⚡ Select GPU Fabrics (22 GPUs)", key="m_sel_gpu", use_container_width=True):
-                on_select_page("🔬 Cluster Capabilities")
-
-    with c_view:
-        with st.popover("View"):
-            st.markdown("<div style='font-size: 0.7rem; color: #858585; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;'>Jump to Cluster View</div>", unsafe_allow_html=True)
+    with col_ver:
+        with st.popover("Ver"):
+            st.markdown("<div style='font-size: 0.68rem; color: #858585; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; padding: 2px 8px;'>Vistas del Clúster (View)</div>", unsafe_allow_html=True)
             for page in all_pages:
                 is_active = (page == current_page)
                 prefix = "● " if is_active else "  "
                 if st.button(f"{prefix}{page}", key=f"m_view_{page}", use_container_width=True):
                     on_select_page(page)
             st.divider()
-            if st.button("🔼 Toggle Bottom Panel", key="m_view_pnl", use_container_width=True):
+            if st.button("🔼 Alternar Panel Inferior (Terminal)", key="m_view_pnl", use_container_width=True):
                 on_toggle_panel()
 
-    with c_go:
-        with st.popover("Go"):
-            st.markdown("<div style='font-size: 0.7rem; color: #858585; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;'>Quick Jump</div>", unsafe_allow_html=True)
-            if st.button("📊 Go to Operations Center", key="m_go_ops", use_container_width=True):
-                on_select_page("📊 Operations Center")
-            if st.button("🚀 Go to Workload Scheduler", key="m_go_sch", use_container_width=True):
+    with col_ejec:
+        with st.popover("Ejecutar"):
+            st.markdown("<div style='font-size: 0.68rem; color: #858585; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; padding: 2px 8px;'>Ejecución (Run)</div>", unsafe_allow_html=True)
+            if st.button("🚀 Despachar Entrenamiento", key="m_run_tr", use_container_width=True):
                 on_select_page("🚀 Dispatch & Scheduler")
-            if st.button("📋 Go to Task Queues Monitor", key="m_go_que", use_container_width=True):
-                on_select_page("📋 Tasks & Queues Monitor")
-
-    with c_run:
-        with st.popover("Run"):
-            st.markdown("<div style='font-size: 0.7rem; color: #858585; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;'>Workload Execution</div>", unsafe_allow_html=True)
-            if st.button("🚀 Launch Training Task", key="m_run_tr", use_container_width=True):
-                on_select_page("🚀 Dispatch & Scheduler")
-            if st.button("🔄 Trigger Broadcast Docker Pull", key="m_run_dp", use_container_width=True):
+            if st.button("🔄 Broadcast Docker Pull", key="m_run_dp", use_container_width=True):
                 on_select_page("⚙️ Nodes & Invokers")
-            if st.button("🏆 Run GPU Benchmark", key="m_run_bm", use_container_width=True):
+            if st.button("🏆 Lanzar Benchmark GPU", key="m_run_bm", use_container_width=True):
                 on_select_page("🏆 GPU Benchmarks")
 
-    with c_term:
+    with col_term:
         with st.popover("Terminal"):
-            st.markdown("<div style='font-size: 0.7rem; color: #858585; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;'>Terminal & Console</div>", unsafe_allow_html=True)
-            if st.button("💻 Toggle Terminal / Output Panel", key="m_term_tgl", use_container_width=True):
+            st.markdown("<div style='font-size: 0.68rem; color: #858585; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; padding: 2px 8px;'>Terminal & Consola</div>", unsafe_allow_html=True)
+            if st.button("💻 Alternar Panel Inferior", key="m_term_tgl", use_container_width=True):
                 on_toggle_panel()
-            if st.button("🧹 Clear Output Console", key="m_term_clr", use_container_width=True):
-                st.toast("Terminal output cleared")
-            if st.button("📋 Celery Worker Queue Stream", key="m_term_clry", use_container_width=True):
+            if st.button("📋 Monitor de Colas Celery", key="m_term_clry", use_container_width=True):
                 on_select_page("📋 Tasks & Queues Monitor")
+            if st.button("🧹 Limpiar Consola de Salida", key="m_term_clr", use_container_width=True):
+                st.toast("Consola limpia")
 
-    with c_help:
-        with st.popover("Help"):
-            st.markdown("<div style='font-size: 0.7rem; color: #858585; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;'>Cluster Resources</div>", unsafe_allow_html=True)
-            if st.button("📖 Architecture Map (PROJECT_MAP.md)", key="m_hlp_map", use_container_width=True):
-                st.toast("Architecture: 11 Repos, 22 GPUs, Celery & Docker Worker")
-            if st.button("🌐 FastAPI Swagger UI (:8001/docs)", key="m_hlp_swg", use_container_width=True):
-                st.toast("Swagger UI available at http://localhost:8001/docs")
-            st.markdown(f"<div style='font-size: 0.7rem; color: #858585; margin-top: 6px;'>NeuralForge Cluster Admin v{__version__}<br>VSCode Workbench Edition</div>", unsafe_allow_html=True)
-    st.markdown("<div style='border-bottom: 1px solid #2B2B2B; margin: 0.2rem -1rem 0.8rem -1rem;'></div>", unsafe_allow_html=True)
+    with col_ayud:
+        with st.popover("Ayuda"):
+            st.markdown("<div style='font-size: 0.68rem; color: #858585; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; padding: 2px 8px;'>Recursos & Ayuda (Help)</div>", unsafe_allow_html=True)
+            if st.button("📖 Mapa de Arquitectura (PROJECT_MAP.md)", key="m_hlp_map", use_container_width=True):
+                st.toast("Arquitectura: 11 Repositorios, 22 GPUs, Celery & Docker Worker")
+            if st.button("🌐 Documentación FastAPI Swagger", key="m_hlp_swg", use_container_width=True):
+                st.toast("Swagger UI disponible en http://localhost:8001/docs")
+            st.markdown(f"<div style='font-size: 0.7rem; color: #858585; margin-top: 6px; padding: 2px 8px;'>NeuralForge Cluster Admin v{__version__}<br>VSCode Workbench Edition</div>", unsafe_allow_html=True)
+
+    with col_search:
+        st.markdown(
+            clean_html(f"""
+            <div style="background: #2D2D2D; border: 1px solid #3C3C3C; border-radius: 4px; padding: 3px 10px; display: flex; align-items: center; justify-content: space-between; color: #CCCCCC; font-size: 0.76rem; height: 28px; margin-top: 1px;">
+                <div style="display: flex; align-items: center; gap: 6px; overflow: hidden; white-space: nowrap;">
+                    <span style="color: #858585;">🔍</span>
+                    <span style="color: #BBBBBB; font-weight: 500;">{cluster_name} &gt; {current_page}</span>
+                </div>
+                <span style="background: #1E1E1E; border: 1px solid #3C3C3C; border-radius: 2px; padding: 0 4px; font-size: 0.62rem; color: #858585; font-family: monospace;">Ctrl+P</span>
+            </div>
+            """),
+            unsafe_allow_html=True,
+        )
+
+    with col_user:
+        st.markdown(
+            clean_html(f"""
+            <div style="display: flex; align-items: center; justify-content: flex-end; gap: 8px; height: 28px; padding-top: 2px;">
+                <span style="background: rgba(16,185,129,0.15); color: #10B981; border: 1px solid rgba(16,185,129,0.3); font-size: 0.66rem; font-weight: 700; padding: 1px 6px; border-radius: 3px;">
+                    ● 22 GPUs
+                </span>
+                <div style="display: flex; align-items: center; gap: 4px; font-size: 0.74rem; color: #CCCCCC;">
+                    <span style="background: #007ACC; color: #FFFFFF; font-weight: 700; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.65rem;">
+                        {username[:1].upper() if username else 'A'}
+                    </span>
+                    <span style="font-weight: 600;">{username}</span>
+                </div>
+            </div>
+            """),
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("<div style='border-bottom: 1px solid #2B2B2B; margin: 4px -1rem 10px -1rem;'></div>", unsafe_allow_html=True)
 
 
 def render_vscode_breadcrumbs(category: str, view_name: str, file_name: str):
