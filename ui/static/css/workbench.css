@@ -661,6 +661,20 @@ html, body {
   border-color: var(--vscode-border-focus);
 }
 
+select.form-control optgroup {
+  background-color: var(--vscode-bg-sidebar);
+  color: var(--vscode-fg-bright);
+  font-weight: 700;
+  padding: 4px 0;
+}
+
+select.form-control option {
+  background-color: var(--vscode-bg-input);
+  color: var(--vscode-fg-bright);
+  font-weight: normal;
+  padding: 3px 6px;
+}
+
 /* ==========================================================================
    5. Collapsible Bottom Panel (.part.panel)
    ========================================================================== */
