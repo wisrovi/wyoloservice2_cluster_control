@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.6] - 2026-10-22
+
+### Added
+- **Multi-Field Filtering & Client-Side Pagination for Queued Workloads (`overview.js` & `tasks.js`):**
+  - Integrated a real-time multi-field filter bar into **"⏳ Queued Workloads & Celery Backlog (En Espera)"** on the Overview dashboard and **"⏳ Detailed Waiting Queue & Celery Backlog (Tareas en Espera)"** in the Tasks view.
+  - Added instant search input filtering dynamically across Study Name, Task ID, Author, Model, Dataset Path, and Target Queue.
+  - Added filter dropdowns for **Target Queue / Node** (dynamically populated with all active queues), **Priority** (`NORMAL`, `HIGH`), and **Model** architecture.
+  - Implemented configurable frontend pagination (`5`, `10`, `25`, `50` items per page) with previous/next controls, page numbers (`Pág. X / Y`), and items indicator (`Mostrando A–B de C tareas`).
+  - Added quick-clear filters button (`✕ Limpiar`) and dedicated refresh button (`🔄 Refrescar`).
+
 ## [3.1.5] - 2026-10-22
 
 ### Fixed
