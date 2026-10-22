@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.5] - 2026-10-22
+
+### Fixed
+- **Node Pause Modal Selection & Perpetual Pause Execution (`nodes.js`):**
+  - Resolved an issue where clicking on the perpetual pause card failed to toggle the underlying radio input due to label event bubbling, causing pauses to fall back to the default 4-hour temporal pause.
+  - Implemented interactive clickable cards with explicit container click handlers (`selectPauseMode('temporal')` / `selectPauseMode('perpetual')`) and dynamic active CSS borders/backgrounds.
+  - Added dynamic confirmation button text and styling (`#pause-confirm-btn`), explicitly showing the active mode and duration (e.g. `⏱️ Confirmar Pausa Temporal (4h)` vs `⏹️ Confirmar Pausa Perpetua (Indefinida)`).
+  - Added `formatRemainingTime` and distinguished `⏹️ Pausa Indef.` (red badge) from `⏱️ Pausa Temp` (amber badge) across both Nodes and Overview dashboard topology tables.
+
 ## [3.1.4] - 2026-10-22
 
 ### Added
