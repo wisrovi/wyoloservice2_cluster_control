@@ -1,6 +1,6 @@
 # 🎛️ NeuralForge Cluster Admin (`wyoloservice2_cluster_control`)
 
-![Version](https://img.shields.io/badge/version-3.1.1-blue.svg)
+![Version](https://img.shields.io/badge/version-3.1.2-blue.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 ![Python](https://img.shields.io/badge/python-3.10-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker)
@@ -275,6 +275,10 @@ make coverage  # o ./coverage.sh
 
 ## 📝 Changelog
 
+*   **v3.1.2 (2026-10-22):**
+    *   **Incorporación Total de YOLO26 en Todos los Dominios:** Modelos YOLO26 (`yolo26n`, `yolo26s`, `yolo26m`, `yolo26l`, `yolo26x`) disponibles de forma nativa para Detección, Segmentación, Clasificación, Pose y Cajas Orientadas (OBB).
+    *   **Inclusión de Modelos SOTA Adicionales (≥ v8):** Integración de **RT-DETR** (`rtdetr-l.pt`, `rtdetr-x.pt` con enrutamiento automático `"type": "rtdetr"`) y **YOLO-World v2** para detección de vocabulario abierto zero-shot.
+    *   **Depuración Completa de Modelos Obsoletos (< v8):** Eliminación total de YOLOv5 y YOLOv5u de todas las listas de selección y heurísticas, estableciendo YOLOv8 como versión base mínima admitida.
 *   **v3.1.1 (2026-10-22):**
     *   **Selector Multitarea de Visión por Computador en Smart Dispatcher (`dispatch.js`):**
         *   **Selector de Dominio CV:** Detección de Objetos (`detect`), Segmentación de Instancias (`segment`), Clasificación de Imágenes (`classify`), Estimación de Pose (`pose`), Cajas Orientadas (`obb`) y Pesos Personalizados (`custom`).
