@@ -490,5 +490,16 @@ def test_authenticated_cluster_endpoints(client):
     assert wh_res["status"] == "success"
     assert "payload_preview" in wh_res
 
+    # 43. v2.3.0 Invoker Graceful Drain with Workload Eviction
+    resp_drain = client.post(
+        "/api/v1/invokers/192.168.1.68/drain",
+        headers=headers,
+        json={"reason": "Maintenance Test", "evict": True},
+    )
+    assert resp_drain.status_code == 200, f"Expected 200, got {resp_drain.status_code}"
+    drain_resp_data = resp_drain.json()
+    assert drain_resp_data["status"] == "success"
+    assert "draining" in drain_resp_data["message"]
+
 
 
