@@ -1,6 +1,6 @@
 # 🎛️ NeuralForge Cluster Admin (`wyoloservice2_cluster_control`)
 
-![Version](https://img.shields.io/badge/version-3.1.7-blue.svg)
+![Version](https://img.shields.io/badge/version-3.1.8-blue.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 ![Python](https://img.shields.io/badge/python-3.10-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker)
@@ -275,6 +275,11 @@ make coverage  # o ./coverage.sh
 
 ## 📝 Changelog
 
+*   **v3.1.8 (2026-10-22):**
+    *   **Corrección en Validación de Datasets y Ampliación de Tests Unitarios:**
+        *   Corrección en la vista de almacenamiento (`storage.js`) para evaluar explícitamente el atributo `res.valid`, mostrando avisos de advertencia en color ámbar `⚠️ [INVALID]` cuando una ruta o estructura no sea accesible.
+        *   Ampliación de la suite de pruebas unitarias (`tests/api/test_api.py`) con cobertura para la cancelación en lote de tareas en cola (`batch-delete`) y la validación de datasets.
+        *   Alineación de versiones y marcas estáticas en modales, overlay de autenticación y diálogos de información a la v3.1.8.
 *   **v3.1.7 (2026-10-22):**
     *   **Cancelación en Lote y Notificación Visual de Tareas en Espera:**
         *   Incorporación de banner toast visual reactivo (`#overview-queued-toast` y `#tasks-queued-toast`) para confirmación inmediata al cancelar tareas en cola.
