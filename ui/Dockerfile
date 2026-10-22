@@ -1,4 +1,4 @@
-# NeuralForge Cluster Admin - Streamlit UI service (WPipe startup pipeline)
+# NeuralForge Cluster Admin - VSCode Workbench UI service (WPipe startup pipeline)
 FROM python:3.10-slim
 
 ENV PYTHONUNBUFFERED=1 \
@@ -20,7 +20,7 @@ COPY ui/ ./
 
 EXPOSE 8501
 
-HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=5 \
-    CMD curl -fsS "http://localhost:${STREAMLIT_PORT}/_stcore/health" || exit 1
+HEALTHCHECK --interval=15s --timeout=5s --start-period=5s --retries=5 \
+    CMD curl -fsS "http://localhost:${STREAMLIT_PORT}/health" || exit 1
 
 CMD ["python", "main.py"]
