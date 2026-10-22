@@ -31,7 +31,7 @@ st.set_page_config(
     page_title="NeuralForge Cluster Admin [VSCode Workbench]",
     page_icon="🧠",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
 # Apply VSCode Dark+ Theme
@@ -292,129 +292,7 @@ else:
     if "panel_tab" not in st.session_state:
         st.session_state["panel_tab"] = "OUTPUT"
 
-    # --- PRIMARY SIDEBAR (VSCode Clean Activity & View Explorer) ---
-    with st.sidebar:
-        # 1. Sidebar Brand Header
-        st.markdown(
-            clean_html(f"""
-            <div style="background: #1F1F1F; border: 1px solid #2B2B2B; border-radius: 4px; padding: 8px 10px; margin-bottom: 12px;">
-                <div style="display: flex; align-items: center; justify-content: space-between;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <span style="font-size: 1.2rem;">🧠</span>
-                        <div>
-                            <div style="font-size: 0.9rem; font-weight: 800; color: #FFFFFF; letter-spacing: -0.01em;">NeuralForge</div>
-                            <div style="font-size: 0.65rem; color: #858585; text-transform: uppercase; font-weight: 700;">VSCode Workbench • v{__version__}</div>
-                        </div>
-                    </div>
-                    <span style="background: #007ACC; color: #FFFFFF; font-size: 0.65rem; font-weight: 700; padding: 2px 6px; border-radius: 3px;">22 GPUs</span>
-                </div>
-            </div>
-            """),
-            unsafe_allow_html=True,
-        )
-
-        # 2. Explorer Section Header & Search Filter
-        st.markdown(
-            clean_html("""
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; padding: 0 4px;">
-                <span style="font-size: 0.72rem; font-weight: 800; color: #BBBBBB; letter-spacing: 0.05em; text-transform: uppercase;">
-                    📁 EXPLORADOR
-                </span>
-                <span style="font-size: 0.65rem; color: #60A5FA; font-weight: 700;">11 VISTAS</span>
-            </div>
-            """),
-            unsafe_allow_html=True,
-        )
-
-        filter_text = st.text_input(
-            "Filtrar",
-            placeholder="🔍 Filtrar vistas (ej. nodos, gpu)...",
-            label_visibility="collapsed",
-            key="sidebar_filter_text",
-        ).strip().lower()
-
-        # 3. Clean Categorized Views List (Single-column, clear icons, no nested clutter!)
-        NAV_GROUPS = [
-            {
-                "group": "TOPOLOGÍA & CLÚSTER",
-                "items": [
-                    ("📊 Operations Center", "overview.cluster"),
-                    ("⚙️ Nodes & Invokers", "nodes.invokers"),
-                    ("📁 Storage & Volumes", "storage.volumes"),
-                    ("🔬 Cluster Capabilities", "capabilities.spec"),
-                ],
-            },
-            {
-                "group": "CARGAS DE TRABAJO",
-                "items": [
-                    ("🚀 Dispatch & Scheduler", "dispatch.yaml"),
-                    ("📋 Tasks & Queues Monitor", "queues.stream"),
-                    ("📈 Job History", "history.log"),
-                    ("🏆 GPU Benchmarks", "benchmarks.gpu"),
-                ],
-            },
-            {
-                "group": "GOBERNANZA & FINOPS",
-                "items": [
-                    ("🌿 FinOps & Energy (Green AI)", "finops.green"),
-                    ("📜 Audit & Security", "audit.sec"),
-                    ("🛠️ Maintenance & Settings", "settings.json"),
-                ],
-            },
-        ]
-
-        active_page = st.session_state["active_page"]
-
-        for grp in NAV_GROUPS:
-            items_to_show = []
-            for name, f_ext in grp["items"]:
-                if not filter_text or filter_text in name.lower() or filter_text in f_ext.lower():
-                    items_to_show.append((name, f_ext))
-
-            if not items_to_show:
-                continue
-
-            st.markdown(
-                f"<div class='sidebar-group-title'>{grp['group']}</div>",
-                unsafe_allow_html=True,
-            )
-
-            for name, f_ext in items_to_show:
-                is_selected = (name == active_page)
-                btn_type = "primary" if is_selected else "secondary"
-                if st.button(name, key=f"sb_nav_{f_ext}", type=btn_type, use_container_width=True):
-                    st.session_state["active_page"] = name
-                    st.session_state["activity_category"] = PAGE_TO_CATEGORY.get(name, "explorer")
-                    if name not in st.session_state["open_tabs"]:
-                        st.session_state["open_tabs"].append(name)
-                    st.rerun()
-
-        # 4. User profile & Sign Out at the bottom
-        st.markdown("<div style='margin-top: 1.5rem; border-top: 1px solid #2B2B2B; padding-top: 10px;'></div>", unsafe_allow_html=True)
-        col_u1, col_u2 = st.columns([3, 1])
-        with col_u1:
-            st.markdown(
-                clean_html(f"""
-                <div style="font-size: 0.76rem; color: #CCCCCC; display: flex; align-items: center; gap: 6px; padding-top: 4px;">
-                    <span style="background: #007ACC; color: #FFFFFF; font-weight: 700; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7rem;">
-                        {username[:1].upper() if username else 'A'}
-                    </span>
-                    <div>
-                        <div style="font-weight: 600; line-height: 1.1;">{username}</div>
-                        <div style="font-size: 0.65rem; color: #858585;">Cluster Admin</div>
-                    </div>
-                </div>
-                """),
-                unsafe_allow_html=True,
-            )
-        with col_u2:
-            if st.button("🚪", key="sb_btn_logout", help="Cerrar Sesión"):
-                st.session_state["authenticated"] = False
-                st.session_state["token"] = None
-                st.session_state["username"] = None
-                st.rerun()
-
-    # --- MAIN WORKBENCH EDITOR AREA ---
+    # --- MAIN WORKBENCH EDITOR AREA (Full-Width Monaco/VSCode Layout) ---
 
     # 1. VSCode Top Bar with Command Center & Classic Menu Bar (Archivo, Editar, Ver, Ejecutar, Terminal, Ayuda)
     active_page = st.session_state["active_page"]
