@@ -1,6 +1,6 @@
 # 🎛️ NeuralForge Cluster Admin (`wyoloservice2_cluster_control`)
 
-![Version](https://img.shields.io/badge/version-3.0.1-blue.svg)
+![Version](https://img.shields.io/badge/version-3.0.2-blue.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 ![Python](https://img.shields.io/badge/python-3.10-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker)
@@ -275,6 +275,14 @@ make coverage  # o ./coverage.sh
 
 ## 📝 Changelog
 
+*   **v3.0.2 (2026-10-22):**
+    *   **Soporte Integral para Pausa Temporal y Perpetua:** Incorporación en el backend y la interfaz SPA VSCode Workbench de modalidades completas de pausa:
+        *   **⏱️ Pausa Temporal con Horas Configurables:** Permite detener el consumo de tareas públicas en invokers por un periodo determinado mediante botones directos (1h, 2h, 4h, 8h, 24h) o entrada personalizada.
+        *   **Motor de Expiración Automática en Redis:** Validación en tiempo real de `pause_until` que reanuda el nodo y reconecta los consumidores Celery automáticamente al cumplirse el tiempo.
+        *   **⏹️ Pausa Perpetua / Indefinida:** Modo de pausa indefinida que aisla el nodo de las colas públicas globales hasta que el operador decida reanudarlo manualmente.
+        *   **Modal Interactivo de Configuración de Pausa:** Diálogo contextual en `nodes.js` con selectores radio y temporizador visible.
+        *   **Etiquetas y Cuenta Regresiva en Vivo:** Semáforos visuales (`⏱️ Pausa Temp (Xh Ym)`, `⏹️ Pausa Indef.`) y cálculo dinámico de tiempo restante en la tabla de nodos.
+        *   **Controles en Lote Actualizados:** Nuevos botones `⏸️ Pause 4h (All)`, `⏹️ Pause Indef. (All)` y `▶️ Resume All`.
 *   **v3.0.1 (2026-10-22):**
     *   **Restauración Integral de Telemetría Real y Asignación de GPUs:** Extracción y representación fiel de los datos de hardware NVML y Redis en Operations Center y Nodes & Invokers:
         *   **Tabla de Entrenamientos Activos en Vivo:** Visualización directa de las tareas en ejecución (`Tattoo_detector`, `Cesped_detector_v2`) con autor, nodo asignado, modelo, dataset, progreso de trials y estado de Pod K8s.
