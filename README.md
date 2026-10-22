@@ -1,6 +1,6 @@
 # 🎛️ NeuralForge Cluster Admin (`wyoloservice2_cluster_control`)
 
-![Version](https://img.shields.io/badge/version-2.3.1-blue.svg)
+![Version](https://img.shields.io/badge/version-2.3.2-blue.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 ![Python](https://img.shields.io/badge/python-3.10-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker)
@@ -273,6 +273,8 @@ make coverage  # o ./coverage.sh
 
 ## 📝 Changelog
 
+*   **v2.3.2 (2026-10-22):**
+    *   **Barra Superior REA VSCode y Workspace Completo (100% Viewport):** Alineación de tokens y reglas CSS exactas del workbench de VSCode (`.part.titlebar`, `.menubar-menu-button`, `.command-center`). Se eliminó la barra lateral redundante para liberar el 100% del ancho de pantalla para el editor de vistas, pestañas activas y barra de estado.
 *   **v2.3.1 (2026-10-22):**
     *   **Barra Superior de Menú Clásico VSCode:** Integración de barra superior auténtica al píxel 0 de la ventana (ocultando el encabezado en blanco de Streamlit) con menús horizontales contextuales: **Archivo**, **Editar**, **Ver**, **Ejecutar**, **Terminal** y **Ayuda**, Command Center central (`Ctrl+P`) y resumen de estado y operador en la esquina superior derecha.
     *   **Barra Lateral Optimizada y Descongestiona:** Eliminación de los acordeones y columnas comprimidas que sobrecargaban la barra lateral. Reemplazo por un explorador limpio y amplio organizado en tres bloques (`TOPOLOGÍA & CLÚSTER`, `CARGAS DE TRABAJO`, `GOBERNANZA & FINOPS`) con iconos destacados y acceso en 1 solo clic.
