@@ -729,11 +729,12 @@ class ClusterRepository:
 
         final_imgsz = int(imgsz) if (imgsz is not None and int(imgsz) > 0) else default_imgsz
         final_batch = int(batch_size) if batch_size is not None else -1
+        model_type = "rtdetr" if "rtdetr" in model_lower else "yolo"
 
         config_payload = {
             "model": model,
             "task": cv_task,
-            "type": "yolo",
+            "type": model_type,
             "priority": priority.upper(),
             "train": {
                 "batch": final_batch,
@@ -1559,23 +1560,23 @@ class ClusterRepository:
         throughput = 28
         model_lower = model.lower()
 
-        if any(x in model_lower for x in ["yolov8x", "yolo11x", "yolov10x", "yolov9e", "yolo26x", "5xu", "5x"]):
+        if any(x in model_lower for x in ["yolo26x", "yolo11x", "yolov10x", "yolov9e", "yolov8x", "rtdetr-x"]):
             base_sec_per_epoch = 45.0
             rec_gpu = "RTX 3090 / 4090 / A5000 (≥24GB)"
             throughput = 12
-        elif any(x in model_lower for x in ["yolov8l", "yolo11l", "yolov10l", "yolov9c", "5lu", "5l"]):
+        elif any(x in model_lower for x in ["yolo26l", "yolo11l", "yolov10l", "yolov9c", "yolov8l", "rtdetr-l", "world"]):
             base_sec_per_epoch = 32.0
             rec_gpu = "RTX 3080Ti / 4080 (≥16GB)"
             throughput = 15
-        elif any(x in model_lower for x in ["yolov8m", "yolo11m", "yolov10m", "yolov10b", "yolov9m", "yolo26m", "5mu", "5m"]):
+        elif any(x in model_lower for x in ["yolo26m", "yolo11m", "yolov10m", "yolov10b", "yolov9m", "yolov8m"]):
             base_sec_per_epoch = 25.0
             rec_gpu = "RTX 3080 / 4070 (≥12GB)"
             throughput = 18
-        elif any(x in model_lower for x in ["yolov8s", "yolo11s", "yolov10s", "yolov9s", "yolo26s", "5su", "5s"]):
+        elif any(x in model_lower for x in ["yolo26s", "yolo11s", "yolov10s", "yolov9s", "yolov8s"]):
             base_sec_per_epoch = 18.0
             rec_gpu = "RTX 3070 / 4060Ti (≥12GB)"
             throughput = 22
-        elif any(x in model_lower for x in ["yolov8n", "yolo11n", "yolov10n", "yolov9t", "yolo26n", "5nu", "5n"]):
+        elif any(x in model_lower for x in ["yolo26n", "yolo11n", "yolov10n", "yolov9t", "yolov8n"]):
             base_sec_per_epoch = 12.0
             rec_gpu = "RTX 3060 / 4060 / GTX 1660 (≥6GB)"
             throughput = 35
