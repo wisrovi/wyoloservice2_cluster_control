@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-10-22
+
+### Added
+- **VSCode Workbench Organizational Architecture:** Complete reorganization of the cluster admin interface modeled after Visual Studio Code workbench patterns reverse-engineered with REA.
+- **Activity Bar & Primary Sidebar Integration:** Multi-activity left dock with 5 core functional activities (`EXPLORER`, `RUN & DISPATCH`, `TASKS & QUEUES`, `TELEMETRY & SPECS`, `ADMIN & SECURITY`) dynamically toggling dedicated tree views, file extensions, and badge indicators.
+- **VSCode Command Center (Ctrl+P):** Top-level Command Palette quick-open search bar allowing instantaneous jumping to any view, node, or workload across the cluster.
+- **Multi-Tab Editor Strip:** Interactive tab bar with file icons, close actions (`×`), and active tab indicator line (`#007ACC`) mirroring Monaco and VSCode editor tabs.
+- **Breadcrumbs Navigation Trail:** Contextual hierarchy trail (`neuralforge-cluster › activity › file › status`) displaying precise location within the cluster workspace.
+- **Collapsible Bottom Panel:** VSCode-style drawer with `OUTPUT`, `TERMINAL`, `PROBLEMS`, and `DEBUG CONSOLE` tabs featuring live monospace logs, ANSI status styling, and quick diagnostic utilities.
+- **Authentic VSCode Blue Status Bar:** Fixed 24px bottom status bar showing active git branch (`⑂ main*`), synchronization state, error/warning counters (`⨂ 0  ⚠ 0`), GPU pool status, FastAPI backend version, and encoding.
+- **VSCode Dark+ Palette Tokens:** Precision CSS variables matching Visual Studio Code Dark+ theme (`#1E1E1E`, `#252526`, `#333333`, `#007ACC`, `#3C3C3C`, `#2A2D2E`).
+
+### Changed
+- Bumped project version to `2.2.0` across backend, frontend, Docker Compose, and documentation.
+
 ## [2.1.0] - 2026-10-21
 
 ### Added
