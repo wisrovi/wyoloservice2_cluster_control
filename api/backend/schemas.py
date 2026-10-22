@@ -122,6 +122,7 @@ class TaskResponse(BaseModel):
 
 
 class QuickLaunchRequest(BaseModel):
+    study_name: Optional[str] = Field(None, description="Study / project name")
     worker_ip: Optional[str] = Field(None, description="Target invoker IP; if empty, routed to public wyolo_gpu_queue")
     task: Optional[str] = Field(None, description="Computer vision task: detect, segment, classify, pose, obb, custom")
     model: str = Field("yolo26m.pt", description="YOLO base model or custom .pt checkpoint")
