@@ -553,6 +553,21 @@ class ClusterRepository:
         raw_config = self.client.get(f"study:{study_id}:config")
         config = json.loads(raw_config.decode("utf-8")) if raw_config else {}
 
+        # Fallback to older or manager-initiated request format in wyolo:request:*:{study_id}:*
+        if not config:
+            try:
+                req_keys = self.client.keys(f"wyolo:request:*:{study_id}:*")
+                if req_keys:
+                    first_k = req_keys[0].decode("utf-8") if isinstance(req_keys[0], bytes) else req_keys[0]
+                    k_type = self.client.type(first_k)
+                    if k_type in (b"hash", "hash"):
+                        cfg_str = self.client.hget(first_k, "config")
+                        if cfg_str:
+                            decoded_cfg = cfg_str.decode("utf-8") if isinstance(cfg_str, bytes) else cfg_str
+                            config = json.loads(decoded_cfg)
+            except Exception:
+                pass
+
         raw_progress = self.client.get(f"study:{study_id}:progress")
         progress = json.loads(raw_progress.decode("utf-8")) if raw_progress else {}
 
