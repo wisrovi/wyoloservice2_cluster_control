@@ -1,6 +1,6 @@
 # 🎛️ NeuralForge Cluster Admin (`wyoloservice2_cluster_control`)
 
-![Version](https://img.shields.io/badge/version-3.1.0-blue.svg)
+![Version](https://img.shields.io/badge/version-3.1.1-blue.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 ![Python](https://img.shields.io/badge/python-3.10-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker)
@@ -275,6 +275,12 @@ make coverage  # o ./coverage.sh
 
 ## 📝 Changelog
 
+*   **v3.1.1 (2026-10-22):**
+    *   **Selector Multitarea de Visión por Computador en Smart Dispatcher (`dispatch.js`):**
+        *   **Selector de Dominio CV:** Detección de Objetos (`detect`), Segmentación de Instancias (`segment`), Clasificación de Imágenes (`classify`), Estimación de Pose (`pose`), Cajas Orientadas (`obb`) y Pesos Personalizados (`custom`).
+        *   **Catálogo Extendido de Modelos:** Integración completa de familias YOLO11 (n/s/m/l/x), YOLOv10 (n/s/m/b/l/x), YOLOv9 (t/s/m/c/e), YOLOv8 (n/s/m/l/x), YOLOv5u (nu/su/mu/lu/xu), YOLO26 experimental y soporte para pesos externos `.pt`.
+        *   **Sincronización Inteligente de Parámetros:** Ajuste automático de dataset recomendado, resolución (`imgsz` de 224 a 1280), métricas de fitness Optuna (`mAP50(B)`, `mAP50(M)`, `mAP50-95(P)`, `accuracy_top1`) y selector de AutoBatch (`-1`).
+        *   **Ampliación de Épocas de Entrenamiento:** Soporte completo de 1 a 1000 épocas tanto en el esquema FastAPI como en la interfaz y estimador ETA.
 *   **v3.1.0 (2026-10-22):**
     *   **Suite Completa de Funcionalidades y Telemetría en Vivo (100% Cobertura):**
         *   **📈 Historial y Estudio de Analítica Optuna (`history.js`):** Filtros dinámicos (autor, nodo, estado, límite, "Mis estudios"), modal de inspección con Manifiesto de Reproducibilidad (comando `docker run` y YAML copiables en 1 clic), Diagnóstico de Causa Raíz con recomendaciones, Visor de Logs en vivo, Curvas de Aprendizaje de Optuna interactivas en SVG, Comparador Frente a Frente de 2 a 5 estudios, y Exportador de Reportes a Markdown y JSON.
