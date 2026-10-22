@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2026-10-22
+
+### Added
+- **Dynamic Celery Worker Name Resolution:** Implemented `resolve_celery_worker_names` in `ClusterRepository` to dynamically discover authoritative worker hostnames via Celery inspect `active_queues`, heartbeat metadata, and fallback patterns, eliminating dropped signals caused by hardcoded names.
+- **Graceful Drain with Active Workload Eviction:** Enhanced `POST /api/v1/invokers/{worker_ip}/drain` with `evict: bool = True` (default `True`). When draining an invoker, the cluster controller now:
+  - Cancels public queues (`gpus_high`, `gpus_medium`, `gpus_low`, `wyolo_gpu_queue`) and the private node queue (`worker_ip`).
+  - Sets node-level eviction flag `invoker:{worker_ip}:cancel_active` in Redis.
+  - Automatically identifies all active Celery tasks and Optuna trials executing on the drained node, writing dual Redis cancellation keys (`wyolo:task:{id}:cancel`, `task:{id}:cancel`, `study:{id}:cancel`, `study:{id}:cancelled`) and revoking tasks immediately via Celery `revoke(terminate=True, signal='SIGKILL')`.
+- **End-to-End Study Cancellation:** Updated `cancel_study` to emit both `:cancel` and `:cancelled` keys and proactively inspect and revoke active Celery tasks associated with the study across all cluster nodes.
+
+### Changed
+- Bumped project version to `2.3.0` across backend, frontend, and documentation.
+- Updated Drain button in Streamlit Invokers view to explicitly trigger graceful drain with workload eviction.
+
 ## [2.2.0] - 2026-10-22
 
 ### Added
