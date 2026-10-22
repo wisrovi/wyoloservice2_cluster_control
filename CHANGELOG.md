@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.2] - 2026-10-22
+
+### Added
+- **Reverse Engineered (REA) VSCode TitleBar:** Precision CSS alignment matching VSCode's desktop Electron shell (`.part.titlebar`, `.menubar-menu-button`, and `.command-center`) with exact dark tokens (`#181818`, `#252526`, `#3C3C3C`, `#007ACC`).
+- **Full-Width Workspace (Sidebar Elimination):** Removed the redundant sidebar and side drawer controls, dedicating 100% of the viewport width to the workbench editor, top command bar, tabs strip, and status bar.
+
+### Changed
+- Bumped project version to `2.3.2` across backend, frontend, and documentation.
+
 ## [2.3.1] - 2026-10-22
 
 ### Added
