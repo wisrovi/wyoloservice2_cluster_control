@@ -349,8 +349,11 @@ window.ViewOverview = {
         let stateBadge = `<span class="badge badge-green">🟢 Active</span>`;
         if (pauseState === "draining") {
           stateBadge = `<span class="badge badge-amber" style="background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.4);">🛡️ Draining</span>`;
+        } else if (pauseState === "paused_perpetual") {
+          stateBadge = `<span class="badge badge-red" style="background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.4);" title="Pausa indefinida">⏹️ Pausa Indef.</span>`;
         } else if (pauseState.includes("pause")) {
-          stateBadge = `<span class="badge badge-amber">⏸️ Paused</span>`;
+          const remainingStr = typeof formatRemainingTime === "function" ? formatRemainingTime(node.pause_until) : "";
+          stateBadge = `<span class="badge badge-amber" title="Pausa temporal hasta: ${node.pause_until || ''}">⏱️ Pausa Temp ${remainingStr ? '(' + remainingStr + ')' : ''}</span>`;
         } else if (node.status === "offline") {
           stateBadge = `<span class="badge badge-red">Offline</span>`;
         }
@@ -427,3 +430,17 @@ window.ViewOverview = {
     }
   }
 };
+
+function formatRemainingTime(pauseUntil) {
+  if (!pauseUntil) return "Temp";
+  const num = parseFloat(pauseUntil);
+  if (!isNaN(num) && num > 1000000000) {
+    const diffSec = num - (Date.now() / 1000);
+    if (diffSec <= 0) return "Expirando";
+    const hours = Math.floor(diffSec / 3600);
+    const mins = Math.floor((diffSec % 3600) / 60);
+    if (hours > 0) return `${hours}h ${mins}m`;
+    return `${mins}m`;
+  }
+  return String(pauseUntil);
+}
