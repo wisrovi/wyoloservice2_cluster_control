@@ -20,18 +20,28 @@ window.ViewDispatch = {
       name: "🎯 Detección de Objetos (Object Detection)",
       short: "DETECT",
       badgeClass: "badge-blue",
-      defaultModel: "yolo11m.pt",
+      defaultModel: "yolo26m.pt",
       defaultDataset: "/examples/Deteksi_komponen_elektronik.v1i/data.yaml",
       defaultImgsz: "640",
       models: [
         {
-          group: "YOLO11 (Latest SOTA - 2024)",
+          group: "YOLO26 (Next-Gen Flagship - 2026)",
           items: [
-            { value: "yolo11n.pt", label: "yolo11n.pt — Nano (2.6M params, ultra-fast)" },
+            { value: "yolo26n.pt", label: "yolo26n.pt — Nano (2.4M params, ultra-fast)" },
+            { value: "yolo26s.pt", label: "yolo26s.pt — Small (9.5M params)" },
+            { value: "yolo26m.pt", label: "yolo26m.pt — Medium (20.4M params, recommended)" },
+            { value: "yolo26l.pt", label: "yolo26l.pt — Large (24.8M params)" },
+            { value: "yolo26x.pt", label: "yolo26x.pt — X-Large (55.7M params, SOTA mAP)" },
+          ],
+        },
+        {
+          group: "YOLO11 (SOTA - 2024)",
+          items: [
+            { value: "yolo11n.pt", label: "yolo11n.pt — Nano (2.6M params)" },
             { value: "yolo11s.pt", label: "yolo11s.pt — Small (9.4M params)" },
-            { value: "yolo11m.pt", label: "yolo11m.pt — Medium (20.1M params, recommended)" },
+            { value: "yolo11m.pt", label: "yolo11m.pt — Medium (20.1M params)" },
             { value: "yolo11l.pt", label: "yolo11l.pt — Large (25.3M params)" },
-            { value: "yolo11x.pt", label: "yolo11x.pt — X-Large (56.9M params, max mAP)" },
+            { value: "yolo11x.pt", label: "yolo11x.pt — X-Large (56.9M params)" },
           ],
         },
         {
@@ -56,7 +66,23 @@ window.ViewDispatch = {
           ],
         },
         {
-          group: "YOLOv8 (Industry Standard)",
+          group: "RT-DETR (Real-Time Vision Transformers)",
+          items: [
+            { value: "rtdetr-l.pt", label: "rtdetr-l.pt — Large (Transformer Backbone)" },
+            { value: "rtdetr-x.pt", label: "rtdetr-x.pt — X-Large (High Accuracy Transformer)" },
+          ],
+        },
+        {
+          group: "YOLO-World (Open-Vocabulary Real-Time)",
+          items: [
+            { value: "yolov8s-worldv2.pt", label: "yolov8s-worldv2.pt — Small (Zero-Shot)" },
+            { value: "yolov8m-worldv2.pt", label: "yolov8m-worldv2.pt — Medium (Zero-Shot)" },
+            { value: "yolov8l-worldv2.pt", label: "yolov8l-worldv2.pt — Large (Zero-Shot)" },
+            { value: "yolov8x-worldv2.pt", label: "yolov8x-worldv2.pt — X-Large (Zero-Shot)" },
+          ],
+        },
+        {
+          group: "YOLOv8 (Industry Standard Baseline)",
           items: [
             { value: "yolov8n.pt", label: "yolov8n.pt — Nano (3.2M params)" },
             { value: "yolov8s.pt", label: "yolov8s.pt — Small (11.2M params)" },
@@ -65,26 +91,26 @@ window.ViewDispatch = {
             { value: "yolov8x.pt", label: "yolov8x.pt — X-Large (68.2M params)" },
           ],
         },
-        {
-          group: "YOLOv5u (Classic Enhanced)",
-          items: [
-            { value: "yolov5nu.pt", label: "yolov5nu.pt — Nano" },
-            { value: "yolov5su.pt", label: "yolov5su.pt — Small" },
-            { value: "yolov5mu.pt", label: "yolov5mu.pt — Medium" },
-            { value: "yolov5lu.pt", label: "yolov5lu.pt — Large" },
-            { value: "yolov5xu.pt", label: "yolov5xu.pt — X-Large" },
-          ],
-        },
       ],
     },
     segment: {
       name: "✂️ Segmentación de Instancias (Instance Segmentation)",
       short: "SEGMENT",
       badgeClass: "badge-green",
-      defaultModel: "yolo11m-seg.pt",
+      defaultModel: "yolo26m-seg.pt",
       defaultDataset: "/examples/ArchitecturePlan/data.yaml",
       defaultImgsz: "640",
       models: [
+        {
+          group: "YOLO26 Segmentation (Next-Gen)",
+          items: [
+            { value: "yolo26n-seg.pt", label: "yolo26n-seg.pt — Nano (2.4M params)" },
+            { value: "yolo26s-seg.pt", label: "yolo26s-seg.pt — Small (9.5M params)" },
+            { value: "yolo26m-seg.pt", label: "yolo26m-seg.pt — Medium (20.4M params, recommended)" },
+            { value: "yolo26l-seg.pt", label: "yolo26l-seg.pt — Large (24.8M params)" },
+            { value: "yolo26x-seg.pt", label: "yolo26x-seg.pt — X-Large (55.7M params)" },
+          ],
+        },
         {
           group: "YOLO11 Segmentation",
           items: [
@@ -96,7 +122,7 @@ window.ViewDispatch = {
           ],
         },
         {
-          group: "YOLOv8 Segmentation",
+          group: "YOLOv8 Segmentation (Version 8 Baseline)",
           items: [
             { value: "yolov8n-seg.pt", label: "yolov8n-seg.pt — Nano (3.4M params)" },
             { value: "yolov8s-seg.pt", label: "yolov8s-seg.pt — Small (11.8M params)" },
@@ -105,24 +131,26 @@ window.ViewDispatch = {
             { value: "yolov8x-seg.pt", label: "yolov8x-seg.pt — X-Large (71.8M params)" },
           ],
         },
-        {
-          group: "YOLOv5u Segmentation",
-          items: [
-            { value: "yolov5n-seg.pt", label: "yolov5n-seg.pt — Nano" },
-            { value: "yolov5s-seg.pt", label: "yolov5s-seg.pt — Small" },
-            { value: "yolov5m-seg.pt", label: "yolov5m-seg.pt — Medium" },
-          ],
-        },
       ],
     },
     classify: {
       name: "🏷️ Clasificación de Imágenes (Image Classification)",
       short: "CLASSIFY",
       badgeClass: "badge-amber",
-      defaultModel: "yolo11m-cls.pt",
+      defaultModel: "yolo26m-cls.pt",
       defaultDataset: "/examples/colorball.v8i.multiclass/",
       defaultImgsz: "224",
       models: [
+        {
+          group: "YOLO26 Classification (Next-Gen)",
+          items: [
+            { value: "yolo26n-cls.pt", label: "yolo26n-cls.pt — Nano (1.4M params)" },
+            { value: "yolo26s-cls.pt", label: "yolo26s-cls.pt — Small (5.0M params)" },
+            { value: "yolo26m-cls.pt", label: "yolo26m-cls.pt — Medium (10.1M params, recommended)" },
+            { value: "yolo26l-cls.pt", label: "yolo26l-cls.pt — Large (12.8M params)" },
+            { value: "yolo26x-cls.pt", label: "yolo26x-cls.pt — X-Large (27.9M params)" },
+          ],
+        },
         {
           group: "YOLO11 Classification",
           items: [
@@ -134,7 +162,7 @@ window.ViewDispatch = {
           ],
         },
         {
-          group: "YOLOv8 Classification",
+          group: "YOLOv8 Classification (Version 8 Baseline)",
           items: [
             { value: "yolov8n-cls.pt", label: "yolov8n-cls.pt — Nano (1.5M params)" },
             { value: "yolov8s-cls.pt", label: "yolov8s-cls.pt — Small (5.1M params)" },
@@ -143,23 +171,26 @@ window.ViewDispatch = {
             { value: "yolov8x-cls.pt", label: "yolov8x-cls.pt — X-Large (56.2M params)" },
           ],
         },
-        {
-          group: "YOLO26 Classification (Next-Gen)",
-          items: [
-            { value: "yolo26n-cls.pt", label: "yolo26n-cls.pt — Nano (Experimental)" },
-            { value: "yolo26s-cls.pt", label: "yolo26s-cls.pt — Small (Experimental)" },
-          ],
-        },
       ],
     },
     pose: {
       name: "🤸 Estimación de Pose (Pose Estimation)",
       short: "POSE",
       badgeClass: "badge-purple",
-      defaultModel: "yolo11m-pose.pt",
+      defaultModel: "yolo26m-pose.pt",
       defaultDataset: "/examples/pose_estimation/data.yaml",
       defaultImgsz: "640",
       models: [
+        {
+          group: "YOLO26 Pose Estimation (Next-Gen)",
+          items: [
+            { value: "yolo26n-pose.pt", label: "yolo26n-pose.pt — Nano (2.7M params)" },
+            { value: "yolo26s-pose.pt", label: "yolo26s-pose.pt — Small (9.6M params)" },
+            { value: "yolo26m-pose.pt", label: "yolo26m-pose.pt — Medium (20.5M params, recommended)" },
+            { value: "yolo26l-pose.pt", label: "yolo26l-pose.pt — Large (25.1M params)" },
+            { value: "yolo26x-pose.pt", label: "yolo26x-pose.pt — X-Large (56.2M params)" },
+          ],
+        },
         {
           group: "YOLO11 Pose Estimation",
           items: [
@@ -171,7 +202,7 @@ window.ViewDispatch = {
           ],
         },
         {
-          group: "YOLOv8 Pose Estimation",
+          group: "YOLOv8 Pose Estimation (Version 8 Baseline)",
           items: [
             { value: "yolov8n-pose.pt", label: "yolov8n-pose.pt — Nano (3.3M params)" },
             { value: "yolov8s-pose.pt", label: "yolov8s-pose.pt — Small (11.6M params)" },
@@ -186,10 +217,20 @@ window.ViewDispatch = {
       name: "📐 Cajas Orientadas / Rotadas (OBB)",
       short: "OBB",
       badgeClass: "badge-blue",
-      defaultModel: "yolo11m-obb.pt",
+      defaultModel: "yolo26m-obb.pt",
       defaultDataset: "/examples/oriented_bounding_box/data.yaml",
       defaultImgsz: "640",
       models: [
+        {
+          group: "YOLO26 Oriented Bounding Box (Next-Gen)",
+          items: [
+            { value: "yolo26n-obb.pt", label: "yolo26n-obb.pt — Nano (2.5M params)" },
+            { value: "yolo26s-obb.pt", label: "yolo26s-obb.pt — Small (9.8M params)" },
+            { value: "yolo26m-obb.pt", label: "yolo26m-obb.pt — Medium (21.2M params, recommended)" },
+            { value: "yolo26l-obb.pt", label: "yolo26l-obb.pt — Large (25.6M params)" },
+            { value: "yolo26x-obb.pt", label: "yolo26x-obb.pt — X-Large (57.6M params)" },
+          ],
+        },
         {
           group: "YOLO11 Oriented Bounding Box",
           items: [
@@ -201,7 +242,7 @@ window.ViewDispatch = {
           ],
         },
         {
-          group: "YOLOv8 Oriented Bounding Box",
+          group: "YOLOv8 Oriented Bounding Box (Version 8 Baseline)",
           items: [
             { value: "yolov8n-obb.pt", label: "yolov8n-obb.pt — Nano (3.1M params)" },
             { value: "yolov8s-obb.pt", label: "yolov8s-obb.pt — Small (11.4M params)" },
@@ -509,7 +550,7 @@ window.ViewDispatch = {
     if (taskKey === "custom") {
       return document.getElementById("ql-custom-model")?.value.trim() || "/wyolo/weights/custom_best.pt";
     }
-    return document.getElementById("ql-model")?.value || "yolo11m.pt";
+    return document.getElementById("ql-model")?.value || "yolo26m.pt";
   },
 
   async load() {
@@ -521,7 +562,7 @@ window.ViewDispatch = {
     const nameInput = document.getElementById("ql-study-name");
     if (nameInput && !nameInput.value) {
       const ts = new Date().toISOString().slice(2, 10).replace(/-/g, "");
-      nameInput.value = `yolo11m_study_${ts}`;
+      nameInput.value = `yolo26m_study_${ts}`;
     }
 
     // Populate target nodes
