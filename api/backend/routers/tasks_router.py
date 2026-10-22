@@ -98,6 +98,9 @@ async def quick_launch_task(
         dataset=payload.dataset,
         epochs=payload.epochs,
         priority=payload.priority,
+        task=payload.task,
+        imgsz=payload.imgsz,
+        batch_size=payload.batch_size,
     )
     return {
         "status": "success",
