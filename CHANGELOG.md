@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.0] - 2026-10-22
+
+### Added
+- **Complete Feature Suite & Live Telemetry Across All Workbench Views:**
+  - **📈 Job History & Optuna Analytics Studio (`history.js`):**
+    - Multi-field filters: search query, author dropdown, node dropdown, status filter, limit selector, and "👤 My studies only" checkbox.
+    - Comprehensive Study Inspector Modal: Full metadata, Reproducibility Manifest (with 1-click Docker run and YAML copy buttons), Root Cause Diagnostics with suggested actions, and live execution logs.
+    - Optuna Learning Curves: Responsive SVG fitness progression chart across trials, best value badge, and full iterations table.
+    - Head-to-Head Comparison: Side-by-side matrix for comparing 2 to 5 studies.
+    - Report Exporter: Instant JSON and Markdown report generation with browser download.
+  - **🚀 Smart Workload Dispatcher & Launcher (`dispatch.js`):**
+    - Pre-flight Dataset Checker: Validates dataset path against Samba CIFS, class counts, and train/val image split before dispatch.
+    - AI Node Recommender: Evaluates cluster telemetry and selects the optimal invoker with score and rationale.
+    - Dynamic Duration Estimator (ETA): Real-time calculation of estimated duration, image throughput (img/s), and suggested GPU.
+    - Dynamic Target Node Dropdown: Populated from live API data.
+    - Live Active Workloads Table: Trial progress bars, K8s Pod status, Dozzle links, and cancel buttons.
+  - **🛠️ Cluster Administration & Operational Governance (`settings.js`):**
+    - Bulk Limit Adjustment: Apply uniform MAX_GPU % and RAM quotas across all invoker nodes in one atomic operation.
+    - Day/Night Automated Scheduler Policy: Configure office hours (quiet mode) vs night/weekend full throttle (95%), with "Apply Profile Now" trigger.
+    - Diagnostic Support Bundle: 1-click generation and download of complete cluster JSON blackbox bundle.
+    - Redis Housekeeping: Real-time memory in use counter and 1-click purge of stale failed/cancelled studies.
+    - Webhooks & Watchdog: Save webhook, send test alert, test rich embed cards, and run proactive watchdog scan.
+  - **🏆 GPU Benchmarks & Leaderboard (`benchmarks.js`):**
+    - Dynamically bound to `/api/v1/cluster/gpu-benchmarks` with top throughput, fastest 100-epoch time, and deployed cluster nodes per GPU.
+  - **🌿 FinOps & Green AI Governance (`finops.js`):**
+    - Live power draw, accumulated cost, projected monthly cost, carbon footprint (CO2e), and interactive electricity rate update (€/kWh).
+  - **🔬 Hardware Compute Matrix & R&D Catalog (`capabilities.js`):**
+    - Catalog of the 12 official worker R&D post-train modules and CUDA architecture precision matrix.
+  - **📁 Storage Infrastructure & MinIO S3 (`storage.js`):**
+    - Dynamic Samba CIFS disk capacity and latency, MinIO S3 object buckets, and dataset validation.
+
+### Changed
+- Bumped project version to `3.1.0` across backend, frontend, server, Docker Compose, and documentation.
+
 ## [3.0.2] - 2026-10-22
 
 ### Added
