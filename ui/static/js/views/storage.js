@@ -249,11 +249,19 @@ window.ViewStorage = {
 
     try {
       const res = await window.apiClient.validateDataset(path);
-      resEl.style.backgroundColor = "rgba(16, 185, 129, 0.15)";
-      resEl.style.border = "1px solid rgba(16, 185, 129, 0.3)";
-      resEl.style.color = "#10B981";
-      resEl.innerHTML = `✅ <strong>[VALID]</strong> Dataset path exists and is accessible.<br>Details: <code>${JSON.stringify(res, null, 2)}</code>`;
-      window.workbench.logTerminal("SUCCESS", `Dataset validation passed for: ${path}`);
+      if (res && res.valid) {
+        resEl.style.backgroundColor = "rgba(16, 185, 129, 0.15)";
+        resEl.style.border = "1px solid rgba(16, 185, 129, 0.3)";
+        resEl.style.color = "#10B981";
+        resEl.innerHTML = `✅ <strong>[VALID]</strong> Dataset path exists and is accessible.<br>Details: <code>${JSON.stringify(res, null, 2)}</code>`;
+        window.workbench.logTerminal("SUCCESS", `Dataset validation passed for: ${path}`);
+      } else {
+        resEl.style.backgroundColor = "rgba(245, 158, 11, 0.15)";
+        resEl.style.border = "1px solid rgba(245, 158, 11, 0.3)";
+        resEl.style.color = "#F59E0B";
+        resEl.innerHTML = `⚠️ <strong>[INVALID]</strong> ${res?.details || "Dataset path not found or invalid format on host."}<br>Details: <code>${JSON.stringify(res, null, 2)}</code>`;
+        window.workbench.logTerminal("WARN", `Dataset validation warning for: ${path} (${res?.details || "Not accessible"})`);
+      }
     } catch (e) {
       resEl.style.backgroundColor = "rgba(239, 68, 68, 0.15)";
       resEl.style.border = "1px solid rgba(239, 68, 68, 0.3)";
