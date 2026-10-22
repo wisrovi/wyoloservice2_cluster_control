@@ -1,6 +1,6 @@
 # 🎛️ NeuralForge Cluster Admin (`wyoloservice2_cluster_control`)
 
-![Version](https://img.shields.io/badge/version-3.1.4-blue.svg)
+![Version](https://img.shields.io/badge/version-3.1.5-blue.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 ![Python](https://img.shields.io/badge/python-3.10-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker)
@@ -275,6 +275,12 @@ make coverage  # o ./coverage.sh
 
 ## 📝 Changelog
 
+*   **v3.1.5 (2026-10-22):**
+    *   **Robustez en Modal de Pausa y Ejecución de Pausa Perpetua (`nodes.js`):**
+        *   Eliminación del fallo de propagación de eventos de click en etiquetas anidadas mediante tarjetas interactivas accionables (`card-pause-temporal` y `card-pause-perpetual`) con selectores directos por JS (`selectPauseMode`).
+        *   Retroalimentación visual activa (bordes resaltados en azul vs rojo según el modo seleccionado).
+        *   Actualización dinámica del botón de confirmación (`#pause-confirm-btn`) indicando textualmente el modo exacto y duración antes de pulsar (`⏱️ Confirmar Pausa Temporal (Xh)` vs `⏹️ Confirmar Pausa Perpetua (Indefinida)`).
+        *   Diferenciación visual entre `⏹️ Pausa Indef.` (insignia roja de alerta) y `⏱️ Pausa Temp` (insignia ámbar con contador de tiempo restante) en la topología de nodos de `Nodes` y del dashboard `Overview`.
 *   **v3.1.4 (2026-10-22):**
     *   **Visibilidad Completa de Tareas en Cola (Queued Workloads):** Incorporación de la tabla interactiva de tareas en espera en la vista principal `Overview` (directamente debajo de las tareas activas) y en la vista `Tasks & Queues`, mostrando `study_name`, nodo de destino, modelo, autor, prioridad y acciones de gestión en tiempo real (promover a alta prioridad, reasignar cola y cancelar).
     *   **Fallback para Estudios Heredados en Redis:** Extracción resiliente de metadatos y configuración de estudios creados por el manager en `wyolo:request:*` para alimentar los paneles de telemetría sin pérdida de fidelidad.
