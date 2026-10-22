@@ -1,6 +1,6 @@
 # 🎛️ NeuralForge Cluster Admin (`wyoloservice2_cluster_control`)
 
-![Version](https://img.shields.io/badge/version-2.2.0-blue.svg)
+![Version](https://img.shields.io/badge/version-2.3.0-blue.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 ![Python](https://img.shields.io/badge/python-3.10-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker)
@@ -273,6 +273,10 @@ make coverage  # o ./coverage.sh
 
 ## 📝 Changelog
 
+*   **v2.3.0 (2026-10-22):**
+    *   **Resolución Dinámica de Nombres de Celery:** Descubrimiento en tiempo real de los hostnames exactos de los trabajadores Celery mediante inspección de `active_queues`, metadatos de heartbeat y fallback de recursos, solucionando la pérdida silenciosa de señales causada por nombres estáticos.
+    *   **Drenado de Nodos con Desalojo Inmediato de Cargas:** Soporte para `evict=True` en `/api/v1/invokers/{ip}/drain`. Cancela colas públicas y privadas en el nodo, activa la bandera `invoker:{ip}:cancel_active` en Redis, identifica todas las tareas y estudios activos en el nodo, emite cancelaciones dobles (`:cancel` y `:cancelled`) y revoca las tareas de Celery con `SIGKILL`.
+    *   **Cancelación Completa de Estudios:** Actualización de `cancel_study` para propagar claves `:cancel` y `:cancelled` y revocar proactivamente las tareas de Celery en ejecución asociadas al estudio en cualquier nodo del clúster.
 *   **v2.2.0 (2026-10-22):**
     *   **Arquitectura Organizacional VSCode Workbench:** Reorganización completa de la interfaz de administración del clúster adoptando el patrón estructural de Visual Studio Code obtenido mediante ingeniería inversa (REA).
     *   **Activity Bar & Primary Sidebar:** Barra vertical de actividades con 5 dominios de alto nivel (`EXPLORER`, `RUN & DISPATCH`, `TASKS & QUEUES`, `TELEMETRY & SPECS`, `ADMIN & SECURITY`) con conmutación dinámica de árbol de archivos y etiquetas de extensión (`.cluster`, `.yaml`, `.stream`, `.spec`, `.json`).
