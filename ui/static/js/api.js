@@ -311,6 +311,26 @@ class ClusterApiClient {
     return this.request("/api/v1/tasks/queues");
   }
 
+  async promoteQueuedTask(taskId, targetQueue = "gpus_high") {
+    return this.request(`/api/v1/tasks/queues/${encodeURIComponent(taskId)}/promote`, {
+      method: "POST",
+      body: JSON.stringify({ target_queue: targetQueue }),
+    });
+  }
+
+  async reassignQueuedTask(taskId, targetQueue = "wyolo_gpu_queue") {
+    return this.request(`/api/v1/tasks/queues/${encodeURIComponent(taskId)}/reassign`, {
+      method: "POST",
+      body: JSON.stringify({ target_queue: targetQueue }),
+    });
+  }
+
+  async deleteQueuedTask(taskId) {
+    return this.request(`/api/v1/tasks/queues/${encodeURIComponent(taskId)}`, {
+      method: "DELETE",
+    });
+  }
+
   async getSweeps() {
     return this.request("/api/v1/tasks/sweeps");
   }
