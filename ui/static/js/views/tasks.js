@@ -54,6 +54,33 @@ window.ViewTasks = {
         </div>
       </div>
 
+      <!-- Detailed Queued Workloads Section -->
+      <div class="card-section" style="margin-bottom: 20px;">
+        <div class="card-title">
+          <span>⏳ Detailed Waiting Queue & Celery Backlog (Tareas en Espera)</span>
+          <span class="badge badge-amber" id="queued-tasks-badge">0 Queued</span>
+        </div>
+        <div class="table-responsive">
+          <table class="vscode-table">
+            <thead>
+              <tr>
+                <th>Study / Workload Name</th>
+                <th>Author</th>
+                <th>Target Queue / Node</th>
+                <th>Model</th>
+                <th>Dataset Path</th>
+                <th>Priority</th>
+                <th>Queued At</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="queued-tasks-tbody">
+              <tr><td colspan="8" style="text-align: center; color: var(--vscode-fg-muted); padding: 16px;">Loading queued tasks...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- Queues and Quarantine Grid -->
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
         <!-- Celery Queues -->
@@ -165,9 +192,71 @@ window.ViewTasks = {
         }).join("");
       }
 
-      // Queues
+      // Queues & Backlog
       try {
         const qRes = await window.apiClient.getQueues();
+        const queuedTasks = qRes.tasks || [];
+        const totalQueued = qRes.total_queued !== undefined ? qRes.total_queued : queuedTasks.length;
+
+        // Render Detailed Queued Tasks Table
+        const qBadge = document.getElementById("queued-tasks-badge");
+        if (qBadge) qBadge.textContent = `${totalQueued} Queued`;
+
+        const qTasksBody = document.getElementById("queued-tasks-tbody");
+        if (qTasksBody) {
+          if (!queuedTasks.length) {
+            qTasksBody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--vscode-fg-muted); padding: 16px;">No workloads currently waiting in queues.</td></tr>`;
+          } else {
+            qTasksBody.innerHTML = queuedTasks.map(t => {
+              const studyName = t.study_name || t.task_id || "Queued Job";
+              const author = t.author || "Unknown";
+              const qName = t.queue_name || "wyolo_gpu_queue";
+              const isNodeQueue = qName.includes(".") || qName.startsWith("192.") || qName.startsWith("worker");
+              const targetBadge = isNodeQueue
+                ? `<span class="badge badge-green" title="Direct Node Queue">${escapeHtml(qName)}</span>`
+                : `<span class="badge badge-blue" title="Public Celery Queue">${escapeHtml(qName)}</span>`;
+              const model = t.model || "yolo";
+              const dataset = t.dataset || "N/A";
+              const prio = (t.priority || "NORMAL").toUpperCase();
+              const prioBadge = prio === "HIGH"
+                ? `<span class="badge badge-amber">${prio}</span>`
+                : `<span class="badge badge-blue">${prio}</span>`;
+              const queuedAt = t.queued_at || "Recently";
+
+              return `
+                <tr>
+                  <td>
+                    <div><strong>${escapeHtml(studyName)}</strong></div>
+                    <div style="font-size: 10px; color: var(--vscode-fg-muted); font-family: var(--vscode-mono-family);">${escapeHtml(t.task_id || '')}</div>
+                  </td>
+                  <td><span style="color: var(--vscode-fg-muted); font-size: 12px;">${escapeHtml(author)}</span></td>
+                  <td>${targetBadge}</td>
+                  <td><span class="badge badge-blue">${escapeHtml(model)}</span></td>
+                  <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(dataset)}">
+                    <code>${escapeHtml(dataset)}</code>
+                  </td>
+                  <td>${prioBadge}</td>
+                  <td><span style="font-size: 11px; color: var(--vscode-fg-muted);">${escapeHtml(queuedAt)}</span></td>
+                  <td>
+                    <div style="display: flex; gap: 4px;">
+                      <button class="btn btn-secondary btn-sm" onclick="window.ViewTasks.promoteTask('${t.task_id}')" title="Promote to High Priority Queue">
+                        ⬆️ High
+                      </button>
+                      <button class="btn btn-secondary btn-sm" onclick="window.ViewTasks.reassignTask('${t.task_id}')" title="Reassign Target Queue">
+                        ➡️ Reassign
+                      </button>
+                      <button class="btn btn-danger btn-sm" onclick="window.ViewTasks.deleteTask('${t.task_id}')" title="Delete from Queue">
+                        🗑️ Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              `;
+            }).join("");
+          }
+        }
+
+        // Render Summary Queues
         const qBody = document.getElementById("queues-tbody");
         const globalQueues = qRes.global_queues || {};
         const nodeQueues = qRes.node_queues || {};
@@ -278,6 +367,45 @@ window.ViewTasks = {
       await this.load();
     } catch (e) {
       window.workbench.logTerminal("ERROR", `Retry failed: ${e.message}`);
+    }
+  },
+
+  async promoteTask(taskId) {
+    window.workbench.logTerminal("INFO", `Promoting task ${taskId} to gpus_high queue...`);
+    try {
+      await window.apiClient.promoteQueuedTask(taskId, "gpus_high");
+      window.workbench.logTerminal("SUCCESS", `Task ${taskId} promoted to HIGH priority.`);
+      await this.load();
+    } catch (e) {
+      window.workbench.logTerminal("ERROR", `Promotion failed: ${e.message}`);
+      alert(`Promotion failed: ${e.message}`);
+    }
+  },
+
+  async reassignTask(taskId) {
+    const target = prompt(`Enter target queue or worker IP for task ${taskId}:`, "wyolo_gpu_queue");
+    if (!target || !target.trim()) return;
+    window.workbench.logTerminal("INFO", `Reassigning task ${taskId} to queue '${target.trim()}'...`);
+    try {
+      await window.apiClient.reassignQueuedTask(taskId, target.trim());
+      window.workbench.logTerminal("SUCCESS", `Task ${taskId} reassigned to '${target.trim()}'.`);
+      await this.load();
+    } catch (e) {
+      window.workbench.logTerminal("ERROR", `Reassignment failed: ${e.message}`);
+      alert(`Reassign failed: ${e.message}`);
+    }
+  },
+
+  async deleteTask(taskId) {
+    if (!confirm(`Are you sure you want to cancel and delete task ${taskId} from the queue?`)) return;
+    window.workbench.logTerminal("WARN", `Deleting task ${taskId} from Celery queues...`);
+    try {
+      await window.apiClient.deleteQueuedTask(taskId);
+      window.workbench.logTerminal("SUCCESS", `Task ${taskId} deleted successfully.`);
+      await this.load();
+    } catch (e) {
+      window.workbench.logTerminal("ERROR", `Deletion failed: ${e.message}`);
+      alert(`Delete failed: ${e.message}`);
     }
   }
 };
