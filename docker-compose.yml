@@ -14,7 +14,7 @@ services:
     build:
       context: .
       dockerfile: api/Dockerfile
-    image: wisrovi/train_service:cluster_admin_api_v${CLUSTER_ADMIN_VERSION:-3.1.0}
+    image: wisrovi/train_service:cluster_admin_api_v${CLUSTER_ADMIN_VERSION:-3.1.1}
     restart: unless-stopped
     env_file:
       - path: control_host.env
@@ -36,7 +36,7 @@ services:
     build:
       context: .
       dockerfile: ui/Dockerfile
-    image: wisrovi/train_service:cluster_admin_ui_v${CLUSTER_ADMIN_VERSION:-3.1.0}
+    image: wisrovi/train_service:cluster_admin_ui_v${CLUSTER_ADMIN_VERSION:-3.1.1}
     restart: unless-stopped
     environment:
       CLUSTER_API_URL: http://cluster_admin_api:8001
