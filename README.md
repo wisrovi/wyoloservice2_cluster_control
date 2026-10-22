@@ -1,6 +1,6 @@
 # 🎛️ NeuralForge Cluster Admin (`wyoloservice2_cluster_control`)
 
-![Version](https://img.shields.io/badge/version-3.1.2-blue.svg)
+![Version](https://img.shields.io/badge/version-3.1.3-blue.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 ![Python](https://img.shields.io/badge/python-3.10-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker)
@@ -275,6 +275,8 @@ make coverage  # o ./coverage.sh
 
 ## 📝 Changelog
 
+*   **v3.1.3 (2026-10-22):**
+    *   **Persistencia de Nombre Personalizado de Estudio:** Integración del campo `study_name` en el esquema `QuickLaunchRequest`, API router y cliente Redis, asegurando que el nombre del proyecto digitado por el operador se preserve íntegramente en la configuración del barrido de Optuna y en la carga de Celery.
 *   **v3.1.2 (2026-10-22):**
     *   **Incorporación Total de YOLO26 en Todos los Dominios:** Modelos YOLO26 (`yolo26n`, `yolo26s`, `yolo26m`, `yolo26l`, `yolo26x`) disponibles de forma nativa para Detección, Segmentación, Clasificación, Pose y Cajas Orientadas (OBB).
     *   **Inclusión de Modelos SOTA Adicionales (≥ v8):** Integración de **RT-DETR** (`rtdetr-l.pt`, `rtdetr-x.pt` con enrutamiento automático `"type": "rtdetr"`) y **YOLO-World v2** para detección de vocabulario abierto zero-shot.
