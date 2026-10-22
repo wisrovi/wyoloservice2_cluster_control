@@ -52,6 +52,11 @@ def apply_custom_theme():
       display: none !important;
     }
 
+    /* Hide sidebar and collapse handle completely to give 100% full-width to workbench */
+    [data-testid="stSidebar"], [data-testid="collapsedControl"] {
+      display: none !important;
+    }
+
     .main .block-container {
       padding-top: 0.2rem !important;
       padding-bottom: 3.5rem !important;
