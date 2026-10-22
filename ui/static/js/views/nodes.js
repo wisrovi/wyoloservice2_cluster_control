@@ -98,10 +98,10 @@ window.ViewNodes = {
 
       <!-- Pause Options Modal Overlay (Temporal vs Perpetual) -->
       <div id="pause-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 6000; justify-content: center; align-items: center;">
-        <div style="width: 460px; max-width: 90vw; background: var(--vscode-bg-sidebar); border: 1px solid var(--vscode-border-light); border-radius: 6px; padding: 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.8);">
+        <div style="width: 480px; max-width: 90vw; background: var(--vscode-bg-sidebar); border: 1px solid var(--vscode-border-light); border-radius: 6px; padding: 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.8);">
           <div style="font-size: 14px; font-weight: 600; color: var(--vscode-fg-bright); margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
             <span id="pause-modal-title">⏸️ Configurar Pausa del Nodo</span>
-            <span style="cursor: pointer; color: var(--vscode-fg-muted);" onclick="document.getElementById('pause-modal').style.display='none'">✕</span>
+            <span style="cursor: pointer; color: var(--vscode-fg-muted); font-size: 16px;" onclick="document.getElementById('pause-modal').style.display='none'">✕</span>
           </div>
           <input type="hidden" id="pause-node-ip">
 
@@ -111,47 +111,47 @@ window.ViewNodes = {
 
           <div class="form-group">
             <label class="form-label" style="font-weight: 600;">Modo de Pausa:</label>
-            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 6px;">
-              <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; padding: 10px; background: #2D2D2D; border-radius: 4px; border-left: 3px solid #007ACC;">
-                <input type="radio" name="pause-mode" value="temporal" checked onchange="document.getElementById('pause-hours-container').style.display='block'">
-                <div>
+            <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 6px;">
+              <div id="card-pause-temporal" onclick="window.ViewNodes.selectPauseMode('temporal')" style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; padding: 12px; background: rgba(0, 122, 204, 0.15); border-radius: 6px; border: 2px solid #007ACC; transition: all 0.2s;">
+                <input type="radio" id="radio-pause-temporal" name="pause-mode" value="temporal" checked style="margin-top: 3px; cursor: pointer;" onchange="window.ViewNodes.selectPauseMode('temporal')">
+                <div style="flex: 1;">
                   <div style="font-weight: 600; color: var(--vscode-fg-bright);">⏱️ Pausa Temporal (Reanudación Automática)</div>
                   <div style="font-size: 11px; color: var(--vscode-fg-muted); margin-top: 2px;">
-                    El nodo se reactiva automáticamente al vencer el temporizador.
+                    El nodo se reactiva automáticamente al vencer el temporizador configurable.
                   </div>
                 </div>
-              </label>
+              </div>
 
-              <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; padding: 10px; background: #2D2D2D; border-radius: 4px; border-left: 3px solid #EF4444;">
-                <input type="radio" name="pause-mode" value="perpetual" onchange="document.getElementById('pause-hours-container').style.display='none'">
-                <div>
+              <div id="card-pause-perpetual" onclick="window.ViewNodes.selectPauseMode('perpetual')" style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; padding: 12px; background: #252526; border-radius: 6px; border: 1px solid #3c3c3c; opacity: 0.8; transition: all 0.2s;">
+                <input type="radio" id="radio-pause-perpetual" name="pause-mode" value="perpetual" style="margin-top: 3px; cursor: pointer;" onchange="window.ViewNodes.selectPauseMode('perpetual')">
+                <div style="flex: 1;">
                   <div style="font-weight: 600; color: var(--vscode-fg-bright);">⏹️ Pausa Perpetua / Indefinida</div>
                   <div style="font-size: 11px; color: var(--vscode-fg-muted); margin-top: 2px;">
-                    Permanece pausado indefinidamente hasta que un operador presione Reanudar.
+                    Permanece pausado indefinidamente hasta que un operador presione manualmente Reanudar.
                   </div>
                 </div>
-              </label>
+              </div>
             </div>
           </div>
 
-          <div class="form-group" id="pause-hours-container" style="margin-top: 12px;">
+          <div class="form-group" id="pause-hours-container" style="margin-top: 14px;">
             <label class="form-label">Duración de la Pausa Temporal:</label>
             <div style="display: flex; gap: 6px; margin-bottom: 8px;">
-              <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('pause-hours-input').value=1">1h</button>
-              <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('pause-hours-input').value=2">2h</button>
-              <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('pause-hours-input').value=4">4h</button>
-              <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('pause-hours-input').value=8">8h</button>
-              <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('pause-hours-input').value=24">24h</button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="window.ViewNodes.setPauseHours(1)">1h</button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="window.ViewNodes.setPauseHours(2)">2h</button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="window.ViewNodes.setPauseHours(4)">4h</button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="window.ViewNodes.setPauseHours(8)">8h</button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="window.ViewNodes.setPauseHours(24)">24h</button>
             </div>
             <div style="display: flex; align-items: center; gap: 8px;">
-              <input type="number" id="pause-hours-input" class="form-control" min="0.5" max="168" step="0.5" value="4.0" style="width: 100px;">
+              <input type="number" id="pause-hours-input" class="form-control" min="0.5" max="168" step="0.5" value="4.0" style="width: 100px;" oninput="window.ViewNodes.onHoursChange()">
               <span style="font-size: 12px; color: var(--vscode-fg-muted);">horas</span>
             </div>
           </div>
 
           <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px;">
             <button class="btn btn-secondary btn-sm" onclick="document.getElementById('pause-modal').style.display='none'">Cancelar</button>
-            <button class="btn btn-primary btn-sm" onclick="window.ViewNodes.confirmPause()">Confirmar Pausa</button>
+            <button id="pause-confirm-btn" class="btn btn-primary btn-sm" onclick="window.ViewNodes.confirmPause()">⏱️ Confirmar Pausa Temporal (4h)</button>
           </div>
         </div>
       </div>
@@ -341,8 +341,12 @@ window.ViewNodes = {
         const remainingStr = formatRemainingTime(pauseUntil);
         statusBadge = `<span class="badge badge-amber" title="Pausa Temporal hasta: ${pauseUntil}">⏱️ Pausa Temp (${remainingStr})</span>`;
         pauseActionsHtml = `<button class="btn btn-sm" style="background: #10B981; color: white;" onclick="window.ViewNodes.resumeNode('${ip}')">▶️ Reanudar</button>`;
-      } else if (pauseState === "paused_perpetual" || pauseState.includes("pause")) {
-        statusBadge = `<span class="badge badge-amber" title="Pausado indefinidamente">⏹️ Pausa Indef.</span>`;
+      } else if (pauseState === "paused_perpetual") {
+        statusBadge = `<span class="badge badge-red" style="background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.4);" title="Pausado indefinidamente">⏹️ Pausa Indef.</span>`;
+        pauseActionsHtml = `<button class="btn btn-sm" style="background: #10B981; color: white;" onclick="window.ViewNodes.resumeNode('${ip}')">▶️ Reanudar</button>`;
+      } else if (pauseState.includes("pause")) {
+        const remainingStr = formatRemainingTime(pauseUntil);
+        statusBadge = `<span class="badge badge-amber" title="Pausa Temporal hasta: ${pauseUntil}">⏱️ Pausa Temp (${remainingStr})</span>`;
         pauseActionsHtml = `<button class="btn btn-sm" style="background: #10B981; color: white;" onclick="window.ViewNodes.resumeNode('${ip}')">▶️ Reanudar</button>`;
       } else if (node.status === "offline") {
         statusBadge = `<span class="badge badge-red">Offline</span>`;
@@ -412,22 +416,87 @@ window.ViewNodes = {
     }).join("");
   },
 
+  selectPauseMode(mode) {
+    const radioTemporal = document.getElementById("radio-pause-temporal");
+    const radioPerpetual = document.getElementById("radio-pause-perpetual");
+    const cardTemporal = document.getElementById("card-pause-temporal");
+    const cardPerpetual = document.getElementById("card-pause-perpetual");
+    const hoursContainer = document.getElementById("pause-hours-container");
+    const confirmBtn = document.getElementById("pause-confirm-btn");
+    const hours = parseFloat(document.getElementById("pause-hours-input")?.value) || 4.0;
+
+    if (mode === "perpetual") {
+      if (radioPerpetual) radioPerpetual.checked = true;
+      if (radioTemporal) radioTemporal.checked = false;
+      if (cardPerpetual) {
+        cardPerpetual.style.border = "2px solid #EF4444";
+        cardPerpetual.style.background = "rgba(239, 68, 68, 0.15)";
+        cardPerpetual.style.opacity = "1";
+      }
+      if (cardTemporal) {
+        cardTemporal.style.border = "1px solid #3c3c3c";
+        cardTemporal.style.background = "#252526";
+        cardTemporal.style.opacity = "0.7";
+      }
+      if (hoursContainer) hoursContainer.style.display = "none";
+      if (confirmBtn) {
+        confirmBtn.className = "btn btn-danger btn-sm";
+        confirmBtn.innerHTML = "⏹️ Confirmar Pausa Perpetua (Indefinida)";
+      }
+    } else {
+      if (radioTemporal) radioTemporal.checked = true;
+      if (radioPerpetual) radioPerpetual.checked = false;
+      if (cardTemporal) {
+        cardTemporal.style.border = "2px solid #007ACC";
+        cardTemporal.style.background = "rgba(0, 122, 204, 0.15)";
+        cardTemporal.style.opacity = "1";
+      }
+      if (cardPerpetual) {
+        cardPerpetual.style.border = "1px solid #3c3c3c";
+        cardPerpetual.style.background = "#252526";
+        cardPerpetual.style.opacity = "0.7";
+      }
+      if (hoursContainer) hoursContainer.style.display = "block";
+      if (confirmBtn) {
+        confirmBtn.className = "btn btn-primary btn-sm";
+        confirmBtn.innerHTML = `⏱️ Confirmar Pausa Temporal (${hours}h)`;
+      }
+    }
+  },
+
+  setPauseHours(hours) {
+    const input = document.getElementById("pause-hours-input");
+    if (input) input.value = hours;
+    this.onHoursChange();
+  },
+
+  onHoursChange() {
+    const radioPerpetual = document.getElementById("radio-pause-perpetual");
+    if (!radioPerpetual || !radioPerpetual.checked) {
+      const hours = parseFloat(document.getElementById("pause-hours-input")?.value) || 4.0;
+      const confirmBtn = document.getElementById("pause-confirm-btn");
+      if (confirmBtn) {
+        confirmBtn.innerHTML = `⏱️ Confirmar Pausa Temporal (${hours}h)`;
+      }
+    }
+  },
+
   openPauseModal(ip, hostname) {
     document.getElementById("pause-node-ip").value = ip;
     document.getElementById("pause-modal-title").textContent = `⏸️ Configurar Pausa: ${hostname} (${ip})`;
-    document.getElementById("pause-hours-input").value = "4.0";
-    document.getElementById("pause-hours-container").style.display = "block";
-    document.querySelectorAll("input[name='pause-mode']")[0].checked = true;
+    const hoursInput = document.getElementById("pause-hours-input");
+    if (hoursInput) hoursInput.value = "4.0";
+    this.selectPauseMode("temporal");
     document.getElementById("pause-modal").style.display = "flex";
   },
 
   async confirmPause() {
     const ip = document.getElementById("pause-node-ip").value;
-    const modeEl = document.querySelector("input[name='pause-mode']:checked");
-    const mode = modeEl ? modeEl.value : "temporal";
-    const hours = parseFloat(document.getElementById("pause-hours-input").value) || 4.0;
+    const isPerpetual = document.getElementById("radio-pause-perpetual")?.checked;
+    const mode = isPerpetual ? "perpetual" : "temporal";
+    const hours = parseFloat(document.getElementById("pause-hours-input")?.value) || 4.0;
 
-    const desc = mode === "temporal" ? `Temporal (${hours}h)` : "Perpetua (Indefinida)";
+    const desc = mode === "perpetual" ? "Perpetua (Indefinida)" : `Temporal (${hours}h)`;
     window.workbench.logTerminal("WARN", `Aplicando pausa ${desc} al nodo ${ip}...`);
 
     try {
