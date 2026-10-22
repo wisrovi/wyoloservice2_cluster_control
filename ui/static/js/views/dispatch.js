@@ -112,14 +112,17 @@ window.ViewDispatch = {
 
   async load() {
     try {
-      const overview = await window.apiClient.getOverview();
-      const nodes = overview.invokers || overview.workers || [];
+      const invokers = await window.apiClient.getInvokers();
+      const nodes = Array.isArray(invokers) ? invokers : (invokers.invokers || []);
       const select = document.getElementById("ql-target-node");
 
-      select.innerHTML = '<option value="">Auto-Assign (Least Loaded)</option>' +
+      select.innerHTML = '<option value="">Auto-Assign (Least Loaded Node)</option>' +
         nodes.map(n => {
-          const ip = n.ip || n.worker_ip;
-          return `<option value="${ip}">${n.hostname || ip} (${ip})</option>`;
+          const ip = n.worker_ip || n.ip;
+          const host = n.hostname || ip;
+          const gpu = n.physical?.gpu_model || "GPU";
+          const state = n.pause_state || "active";
+          return `<option value="${ip}">${host} (${ip}) - ${gpu} [${state}]</option>`;
         }).join("");
 
       const policy = await window.apiClient.getSchedulerPolicy();
