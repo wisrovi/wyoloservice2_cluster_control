@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.8] - 2026-10-22
+
+### Fixed
+- **Dataset Validation Response Handling in Storage View (`storage.js`):**
+  - Resolved an issue in `validateDataset` where responses with `valid: false` were displayed with green `[VALID]` styling if the HTTP request itself succeeded.
+  - Implemented explicit branching on `res.valid`, rendering a prominent amber/orange `⚠️ [INVALID]` warning banner when paths or layout checks fail.
+
+### Added
+- **Unit Test Coverage Expansion (`tests/api/test_api.py`):**
+  - Added unit test cases for batch queued task deletion (`POST /api/v1/tasks/queues/batch-delete`).
+  - Added unit test cases for dataset pre-flight inspection and validation (`POST /api/v1/cluster/datasets/validate`).
+- **Version and Brand Alignment:**
+  - Synchronized static assets, about alerts, and auth overlay to v3.1.8 across `index.html`, `api.js`, `history.js`, and `app.js`.
+
 ## [3.1.7] - 2026-10-22
 
 ### Fixed
