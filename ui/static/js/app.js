@@ -1,5 +1,5 @@
 /**
- * NeuralForge Cluster Admin v3.1.0 — VSCode Workbench Core Application
+ * NeuralForge Cluster Admin v3.1.1 — VSCode Workbench Core Application
  * Full-width, zero-latency desktop workbench replica
  */
 
@@ -42,7 +42,7 @@ class VSCodeWorkbench {
       this.startBackgroundTelemetry();
     }
 
-    this.logTerminal("SUCCESS", "NeuralForge Cluster Admin v3.1.0 Workbench initialized.");
+    this.logTerminal("SUCCESS", "NeuralForge Cluster Admin v3.1.1 Workbench initialized.");
     this.logTerminal("INFO", `Connected to API: ${window.apiClient.baseUrl}`);
   }
 
