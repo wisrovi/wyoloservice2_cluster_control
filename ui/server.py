@@ -20,6 +20,12 @@ class WorkbenchHttpHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=STATIC_DIR, **kwargs)
 
+    def end_headers(self) -> None:
+        self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+        self.send_header("Pragma", "no-cache")
+        self.send_header("Expires", "0")
+        super().end_headers()
+
     def do_GET(self) -> None:  # noqa: N802
         """Handle GET requests with health checks, config injection and SPA routing."""
         # 1. Healthcheck endpoints (used by Docker and compose)
@@ -28,7 +34,7 @@ class WorkbenchHttpHandler(SimpleHTTPRequestHandler):
             self.send_header("Content-Type", "application/json")
             self.send_header("Cache-Control", "no-cache")
             self.end_headers()
-            payload = json.dumps({"status": "healthy", "service": "cluster_admin_ui", "version": "3.1.2"})
+            payload = json.dumps({"status": "healthy", "service": "cluster_admin_ui", "version": "3.1.3"})
             self.wfile.write(payload.encode("utf-8"))
             return
 
