@@ -105,7 +105,7 @@ async def drain_invoker(
     payload: DrainRequest = DrainRequest(),
     current_user: str = Depends(get_current_user),
 ):
-    """Puts an invoker node in graceful drain mode: finishes active tasks and halts public consumption."""
+    """Puts an invoker node in graceful drain mode: halts public consumption and optionally evicts active workloads."""
     repo = ClusterRepository()
     existing = repo.get_invoker(worker_ip)
     if not existing:
@@ -114,10 +114,14 @@ async def drain_invoker(
             detail=f"Invoker {worker_ip} not found",
         )
 
-    updated = repo.set_invoker_drain(worker_ip=worker_ip, reason=payload.reason or "Maintenance")
+    updated = repo.set_invoker_drain(
+        worker_ip=worker_ip,
+        reason=payload.reason or "Maintenance",
+        evict=payload.evict,
+    )
     return {
         "status": "success",
-        "message": f"Invoker {worker_ip} is now draining (Reason: {payload.reason})",
+        "message": f"Invoker {worker_ip} is now draining (Reason: {payload.reason}, Evict: {payload.evict})",
         "data": updated,
     }
 
