@@ -982,15 +982,34 @@ class ClusterRepository:
 
     # --- Celery Queue Management & Priority Switcher ---
 
+    def _get_all_candidate_queues(self) -> List[str]:
+        """Collects all standard Celery queues, Kombu bindings, and worker/node queues."""
+        queue_names = ["gpus_high", "gpus_medium", "gpus_low", "wyolo_gpu_queue"]
+        try:
+            binding_keys = [k.decode("utf-8") for k in self.client.keys("_kombu.binding.*")]
+            for bk in binding_keys:
+                q_candidate = bk.replace("_kombu.binding.", "").strip()
+                if q_candidate and q_candidate not in queue_names and not q_candidate.startswith("celery"):
+                    queue_names.append(q_candidate)
+        except Exception:
+            pass
+
+        try:
+            for inv in self.list_invokers():
+                ip = inv.get("worker_ip")
+                if ip and ip not in queue_names:
+                    queue_names.append(ip)
+                hostname = inv.get("hostname")
+                if hostname and hostname not in queue_names:
+                    queue_names.append(hostname)
+        except Exception:
+            pass
+
+        return queue_names
+
     def get_celery_queues(self) -> Dict[str, Any]:
         """Inspects Celery waiting queues in Redis and extracts pending training tasks."""
-        queue_names = ["gpus_high", "gpus_medium", "gpus_low", "wyolo_gpu_queue"]
-
-        binding_keys = [k.decode("utf-8") for k in self.client.keys("_kombu.binding.*")]
-        for bk in binding_keys:
-            q_candidate = bk.replace("_kombu.binding.", "").strip()
-            if q_candidate and q_candidate not in queue_names and not q_candidate.startswith("celery"):
-                queue_names.append(q_candidate)
+        queue_names = self._get_all_candidate_queues()
 
         queue_depths: Dict[str, int] = {}
         all_tasks: List[Dict[str, Any]] = []
@@ -1109,12 +1128,7 @@ class ClusterRepository:
 
     def reassign_celery_task(self, task_id: str, target_queue: str = "wyolo_gpu_queue", user: str = "admin") -> Dict[str, Any]:
         """Moves a queued Celery task from any queue (public or private node) to a specified target queue."""
-        queue_names = ["gpus_low", "gpus_medium", "gpus_high", "wyolo_gpu_queue"]
-        binding_keys = [k.decode("utf-8") for k in self.client.keys("_kombu.binding.*")]
-        for bk in binding_keys:
-            q_candidate = bk.replace("_kombu.binding.", "").strip()
-            if q_candidate and q_candidate not in queue_names and not q_candidate.startswith("celery"):
-                queue_names.append(q_candidate)
+        queue_names = self._get_all_candidate_queues()
 
         found_item = None
         source_queue = None
@@ -1261,20 +1275,23 @@ class ClusterRepository:
 
     def promote_celery_task(self, task_id: str, target_queue: str = "gpus_high", user: str = "admin") -> Dict[str, Any]:
         """Moves a queued Celery task to a higher priority queue in Redis."""
-        queue_names = ["gpus_low", "gpus_medium", "gpus_high", "wyolo_gpu_queue"]
+        queue_names = self._get_all_candidate_queues()
         found_item = None
         source_queue = None
 
         for q_name in queue_names:
-            items = self.client.lrange(q_name, 0, -1)
-            for item in items:
-                if task_id.encode("utf-8") in item:
-                    found_item = item
-                    source_queue = q_name
-                    self.client.lrem(q_name, 1, item)
+            try:
+                items = self.client.lrange(q_name, 0, -1)
+                for item in items:
+                    if task_id.encode("utf-8") in item:
+                        found_item = item
+                        source_queue = q_name
+                        self.client.lrem(q_name, 1, item)
+                        break
+                if found_item:
                     break
-            if found_item:
-                break
+            except Exception:
+                continue
 
         if not found_item:
             return {
@@ -1301,20 +1318,23 @@ class ClusterRepository:
 
     def delete_celery_task(self, task_id: str, user: str = "admin") -> Dict[str, Any]:
         """Removes a queued Celery task before it starts running."""
-        queue_names = ["gpus_low", "gpus_medium", "gpus_high", "wyolo_gpu_queue"]
+        queue_names = self._get_all_candidate_queues()
         deleted = False
         source_queue = None
 
         for q_name in queue_names:
-            items = self.client.lrange(q_name, 0, -1)
-            for item in items:
-                if task_id.encode("utf-8") in item:
-                    self.client.lrem(q_name, 1, item)
-                    deleted = True
-                    source_queue = q_name
+            try:
+                items = self.client.lrange(q_name, 0, -1)
+                for item in items:
+                    if task_id.encode("utf-8") in item:
+                        self.client.lrem(q_name, 1, item)
+                        deleted = True
+                        source_queue = q_name
+                        break
+                if deleted:
                     break
-            if deleted:
-                break
+            except Exception:
+                continue
 
         if not deleted:
             return {
@@ -1333,6 +1353,46 @@ class ClusterRepository:
             "status": "success",
             "message": f"Task {task_id} successfully removed from queue '{source_queue}'.",
             "task_id": task_id,
+            "source_queue": source_queue,
+        }
+
+    def delete_celery_tasks_batch(self, task_ids: List[str], user: str = "admin") -> Dict[str, Any]:
+        """Removes multiple queued Celery tasks before they start running."""
+        if not task_ids:
+            return {"status": "success", "deleted_count": 0, "deleted_tasks": [], "remaining_count": 0}
+
+        queue_names = self._get_all_candidate_queues()
+        deleted_tasks: List[str] = []
+        target_set = set(task_ids)
+
+        for q_name in queue_names:
+            try:
+                items = self.client.lrange(q_name, 0, -1)
+                for item in items:
+                    for tid in list(target_set):
+                        if tid.encode("utf-8") in item:
+                            self.client.lrem(q_name, 1, item)
+                            deleted_tasks.append(tid)
+                            target_set.discard(tid)
+                            break
+                if not target_set:
+                    break
+            except Exception:
+                continue
+
+        if deleted_tasks:
+            self.log_admin_action(
+                action="batch_delete_queued_tasks",
+                target=f"{len(deleted_tasks)} tasks",
+                details=f"Removed {len(deleted_tasks)} queued tasks",
+                user=user,
+            )
+
+        return {
+            "status": "success",
+            "deleted_count": len(deleted_tasks),
+            "deleted_tasks": deleted_tasks,
+            "remaining_count": len(target_set),
         }
 
     # --- Live Task Logs & Diagnostics ---
