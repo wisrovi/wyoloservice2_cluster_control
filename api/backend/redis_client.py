@@ -89,6 +89,25 @@ class ClusterRepository:
         pause_until_raw = self.client.get(pause_until_key)
         pause_until = pause_until_raw.decode("utf-8") if pause_until_raw else res.get("pause_until", "")
 
+        # Automatic expiration check for temporal pause
+        if pause_state == "paused_temporal" and pause_until:
+            try:
+                if time.time() > float(pause_until):
+                    self.client.set(pause_state_key, "active")
+                    self.client.delete(pause_until_key)
+                    self.client.hset(res_key, mapping={"pause_state": "active", "pause_until": ""})
+                    pause_state = "active"
+                    pause_until = ""
+                    try:
+                        app = get_celery_app()
+                        destinations = self.resolve_celery_worker_names(worker_ip)
+                        for q in ["gpus_high", "gpus_medium", "gpus_low", "wyolo_gpu_queue", worker_ip]:
+                            app.control.add_consumer(q, destination=destinations, timeout=0.5)
+                    except Exception as e:
+                        print(f"[CELERY EXPIRE] Warning restoring queues for {worker_ip}: {e}")
+            except (ValueError, TypeError):
+                pass
+
         hostname = res.get("hostname") or ver_data.get("worker_hostname") or f"worker-{worker_ip}"
         gpu_model = res.get("physical_gpu_model") or ver_data.get("worker_gpu_model") or "unknown"
         gpu_count = int(res.get("physical_gpu_count") or ver_data.get("worker_gpu_count") or 0)
@@ -262,40 +281,6 @@ class ClusterRepository:
             details=f"MAX_GPU: {max_gpu_percent}%, RAM: {max_ram}, CPU Cores: {max_cpu_cores}, SHM: {shm_size_gb}GB",
         )
         return self.get_invoker(worker_ip) or {}
-
-    def set_invoker_pause(
-        self,
-        worker_ip: str,
-        action: str,
-        mode: str = "temporal",
-        hours: float = 4.0,
-    ) -> Dict[str, Any]:
-        """Pauses or resumes an invoker node and sends Celery signals."""
-        state_key = f"invoker:{worker_ip}:pause_state"
-        until_key = f"invoker:{worker_ip}:pause_until"
-        res_key = f"invoker:{worker_ip}:resources"
-
-        self.log_admin_action(
-            user="wisrovi",
-            action="SET_PAUSE" if action == "pause" else "RESUME",
-            target=worker_ip,
-            details=f"Action: {action}, Mode: {mode}, Hours: {hours}",
-        )
-
-        if action == "pause":
-            if mode == "temporal":
-                pause_until = time.time() + (hours * 3600)
-                self.client.set(state_key, "paused_temporal")
-                self.client.set(until_key, str(pause_until))
-                self.client.hset(res_key, mapping={"pause_state": "paused_temporal", "pause_until": str(pause_until)})
-            else:
-                self.client.set(state_key, "paused_perpetual")
-                self.client.delete(until_key)
-                self.client.hset(res_key, mapping={"pause_state": "paused_perpetual", "pause_until": ""})
-        else:
-            self.client.set(state_key, "active")
-            self.client.delete(until_key)
-            self.client.hset(res_key, mapping={"pause_state": "active", "pause_until": ""})
 
     def resolve_celery_worker_names(self, worker_ip: str) -> List[str]:
         """Resolves active Celery worker destination names for a given worker IP.
