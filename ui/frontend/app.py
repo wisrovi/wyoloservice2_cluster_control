@@ -524,11 +524,11 @@ else:
                     st.session_state["active_page"] = "🛠️ Maintenance & Settings"
                     st.rerun()
                 st.markdown(
-                    clean_html("""
+                    clean_html(f"""
                     <div style="font-size: 0.72rem; color: #858585; margin-top: 10px; line-height: 1.5; border-top: 1px solid #2B2B2B; padding-top: 8px;">
                         <div>🔒 <strong>Auth:</strong> JWT Bearer HS256</div>
                         <div>🛡️ <strong>RBAC:</strong> Full Admin (RW)</div>
-                        <div>🌐 <strong>API:</strong> FastAPI v2.2.0</div>
+                        <div>🌐 <strong>API:</strong> FastAPI v{__version__}</div>
                     </div>
                     """),
                     unsafe_allow_html=True,
