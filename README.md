@@ -1,6 +1,6 @@
 # 🎛️ NeuralForge Cluster Admin (`wyoloservice2_cluster_control`)
 
-![Version](https://img.shields.io/badge/version-3.0.0-blue.svg)
+![Version](https://img.shields.io/badge/version-3.0.1-blue.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 ![Python](https://img.shields.io/badge/python-3.10-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker)
@@ -275,6 +275,15 @@ make coverage  # o ./coverage.sh
 
 ## 📝 Changelog
 
+*   **v3.0.1 (2026-10-22):**
+    *   **Restauración Integral de Telemetría Real y Asignación de GPUs:** Extracción y representación fiel de los datos de hardware NVML y Redis en Operations Center y Nodes & Invokers:
+        *   **Tabla de Entrenamientos Activos en Vivo:** Visualización directa de las tareas en ejecución (`Tattoo_detector`, `Cesped_detector_v2`) con autor, nodo asignado, modelo, dataset, progreso de trials y estado de Pod K8s.
+        *   **Estados de Nodos y Filtros Rápidos:** Semáforos claros (`🟢 Active`, `⏸️ Paused`, `🛡️ Draining`) y barra de botones de filtrado instantáneo (`🔘 Todos`, `🟢 Solo Activos`, `⏸️ Solo Pausados`, `🛡️ En Drenado`) con 0ms de latencia.
+        *   **GPU Compartida vs GPU Total:** Desglose visual de GPUs asignadas por K8s vs capacidad total, junto con el porcentaje de tope compartido de VRAM (`MAX_GPU %`).
+        *   **VRAM Total y Termales NVML:** Lectura de VRAM real (`gpu_memory_total`), uso de cómputo GPU (`%`), potencia en vatios (`W vs TDP`) y temperatura en grados Celsius.
+        *   **Límites de RAM y Memoria Host:** Comparativa clara entre el límite asignado al contenedor (`max_ram`) y la memoria física del host (`ram_total`).
+        *   **Monitor de Procesos GPU y Procesos Zombi (`🔍 Procs`):** Modal interactivo para inspeccionar procesos en ejecución por PID en cada nodo y botón para terminación forzada (`🛑 Kill PID`).
+        *   **Controles en Lote:** Botones para pausar y reanudar todos los nodos del clúster con un solo clic.
 *   **v3.0.0 (2026-10-22):**
     *   **Eliminación Total de Streamlit & SPA Estática VSCode Workbench:** Reemplazo integral de Streamlit por una Single Page Application (SPA) nativa en HTML5/CSS3/Vanilla JS que replica al píxel el workbench de Visual Studio Code (`.part.titlebar`, barra de menús clásica Archivo/Editar/Ver/Ir/Ejecutar/Terminal/Ayuda, Command Center flotante `Ctrl+P`, pestañas multi-editor, consola inferior colapsable `Ctrl+J` y barra de estado permanente `007ACC`).
     *   **Arquitectura de Latencia Cero (0ms Client-Side):** Comunicación directa con el backend FastAPI (`:8001`), eliminando por completo las re-ejecuciones pesadas de Python por cada clic, desconexiones de WebSockets y parches sobre el Shadow DOM.
