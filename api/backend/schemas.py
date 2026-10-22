@@ -131,6 +131,7 @@ class QuickLaunchRequest(BaseModel):
 
 class DrainRequest(BaseModel):
     reason: Optional[str] = Field("Maintenance", description="Reason for draining node")
+    evict: bool = Field(True, description="Whether to evict/terminate active tasks running on this node")
 
 
 # --- Overview Schema ---
