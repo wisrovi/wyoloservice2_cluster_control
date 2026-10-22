@@ -2,7 +2,7 @@
 
 import streamlit as st
 from frontend.api_client import ClusterApiClient
-from frontend.styles import apply_custom_theme
+from frontend.styles import apply_custom_theme, clean_html
 
 
 def render_login(api_client: ClusterApiClient):
@@ -13,7 +13,7 @@ def render_login(api_client: ClusterApiClient):
 
     with col2:
         st.markdown(
-            """
+            clean_html("""
             <div style="text-align: center; margin-top: 3.5rem; margin-bottom: 2rem;">
                 <div style="display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; border-radius: 12px; background: #007ACC; font-size: 2.2rem; box-shadow: 0 0 24px rgba(0, 122, 204, 0.4); margin-bottom: 1rem;">
                     🧠
@@ -28,18 +28,18 @@ def render_login(api_client: ClusterApiClient):
                     <span style="background: #252526; color: #007ACC; border: 1px solid #3C3C3C; font-size: 0.72rem; font-weight: 700; padding: 2px 7px; border-radius: 3px;">VSCode v2.2.0</span>
                 </div>
             </div>
-            """,
+            """),
             unsafe_allow_html=True,
         )
 
         with st.container(border=True):
             st.markdown(
-                """
+                clean_html("""
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid #2B2B2B; padding-bottom: 8px;">
                     <span style="font-size: 0.95rem; font-weight: 700; color: #FFFFFF;">Sign in to Workbench</span>
                     <span style="font-size: 0.72rem; color: #10B981; font-weight: 700; background: rgba(16, 185, 129, 0.12); padding: 2px 6px; border-radius: 3px; border: 1px solid rgba(16, 185, 129, 0.25);">CLUSTER ONLINE</span>
                 </div>
-                """,
+                """),
                 unsafe_allow_html=True,
             )
 
