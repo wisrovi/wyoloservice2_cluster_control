@@ -123,9 +123,12 @@ class TaskResponse(BaseModel):
 
 class QuickLaunchRequest(BaseModel):
     worker_ip: Optional[str] = Field(None, description="Target invoker IP; if empty, routed to public wyolo_gpu_queue")
-    model: str = Field("yolov8n-cls.pt", description="YOLO base model")
-    dataset: str = Field("/examples/colorball.v8i.multiclass/", description="Dataset path")
-    epochs: int = Field(1, ge=1, le=10, description="Verification epochs")
+    task: Optional[str] = Field(None, description="Computer vision task: detect, segment, classify, pose, obb, custom")
+    model: str = Field("yolo11m.pt", description="YOLO base model or custom .pt checkpoint")
+    dataset: str = Field("/examples/Deteksi_komponen_elektronik.v1i/data.yaml", description="Dataset path")
+    epochs: int = Field(1, ge=1, le=1000, description="Verification or training epochs")
+    imgsz: Optional[int] = Field(None, description="Image resolution (e.g. 224, 640, 1024)")
+    batch_size: Optional[int] = Field(None, description="Batch size (-1 for auto, or integer)")
     priority: str = Field("NORMAL", description="Task priority: URGENT, NORMAL, or BATCH")
 
 
