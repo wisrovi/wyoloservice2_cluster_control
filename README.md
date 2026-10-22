@@ -1,11 +1,11 @@
 # 🎛️ NeuralForge Cluster Admin (`wyoloservice2_cluster_control`)
 
-![Version](https://img.shields.io/badge/version-2.1.0-blue.svg)
+![Version](https://img.shields.io/badge/version-2.2.0-blue.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 ![Python](https://img.shields.io/badge/python-3.10-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker)
 
-> Enterprise-grade centralized cluster administration, live telemetry dashboard, and dynamic hardware resource allocation platform (FastAPI + Streamlit) for the `train_service2` ecosystem.
+> Enterprise-grade centralized cluster administration, live telemetry dashboard, and dynamic hardware resource allocation platform (FastAPI + Streamlit) designed with the Visual Studio Code Workbench organizational architecture for the `train_service2` ecosystem.
 
 ---
 
@@ -14,7 +14,7 @@
 Este microservicio combina un backend API de alto rendimiento con una interfaz gráfica interactiva y reactiva:
 
 *   **FastAPI (v0.110+):** Framework asíncrono para el API Gateway RESTful con documentación interactiva Swagger/OpenAPI (`/docs`).
-*   **Streamlit (v1.32+) & Enterprise Glassmorphic Theme:** Frontend visual interactivo con tipografía `Plus Jakarta Sans` y `JetBrains Mono`, efectos de desenfoque de fondo (backdrop blur), HUD Ribbon superior en tiempo real y componentes KPI con elevación tridimensional.
+*   **Streamlit (v1.32+) & VSCode Workbench Architecture:** Frontend visual interactivo estructurado con la arquitectura de organización de Visual Studio Code (Activity Bar lateral con 5 agrupaciones clave, Command Center / Quick Open `Ctrl+P`, barra de pestañas interactivas multi-editor, migas de pan breadcrumbs, drawer inferior colapsable para consola/terminal y barra de estado permanente de 24px).
 *   **Redis (v5.0+):** Almacén de datos persistente en memoria para la telemetría física (`physical_*`), límites asignados (`limits_*`), credenciales seguras de operadores (`cluster:auth:users`), políticas de scheduling y dead-letter queue (`cluster:dlq:tasks`).
 *   **Celery (v5.3+):** Protocolo de comunicación para inspección en tiempo real de colas activas (`active_queues`), emisiones de señales hacia invokers y difusión masiva de imágenes (`force_docker_pull`).
 *   **Optuna & Hyperparameter Sweeps:** Agrupación y supervisión de barridos multi-trial, cálculo de convergencia métrica y cancelación en lote.
@@ -273,6 +273,15 @@ make coverage  # o ./coverage.sh
 
 ## 📝 Changelog
 
+*   **v2.2.0 (2026-10-22):**
+    *   **Arquitectura Organizacional VSCode Workbench:** Reorganización completa de la interfaz de administración del clúster adoptando el patrón estructural de Visual Studio Code obtenido mediante ingeniería inversa (REA).
+    *   **Activity Bar & Primary Sidebar:** Barra vertical de actividades con 5 dominios de alto nivel (`EXPLORER`, `RUN & DISPATCH`, `TASKS & QUEUES`, `TELEMETRY & SPECS`, `ADMIN & SECURITY`) con conmutación dinámica de árbol de archivos y etiquetas de extensión (`.cluster`, `.yaml`, `.stream`, `.spec`, `.json`).
+    *   **Command Center & Quick Open (`Ctrl+P`):** Buscador interactivo superior que permite saltar de forma instantánea a cualquiera de las 11 vistas, nodos o cargas de trabajo del clúster.
+    *   **Barra de Pestañas Multi-Editor:** Sistema de pestañas con iconos, indicador de pestaña activa con borde `#007ACC` y soporte para cerrar o alternar vistas recientes.
+    *   **Navegación Breadcrumbs:** Barra de contexto jerárquico (`neuralforge-cluster › activity › file › status`) para orientación espacial inmediata.
+    *   **Panel Inferior Colapsable:** Drawer inferior estilo consola con pestañas `OUTPUT`, `TERMINAL`, `PROBLEMS (0)` y `DEBUG CONSOLE` con logs en monospace, comandos rápidos y telemetría de fallos.
+    *   **Status Bar Azul VSCode:** Barra de estado permanente de 24px al pie de página mostrando rama git (`⑂ main*`), sincronización, contadores de problemas (`⨂ 0  ⚠ 0`), GPUs en línea y versión de backend.
+    *   **Tokens y Paleta Dark+:** Variables CSS y tipografía (`Plus Jakarta Sans` y `JetBrains Mono`) ajustadas al tema Dark+ oficial de VSCode (`#1E1E1E`, `#252526`, `#333333`, `#007ACC`, `#3C3C3C`).
 *   **v2.1.0 (2026-10-21):**
     *   **Rediseño Visual Enterprise 5 Estrellas:** Reingeniería visual completa basada en Glassmorphism de alta gama con fuentes `Plus Jakarta Sans` y `JetBrains Mono`, gradientes sutiles y micro-interacciones.
     *   **Motor de Estilos Centralizado (`ui/frontend/styles.py`):** Inyección de variables CSS avanzadas, tarjetas métricas con bordes superiores luminiscentes y elevación al pasar el cursor (`hover lift`), pestañas segmentadas sin subrayados toscos y botones primarios con sombra difusa.
