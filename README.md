@@ -1,6 +1,6 @@
 # 🎛️ NeuralForge Cluster Admin (`wyoloservice2_cluster_control`)
 
-![Version](https://img.shields.io/badge/version-3.1.5-blue.svg)
+![Version](https://img.shields.io/badge/version-3.1.6-blue.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 ![Python](https://img.shields.io/badge/python-3.10-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker)
@@ -275,6 +275,13 @@ make coverage  # o ./coverage.sh
 
 ## 📝 Changelog
 
+*   **v3.1.6 (2026-10-22):**
+    *   **Filtrado Multicriterio y Paginación en Frontend para Tareas en Espera (`overview.js` y `tasks.js`):**
+        *   Barra de filtros integrada en tiempo real en la sección **"⏳ Queued Workloads & Celery Backlog (En Espera)"** del panel principal `Overview` y en **"⏳ Detailed Waiting Queue & Celery Backlog (Tareas en Espera)"** de `Tasks & Queues`.
+        *   Búsqueda instantánea por texto en todos los campos (nombre de estudio, ID de tarea, autor, modelo, ruta del dataset o cola destino).
+        *   Filtros desplegables por Cola/Nodo de destino (poblado dinámicamente según las colas existentes), Prioridad (`NORMAL`, `HIGH`) y Modelo.
+        *   Paginación interactiva en el frontend con selector de elementos por página (`5`, `10`, `25`, `50`), botones de navegación `◀ Anterior` / `Siguiente ▶`, contador de páginas (`Pág. X / Y`) e indicador de rango de tareas visibles frente al total.
+        *   Botón para limpiar filtros (`✕ Limpiar`) y botón para refrescar en caliente (`🔄 Refrescar`).
 *   **v3.1.5 (2026-10-22):**
     *   **Robustez en Modal de Pausa y Ejecución de Pausa Perpetua (`nodes.js`):**
         *   Eliminación del fallo de propagación de eventos de click en etiquetas anidadas mediante tarjetas interactivas accionables (`card-pause-temporal` y `card-pause-perpetual`) con selectores directos por JS (`selectPauseMode`).
