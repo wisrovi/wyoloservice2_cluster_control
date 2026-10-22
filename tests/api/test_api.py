@@ -602,5 +602,31 @@ def test_authenticated_cluster_endpoints(client):
     rtdetr_data = resp_quick_rtdetr.json().get("data", {})
     assert rtdetr_data.get("model") == "rtdetr-l.pt"
 
+    # 49. v3.1.7 Batch Deletion of Queued Tasks
+    resp_batch_del = client.post(
+        "/api/v1/tasks/queues/batch-delete",
+        headers=headers,
+        json={"task_ids": ["task-id-1", "task-id-2"]},
+    )
+    assert resp_batch_del.status_code == 200, f"Expected 200, got {resp_batch_del.status_code}"
+    batch_data = resp_batch_del.json()
+    assert "status" in batch_data
+    assert "deleted_count" in batch_data
+    assert "deleted_tasks" in batch_data
+    assert "remaining_count" in batch_data
+
+    # 50. v3.1.7 Dataset Pre-flight and Validation Endpoint
+    resp_val_dataset = client.post(
+        "/api/v1/cluster/datasets/validate",
+        headers=headers,
+        json={"dataset_path": "/examples/coco8"},
+    )
+    assert resp_val_dataset.status_code == 200, f"Expected 200, got {resp_val_dataset.status_code}"
+    val_data = resp_val_dataset.json()
+    assert "dataset_path" in val_data
+    assert "valid" in val_data
+    assert "data_yaml_exists" in val_data
+
+
 
 
