@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.1] - 2026-10-22
+
+### Added
+- **Multi-Task Computer Vision Architecture Selector in Smart Dispatcher (`dispatch.js`):**
+  - **Vision Task Selector (CV Domain):**
+    - 🎯 Object Detection (`detect`): YOLO11 (n/s/m/l/x), YOLOv10 (n/s/m/b/l/x), YOLOv9 (t/s/m/c/e), YOLOv8 (n/s/m/l/x), YOLOv5u (nu/su/mu/lu/xu).
+    - ✂️ Instance Segmentation (`segment`): YOLO11-seg (n/s/m/l/x), YOLOv8-seg (n/s/m/l/x), YOLOv5u-seg (n/s/m).
+    - 🏷️ Image Classification (`classify`): YOLO11-cls (n/s/m/l/x), YOLOv8-cls (n/s/m/l/x), YOLO26-cls (n/s).
+    - 🤸 Pose Estimation (`pose`): YOLO11-pose (n/s/m/l/x), YOLOv8-pose (n/s/m/l/x).
+    - 📐 Oriented Bounding Box (`obb`): YOLO11-obb (n/s/m/l/x), YOLOv8-obb (n/s/m/l/x).
+    - 🧪 Custom Checkpoints (`custom`): Support for typing arbitrary `.pt` checkpoint file paths.
+  - **Dynamic Task Synchronization:**
+    - Switching vision task automatically switches default suggested dataset, resolution (`imgsz`), model list, task badge, and study naming pattern.
+  - **Enhanced Hyperparameter Configuration:**
+    - Batch size selector with AutoBatch (`-1`), 4, 8, 16, 32, 64, 128.
+    - Image resolution selector (`imgsz`): 224, 384, 512, 640, 1024, 1280.
+    - Training epochs expanded from `le=10` up to `le=1000` in backend schema and UI.
+  - **Backend Intelligent Auto-Configuration:**
+    - `QuickLaunchRequest` now accepts `task`, `imgsz`, and `batch_size`.
+    - Auto-detection of task from model name if omitted, auto-assignment of fitness metrics (`metrics/mAP50(B)` for detect/obb, `metrics/mAP50(M)` for segment, `metrics/mAP50-95(P)` for pose, `metrics/accuracy_top1` for classification).
+    - Duration estimator expanded to support all model families with task-dependent compute multipliers.
+
+### Changed
+- Bumped project version to `3.1.1` across backend, frontend, server, Docker Compose, and documentation.
+
 ## [3.1.0] - 2026-10-22
 
 ### Added
