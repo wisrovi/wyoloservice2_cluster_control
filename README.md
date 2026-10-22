@@ -1,6 +1,6 @@
 # 🎛️ NeuralForge Cluster Admin (`wyoloservice2_cluster_control`)
 
-![Version](https://img.shields.io/badge/version-2.3.0-blue.svg)
+![Version](https://img.shields.io/badge/version-2.3.1-blue.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 ![Python](https://img.shields.io/badge/python-3.10-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker)
@@ -273,6 +273,9 @@ make coverage  # o ./coverage.sh
 
 ## 📝 Changelog
 
+*   **v2.3.1 (2026-10-22):**
+    *   **Barra Superior de Menú Clásico VSCode:** Integración de barra superior auténtica al píxel 0 de la ventana (ocultando el encabezado en blanco de Streamlit) con menús horizontales contextuales: **Archivo**, **Editar**, **Ver**, **Ejecutar**, **Terminal** y **Ayuda**, Command Center central (`Ctrl+P`) y resumen de estado y operador en la esquina superior derecha.
+    *   **Barra Lateral Optimizada y Descongestiona:** Eliminación de los acordeones y columnas comprimidas que sobrecargaban la barra lateral. Reemplazo por un explorador limpio y amplio organizado en tres bloques (`TOPOLOGÍA & CLÚSTER`, `CARGAS DE TRABAJO`, `GOBERNANZA & FINOPS`) con iconos destacados y acceso en 1 solo clic.
 *   **v2.3.0 (2026-10-22):**
     *   **Resolución Dinámica de Nombres de Celery:** Descubrimiento en tiempo real de los hostnames exactos de los trabajadores Celery mediante inspección de `active_queues`, metadatos de heartbeat y fallback de recursos, solucionando la pérdida silenciosa de señales causada por nombres estáticos.
     *   **Drenado de Nodos con Desalojo Inmediato de Cargas:** Soporte para `evict=True` en `/api/v1/invokers/{ip}/drain`. Cancela colas públicas y privadas en el nodo, activa la bandera `invoker:{ip}:cancel_active` en Redis, identifica todas las tareas y estudios activos en el nodo, emite cancelaciones dobles (`:cancel` y `:cancelled`) y revoca las tareas de Celery con `SIGKILL`.
