@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.1] - 2026-10-22
+
+### Added
+- **Authentic Top Desktop Menu Bar:** Unified the top bar into a true VSCode-style header positioned directly at the top of the viewport (hiding the blank Streamlit header), featuring the classic horizontal menu: **Archivo**, **Editar**, **Ver**, **Ejecutar**, **Terminal**, and **Ayuda** with styled context-menu popovers and zero chevron arrows.
+- **Streamlined Primary Sidebar Navigation:** Completely eliminated sidebar clutter by replacing cramped multi-column rails and nested open expanders with a clean, spacious single-column file explorer grouped into `TOPOLOGÍA & CLÚSTER`, `CARGAS DE TRABAJO`, and `GOBERNANZA & FINOPS`, with instant 1-click access and active state indicator.
+
+### Changed
+- Bumped project version to `2.3.1` across backend, frontend, and documentation.
+
 ## [2.3.0] - 2026-10-22
 
 ### Added
