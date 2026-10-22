@@ -1,6 +1,6 @@
 # 🎛️ NeuralForge Cluster Admin (`wyoloservice2_cluster_control`)
 
-![Version](https://img.shields.io/badge/version-3.1.6-blue.svg)
+![Version](https://img.shields.io/badge/version-3.1.7-blue.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 ![Python](https://img.shields.io/badge/python-3.10-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker)
@@ -275,6 +275,12 @@ make coverage  # o ./coverage.sh
 
 ## 📝 Changelog
 
+*   **v3.1.7 (2026-10-22):**
+    *   **Cancelación en Lote y Notificación Visual de Tareas en Espera:**
+        *   Incorporación de banner toast visual reactivo (`#overview-queued-toast` y `#tasks-queued-toast`) para confirmación inmediata al cancelar tareas en cola.
+        *   Incorporación del botón **"🗑️ Cancelar Filtradas (N)"** permitiendo purgar en lote todas las tareas que coincidan con la búsqueda activa en un solo clic.
+        *   Endpoint de backend `POST /api/v1/tasks/queues/batch-delete` con soporte de supresión atómica de múltiples tareas Celery.
+        *   Corrección en resolución dinámica de colas (`_get_all_candidate_queues`): eliminación exitosa de tareas asignadas a colas privadas de nodos (`192.168.1.68`, etc.) y bindings dinámicos.
 *   **v3.1.6 (2026-10-22):**
     *   **Filtrado Multicriterio y Paginación en Frontend para Tareas en Espera (`overview.js` y `tasks.js`):**
         *   Barra de filtros integrada en tiempo real en la sección **"⏳ Queued Workloads & Celery Backlog (En Espera)"** del panel principal `Overview` y en **"⏳ Detailed Waiting Queue & Celery Backlog (Tareas en Espera)"** de `Tasks & Queues`.
