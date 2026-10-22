@@ -570,5 +570,37 @@ def test_authenticated_cluster_endpoints(client):
     assert seg_data.get("task") == "segment"
     assert seg_data.get("fitness") == "metrics/mAP50(M)"
 
+    # 48. v3.1.2 YOLO26 Next-Gen and RT-DETR Launch Verification
+    resp_quick_yolo26 = client.post(
+        "/api/v1/tasks/quick-launch",
+        headers=headers,
+        json={
+            "task": "detect",
+            "model": "yolo26m.pt",
+            "dataset": "/examples/Deteksi_komponen_elektronik.v1i/data.yaml",
+            "epochs": 25,
+            "priority": "NORMAL",
+        },
+    )
+    assert resp_quick_yolo26.status_code == 200, f"Expected 200, got {resp_quick_yolo26.status_code}"
+    yolo26_data = resp_quick_yolo26.json().get("data", {})
+    assert yolo26_data.get("model") == "yolo26m.pt"
+    assert yolo26_data.get("task") == "detect"
+
+    resp_quick_rtdetr = client.post(
+        "/api/v1/tasks/quick-launch",
+        headers=headers,
+        json={
+            "task": "detect",
+            "model": "rtdetr-l.pt",
+            "dataset": "/examples/Deteksi_komponen_elektronik.v1i/data.yaml",
+            "epochs": 10,
+            "priority": "URGENT",
+        },
+    )
+    assert resp_quick_rtdetr.status_code == 200, f"Expected 200, got {resp_quick_rtdetr.status_code}"
+    rtdetr_data = resp_quick_rtdetr.json().get("data", {})
+    assert rtdetr_data.get("model") == "rtdetr-l.pt"
+
 
 
