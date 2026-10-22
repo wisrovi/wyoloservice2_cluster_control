@@ -533,5 +533,42 @@ def test_authenticated_cluster_endpoints(client):
     assert resume_data["status"] == "success"
     assert "resume" in resume_data["message"]
 
+    # 47. v3.1.1 Multi-Task Quick Launch (Detect, Segment, Pose, OBB, Custom)
+    resp_quick_detect = client.post(
+        "/api/v1/tasks/quick-launch",
+        headers=headers,
+        json={
+            "task": "detect",
+            "model": "yolo11m.pt",
+            "dataset": "/examples/Deteksi_komponen_elektronik.v1i/data.yaml",
+            "epochs": 50,
+            "imgsz": 640,
+            "batch_size": 16,
+            "priority": "URGENT",
+        },
+    )
+    assert resp_quick_detect.status_code == 200, f"Expected 200, got {resp_quick_detect.status_code}"
+    detect_data = resp_quick_detect.json().get("data", {})
+    assert detect_data.get("task") == "detect"
+    assert detect_data.get("imgsz") == 640
+    assert detect_data.get("batch_size") == 16
+    assert detect_data.get("fitness") == "metrics/mAP50(B)"
+
+    resp_quick_seg = client.post(
+        "/api/v1/tasks/quick-launch",
+        headers=headers,
+        json={
+            "task": "segment",
+            "model": "yolo11n-seg.pt",
+            "dataset": "/examples/ArchitecturePlan/data.yaml",
+            "epochs": 20,
+            "priority": "NORMAL",
+        },
+    )
+    assert resp_quick_seg.status_code == 200, f"Expected 200, got {resp_quick_seg.status_code}"
+    seg_data = resp_quick_seg.json().get("data", {})
+    assert seg_data.get("task") == "segment"
+    assert seg_data.get("fitness") == "metrics/mAP50(M)"
+
 
 
