@@ -292,12 +292,12 @@ else:
     if "panel_tab" not in st.session_state:
         st.session_state["panel_tab"] = "OUTPUT"
 
-    # --- PRIMARY SIDEBAR (VSCode Activity Bar + Explorer Pane) ---
+    # --- PRIMARY SIDEBAR (VSCode Clean Activity & View Explorer) ---
     with st.sidebar:
-        # VSCode Brand & Activity Bar Header
+        # 1. Sidebar Brand Header
         st.markdown(
             clean_html(f"""
-            <div style="background: #1F1F1F; border: 1px solid #2B2B2B; border-radius: 4px; padding: 8px 10px; margin-bottom: 10px;">
+            <div style="background: #1F1F1F; border: 1px solid #2B2B2B; border-radius: 4px; padding: 8px 10px; margin-bottom: 12px;">
                 <div style="display: flex; align-items: center; justify-content: space-between;">
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <span style="font-size: 1.2rem;">🧠</span>
@@ -313,238 +313,115 @@ else:
             unsafe_allow_html=True,
         )
 
-        # 2-COLUMN SPLIT: Left Activity Bar Icon Rail + Right Primary Sidebar Pane
-        col_rail, col_pane = st.columns([1, 4], gap="small")
+        # 2. Explorer Section Header & Search Filter
+        st.markdown(
+            clean_html("""
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; padding: 0 4px;">
+                <span style="font-size: 0.72rem; font-weight: 800; color: #BBBBBB; letter-spacing: 0.05em; text-transform: uppercase;">
+                    📁 EXPLORADOR
+                </span>
+                <span style="font-size: 0.65rem; color: #60A5FA; font-weight: 700;">11 VISTAS</span>
+            </div>
+            """),
+            unsafe_allow_html=True,
+        )
 
-        with col_rail:
-            rail_items = [
-                ("explorer", "📁", "Explorer: All Cluster Files & Views (Ctrl+Shift+E)"),
-                ("run", "🚀", "Run: Workload Dispatch & Execution (Ctrl+Shift+D)"),
-                ("queues", "📋", "Queues: Celery Tasks & DLQ (Ctrl+Shift+T)"),
-                ("telemetry", "🌿", "Telemetry: Green AI & Hardware Specs (Ctrl+Shift+M)"),
-                ("management", "⚙️", "Settings: Security & Maintenance (Ctrl+,)"),
-            ]
-            for act_id, icon, act_help in rail_items:
-                is_active = (st.session_state["activity_category"] == act_id)
-                btn_type = "primary" if is_active else "secondary"
-                if st.button(icon, key=f"rail_btn_{act_id}", help=act_help, type=btn_type, use_container_width=True):
-                    st.session_state["activity_category"] = act_id
+        filter_text = st.text_input(
+            "Filtrar",
+            placeholder="🔍 Filtrar vistas (ej. nodos, gpu)...",
+            label_visibility="collapsed",
+            key="sidebar_filter_text",
+        ).strip().lower()
+
+        # 3. Clean Categorized Views List (Single-column, clear icons, no nested clutter!)
+        NAV_GROUPS = [
+            {
+                "group": "TOPOLOGÍA & CLÚSTER",
+                "items": [
+                    ("📊 Operations Center", "overview.cluster"),
+                    ("⚙️ Nodes & Invokers", "nodes.invokers"),
+                    ("📁 Storage & Volumes", "storage.volumes"),
+                    ("🔬 Cluster Capabilities", "capabilities.spec"),
+                ],
+            },
+            {
+                "group": "CARGAS DE TRABAJO",
+                "items": [
+                    ("🚀 Dispatch & Scheduler", "dispatch.yaml"),
+                    ("📋 Tasks & Queues Monitor", "queues.stream"),
+                    ("📈 Job History", "history.log"),
+                    ("🏆 GPU Benchmarks", "benchmarks.gpu"),
+                ],
+            },
+            {
+                "group": "GOBERNANZA & FINOPS",
+                "items": [
+                    ("🌿 FinOps & Energy (Green AI)", "finops.green"),
+                    ("📜 Audit & Security", "audit.sec"),
+                    ("🛠️ Maintenance & Settings", "settings.json"),
+                ],
+            },
+        ]
+
+        active_page = st.session_state["active_page"]
+
+        for grp in NAV_GROUPS:
+            items_to_show = []
+            for name, f_ext in grp["items"]:
+                if not filter_text or filter_text in name.lower() or filter_text in f_ext.lower():
+                    items_to_show.append((name, f_ext))
+
+            if not items_to_show:
+                continue
+
+            st.markdown(
+                f"<div class='sidebar-group-title'>{grp['group']}</div>",
+                unsafe_allow_html=True,
+            )
+
+            for name, f_ext in items_to_show:
+                is_selected = (name == active_page)
+                btn_type = "primary" if is_selected else "secondary"
+                if st.button(name, key=f"sb_nav_{f_ext}", type=btn_type, use_container_width=True):
+                    st.session_state["active_page"] = name
+                    st.session_state["activity_category"] = PAGE_TO_CATEGORY.get(name, "explorer")
+                    if name not in st.session_state["open_tabs"]:
+                        st.session_state["open_tabs"].append(name)
                     st.rerun()
 
-            st.markdown("<div style='margin-top: 1.5rem; border-top: 1px solid #333333; padding-top: 6px;'></div>", unsafe_allow_html=True)
-            avatar_initial = username[:1].upper() if username else "A"
-            if st.button(avatar_initial, key="rail_btn_user", help=f"User: {username} (Cluster Admin)", type="secondary", use_container_width=True):
-                st.toast(f"Operator: {username} | Role: Cluster Admin")
-            if st.button("🚪", key="rail_btn_logout", help="Sign Out of Workbench", type="secondary", use_container_width=True):
+        # 4. User profile & Sign Out at the bottom
+        st.markdown("<div style='margin-top: 1.5rem; border-top: 1px solid #2B2B2B; padding-top: 10px;'></div>", unsafe_allow_html=True)
+        col_u1, col_u2 = st.columns([3, 1])
+        with col_u1:
+            st.markdown(
+                clean_html(f"""
+                <div style="font-size: 0.76rem; color: #CCCCCC; display: flex; align-items: center; gap: 6px; padding-top: 4px;">
+                    <span style="background: #007ACC; color: #FFFFFF; font-weight: 700; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7rem;">
+                        {username[:1].upper() if username else 'A'}
+                    </span>
+                    <div>
+                        <div style="font-weight: 600; line-height: 1.1;">{username}</div>
+                        <div style="font-size: 0.65rem; color: #858585;">Cluster Admin</div>
+                    </div>
+                </div>
+                """),
+                unsafe_allow_html=True,
+            )
+        with col_u2:
+            if st.button("🚪", key="sb_btn_logout", help="Cerrar Sesión"):
                 st.session_state["authenticated"] = False
                 st.session_state["token"] = None
                 st.session_state["username"] = None
                 st.rerun()
 
-        with col_pane:
-            current_cat = st.session_state["activity_category"]
-
-            if current_cat == "explorer":
-                st.markdown(
-                    clean_html("""
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-                        <span style="font-size: 0.72rem; font-weight: 800; color: #BBBBBB; letter-spacing: 0.05em; text-transform: uppercase;">
-                            EXPLORER: CLUSTER
-                        </span>
-                        <span style="font-size: 0.65rem; color: #60A5FA; font-weight: 700;">11 VIEWS</span>
-                    </div>
-                    """),
-                    unsafe_allow_html=True,
-                )
-
-                # Search filter: Instant view search
-                filter_text = st.text_input(
-                    "Filter Views",
-                    placeholder="🔎 Filter views (e.g. nodes, gpu)...",
-                    label_visibility="collapsed",
-                    key="explorer_filter_text",
-                ).strip().lower()
-
-                # Open Editors Section
-                with st.expander("▼ OPEN EDITORS", expanded=True):
-                    if st.session_state["open_tabs"]:
-                        for tab_name in list(st.session_state["open_tabs"]):
-                            c_t1, c_t2 = st.columns([5, 1])
-                            is_active_tab = (tab_name == st.session_state["active_page"])
-                            with c_t1:
-                                tab_prefix = "● " if is_active_tab else "  "
-                                if st.button(f"{tab_prefix}{tab_name}", key=f"open_tab_p_{tab_name}", use_container_width=True):
-                                    st.session_state["active_page"] = tab_name
-                                    st.session_state["activity_category"] = PAGE_TO_CATEGORY.get(tab_name, "explorer")
-                                    st.rerun()
-                            with c_t2:
-                                if len(st.session_state["open_tabs"]) > 1:
-                                    if st.button("×", key=f"close_tab_p_{tab_name}", help=f"Close {tab_name}"):
-                                        st.session_state["open_tabs"].remove(tab_name)
-                                        if tab_name == st.session_state["active_page"]:
-                                            st.session_state["active_page"] = st.session_state["open_tabs"][-1]
-                                            st.session_state["activity_category"] = PAGE_TO_CATEGORY.get(st.session_state["active_page"], "explorer")
-                                        st.rerun()
-
-                # All 3 Folders with All Views Visible at Once
-                for folder_data in CLUSTER_FOLDERS:
-                    views_list = folder_data["views"]
-                    if filter_text:
-                        filtered = [v for v in views_list if filter_text in v["name"].lower() or filter_text in v["file"].lower() or filter_text in v.get("desc", "").lower()]
-                        if not filtered:
-                            continue
-                        views_to_show = filtered
-                        is_expanded = True
-                    else:
-                        views_to_show = views_list
-                        is_expanded = True
-
-                    with st.expander(f"📁 {folder_data['folder']}", expanded=is_expanded):
-                        for v in views_to_show:
-                            is_sel = (v["name"] == st.session_state["active_page"])
-                            btn_t = "primary" if is_sel else "secondary"
-                            c_b, c_bdg = st.columns([3, 1])
-                            with c_b:
-                                if st.button(v["name"], key=f"tree_v_{v['file']}", type=btn_t, use_container_width=True):
-                                    st.session_state["active_page"] = v["name"]
-                                    if v["name"] not in st.session_state["open_tabs"]:
-                                        st.session_state["open_tabs"].append(v["name"])
-                                    st.rerun()
-                            with c_bdg:
-                                st.markdown(
-                                    clean_html(f"""
-                                    <div style="text-align: right; padding-top: 5px;">
-                                        <span style="background: rgba(255,255,255,0.06); color: {v['badge_color']}; font-size: 0.62rem; font-weight: 700; padding: 1px 4px; border-radius: 2px;">
-                                            {v['badge']}
-                                        </span>
-                                    </div>
-                                    """),
-                                    unsafe_allow_html=True,
-                                )
-
-            elif current_cat == "run":
-                st.markdown(
-                    clean_html("""
-                    <div style="margin-bottom: 8px;">
-                        <span style="font-size: 0.72rem; font-weight: 800; color: #BBBBBB; letter-spacing: 0.05em; text-transform: uppercase;">
-                            RUN & DISPATCH
-                        </span>
-                    </div>
-                    """),
-                    unsafe_allow_html=True,
-                )
-                if st.button("🚀 New Workload Dispatch", key="run_quick_dispatch", type="primary", use_container_width=True):
-                    st.session_state["active_page"] = "🚀 Dispatch & Scheduler"
-                    st.rerun()
-                if st.button("📈 View Training History", key="run_quick_history", use_container_width=True):
-                    st.session_state["active_page"] = "📈 Job History"
-                    st.rerun()
-                if st.button("🏆 Benchmark GPU Fabric", key="run_quick_bench", use_container_width=True):
-                    st.session_state["active_page"] = "🏆 GPU Benchmarks"
-                    st.rerun()
-                st.markdown(
-                    clean_html("""
-                    <div style="font-size: 0.72rem; color: #858585; margin-top: 10px; line-height: 1.5; border-top: 1px solid #2B2B2B; padding-top: 8px;">
-                        <div>⚡ <strong>Active Trials:</strong> 4 running</div>
-                        <div>🎯 <strong>HPO Engine:</strong> Optuna DB</div>
-                        <div>📦 <strong>Storage:</strong> Samba & MinIO</div>
-                    </div>
-                    """),
-                    unsafe_allow_html=True,
-                )
-
-            elif current_cat == "queues":
-                st.markdown(
-                    clean_html("""
-                    <div style="margin-bottom: 8px;">
-                        <span style="font-size: 0.72rem; font-weight: 800; color: #BBBBBB; letter-spacing: 0.05em; text-transform: uppercase;">
-                            TASKS & QUEUES
-                        </span>
-                    </div>
-                    """),
-                    unsafe_allow_html=True,
-                )
-                if st.button("📋 Celery Tasks Monitor", key="queues_quick_tasks", type="primary", use_container_width=True):
-                    st.session_state["active_page"] = "📋 Tasks & Queues Monitor"
-                    st.rerun()
-                st.markdown(
-                    clean_html("""
-                    <div style="font-size: 0.72rem; color: #858585; margin-top: 10px; line-height: 1.5; border-top: 1px solid #2B2B2B; padding-top: 8px;">
-                        <div>📬 <strong>Broker:</strong> Redis (Healthy)</div>
-                        <div>⚡ <strong>Invokers:</strong> 11 Nodes Active</div>
-                        <div>🧯 <strong>Dead Letter:</strong> 0 in Quarantine</div>
-                    </div>
-                    """),
-                    unsafe_allow_html=True,
-                )
-
-            elif current_cat == "telemetry":
-                st.markdown(
-                    clean_html("""
-                    <div style="margin-bottom: 8px;">
-                        <span style="font-size: 0.72rem; font-weight: 800; color: #BBBBBB; letter-spacing: 0.05em; text-transform: uppercase;">
-                            TELEMETRY & GREEN AI
-                        </span>
-                    </div>
-                    """),
-                    unsafe_allow_html=True,
-                )
-                if st.button("🌿 FinOps & Energy Footprint", key="telemetry_quick_finops", type="primary", use_container_width=True):
-                    st.session_state["active_page"] = "🌿 FinOps & Energy (Green AI)"
-                    st.rerun()
-                if st.button("🔬 Cluster Hardware Specs", key="telemetry_quick_caps", use_container_width=True):
-                    st.session_state["active_page"] = "🔬 Cluster Capabilities"
-                    st.rerun()
-                st.markdown(
-                    clean_html("""
-                    <div style="font-size: 0.72rem; color: #858585; margin-top: 10px; line-height: 1.5; border-top: 1px solid #2B2B2B; padding-top: 8px;">
-                        <div>⚡ <strong>Total GPUs:</strong> 22 Units</div>
-                        <div>🌱 <strong>Carbon:</strong> Nominal</div>
-                        <div>🔋 <strong>Efficiency:</strong> Green AI v2.2</div>
-                    </div>
-                    """),
-                    unsafe_allow_html=True,
-                )
-
-            elif current_cat == "management":
-                st.markdown(
-                    clean_html("""
-                    <div style="margin-bottom: 8px;">
-                        <span style="font-size: 0.72rem; font-weight: 800; color: #BBBBBB; letter-spacing: 0.05em; text-transform: uppercase;">
-                            ADMIN & SETTINGS
-                        </span>
-                    </div>
-                    """),
-                    unsafe_allow_html=True,
-                )
-                if st.button("📜 Audit & Security Logs", key="mgmt_quick_audit", type="primary", use_container_width=True):
-                    st.session_state["active_page"] = "📜 Audit & Security"
-                    st.rerun()
-                if st.button("🛠️ System Maintenance", key="mgmt_quick_settings", use_container_width=True):
-                    st.session_state["active_page"] = "🛠️ Maintenance & Settings"
-                    st.rerun()
-                st.markdown(
-                    clean_html(f"""
-                    <div style="font-size: 0.72rem; color: #858585; margin-top: 10px; line-height: 1.5; border-top: 1px solid #2B2B2B; padding-top: 8px;">
-                        <div>🔒 <strong>Auth:</strong> JWT Bearer HS256</div>
-                        <div>🛡️ <strong>RBAC:</strong> Full Admin (RW)</div>
-                        <div>🌐 <strong>API:</strong> FastAPI v{__version__}</div>
-                    </div>
-                    """),
-                    unsafe_allow_html=True,
-                )
-
     # --- MAIN WORKBENCH EDITOR AREA ---
 
-    # 1. VSCode Top Title Bar with Command Center
+    # 1. VSCode Top Bar with Command Center & Classic Menu Bar (Archivo, Editar, Ver, Ejecutar, Terminal, Ayuda)
     active_page = st.session_state["active_page"]
     active_file = PAGE_TO_FILE.get(active_page, "workspace.file")
     active_category_key = PAGE_TO_CATEGORY.get(active_page, "explorer")
     active_category_title = ACTIVITY_GROUPS.get(active_category_key, {}).get("short_name", "Explorer")
 
-    render_vscode_titlebar(cluster_name="production-cima", active_view=active_page, username=username)
-
-    # 2. VSCode Classic Menu Bar (File, Edit, Selection, View, Go, Run, Terminal, Help)
     def handle_navigate(p):
         st.session_state["active_page"] = p
         st.session_state["activity_category"] = PAGE_TO_CATEGORY.get(p, "explorer")
@@ -568,6 +445,8 @@ else:
         on_select_page=handle_navigate,
         on_toggle_panel=handle_toggle_panel,
         on_logout=handle_logout,
+        cluster_name="production-cima",
+        username=username,
     )
 
     # 2. VSCode Editor Tabs Strip
