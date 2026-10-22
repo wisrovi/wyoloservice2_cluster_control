@@ -3,6 +3,7 @@
 import textwrap
 import streamlit as st
 from typing import Any, Dict, List, Optional
+from frontend import __version__
 
 
 def apply_custom_theme():
@@ -580,7 +581,7 @@ def render_vscode_menubar(
                 st.toast("Architecture: 11 Repos, 22 GPUs, Celery & Docker Worker")
             if st.button("🌐 FastAPI Swagger UI (:8001/docs)", key="m_hlp_swg", use_container_width=True):
                 st.toast("Swagger UI available at http://localhost:8001/docs")
-            st.markdown("<div style='font-size: 0.7rem; color: #858585; margin-top: 6px;'>NeuralForge Cluster Admin v2.2.0<br>VSCode Workbench Edition</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='font-size: 0.7rem; color: #858585; margin-top: 6px;'>NeuralForge Cluster Admin v{__version__}<br>VSCode Workbench Edition</div>", unsafe_allow_html=True)
     st.markdown("<div style='border-bottom: 1px solid #2B2B2B; margin: 0.2rem -1rem 0.8rem -1rem;'></div>", unsafe_allow_html=True)
 
 
@@ -600,15 +601,16 @@ def render_vscode_breadcrumbs(category: str, view_name: str, file_name: str):
     st.markdown(clean_html(html), unsafe_allow_html=True)
 
 
-def render_page_header(title: str, subtitle: str, badge_text: str = "VSCode v2.2.0", badge_color: str = "#007ACC"):
+def render_page_header(title: str, subtitle: str, badge_text: Optional[str] = None, badge_color: str = "#007ACC"):
     """Renders a sleek VSCode-styled section header."""
+    badge = badge_text if badge_text is not None else f"VSCode v{__version__}"
     html = f"""
     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.2rem; padding-bottom: 0.6rem; border-bottom: 1px solid #2B2B2B;">
         <div>
             <div style="display: flex; align-items: center; gap: 8px;">
                 <h2 style="font-size: 1.7rem; font-weight: 700; margin: 0; color: #FFFFFF; letter-spacing: -0.01em;">{title}</h2>
                 <span style="background: rgba(0, 122, 204, 0.15); color: {badge_color}; border: 1px solid rgba(0, 122, 204, 0.35); font-size: 0.7rem; font-weight: 700; padding: 2px 7px; border-radius: 4px; text-transform: uppercase;">
-                    {badge_text}
+                    {badge}
                 </span>
             </div>
             <p style="color: #858585; font-size: 0.88rem; margin: 3px 0 0 0;">{subtitle}</p>
@@ -710,7 +712,7 @@ def render_vscode_statusbar(overview: Dict[str, Any], health: Optional[Dict[str,
         <!-- Right status items -->
         <div style="display: flex; align-items: center; gap: 14px;">
             <span>API: 8001</span>
-            <span>FastAPI v2.2.0</span>
+            <span>FastAPI v{__version__}</span>
             <span>Spaces: 4</span>
             <span>UTF-8</span>
             <span>Python 3.10</span>
