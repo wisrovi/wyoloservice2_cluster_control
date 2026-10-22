@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.7] - 2026-10-22
+
+### Fixed
+- **Dynamic Queue Resolution in Task Deletion, Promotion and Reassignment (`redis_client.py`):**
+  - Resolved an issue where `delete_celery_task`, `promote_celery_task`, and `reassign_celery_task` only looked into 4 hardcoded public queues, failing with 404 when attempting to delete or reassign tasks assigned to private worker/node queues (e.g. `192.168.1.68`, `192.168.1.72`).
+  - Added centralized `_get_all_candidate_queues()` method scanning all Kombu bindings and active invoker IP queues dynamically.
+
+### Added
+- **Visual Feedback & Batch Task Cancellation in UI (`overview.js` & `tasks.js`):**
+  - Added visible, auto-fading success/error feedback toast banner (`#overview-queued-toast` and `#tasks-queued-toast`) giving immediate confirmation when a task is canceled.
+  - Confirmation prompts now clearly display the human-readable Study Name alongside the task ID prefix.
+  - Added **"🗑️ Cancelar Filtradas (N)"** button to cancel and remove all filtered tasks at once with a single click.
+  - Implemented backend endpoint `POST /api/v1/tasks/queues/batch-delete` and `deleteQueuedTasksBatch` API client method.
+
 ## [3.1.6] - 2026-10-22
 
 ### Added
