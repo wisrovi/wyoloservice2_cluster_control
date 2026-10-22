@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.4] - 2026-10-22
+
+### Added
+- **Queued Workloads & Backlog Visibility in UI (`overview.js` & `tasks.js`):**
+  - Added dedicated **"⏳ Queued Workloads & Celery Backlog (En Espera)"** section directly beneath "Live Active Training Workloads" on the main Overview dashboard.
+  - Added **"📋 Detailed Waiting Queue & Celery Backlog"** table in Tasks & Queues view displaying full metadata for all waiting jobs (`study_name`, `target_queue`, `model`, `author`, `priority`, and `queued_at`).
+  - Added interactive queue management buttons: **Promote to High**, **Reassign Queue**, and **Delete / Cancel from Queue**.
+  - Added 6th KPI metric card **Queued Backlog** on the top ribbon of the Overview dashboard.
+  - Enhanced `get_study_details` in `redis_client.py` with fallback parsing for legacy/manager-initiated study requests stored in `wyolo:request:*`.
+
 ## [3.1.3] - 2026-10-22
 
 ### Added
