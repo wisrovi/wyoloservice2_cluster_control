@@ -91,6 +91,7 @@ async def pause_or_resume(
         action=payload.action,
         mode=payload.mode,
         hours=payload.hours,
+        until_time=payload.until_time,
     )
     return {
         "status": "success",
