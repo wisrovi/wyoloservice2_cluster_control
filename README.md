@@ -1,6 +1,6 @@
 # 🎛️ NeuralForge Cluster Admin (`wyoloservice2_cluster_control`)
 
-![Version](https://img.shields.io/badge/version-3.1.8-blue.svg)
+![Version](https://img.shields.io/badge/version-3.1.9-blue.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 ![Python](https://img.shields.io/badge/python-3.10-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker)
@@ -275,6 +275,12 @@ make coverage  # o ./coverage.sh
 
 ## 📝 Changelog
 
+*   **v3.1.9 (2026-10-28):**
+    *   **Scheduled Invoker Pause Wakeup & Process Schema Hardening:**
+        *   Added support for pausing invokers until a specific wall-clock time (`until_time: "HH:MM"`), automatically computing target epoch timestamp for exact schedule resumption.
+        *   Extended `InvokerPauseRequest` schema, `invokers_router.py`, and `redis_client.py`.
+        *   Made `elapsed` field optional in `GpuProcessInfo` (`schemas.py`) to prevent response serialization failures during transient GPU process monitoring.
+        *   Added unit test validation in `tests/api/test_api.py`.
 *   **v3.1.8 (2026-10-22):**
     *   **Corrección en Validación de Datasets y Ampliación de Tests Unitarios:**
         *   Corrección en la vista de almacenamiento (`storage.js`) para evaluar explícitamente el atributo `res.valid`, mostrando avisos de advertencia en color ámbar `⚠️ [INVALID]` cuando una ruta o estructura no sea accesible.
