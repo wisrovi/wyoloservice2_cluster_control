@@ -512,6 +512,17 @@ def test_authenticated_cluster_endpoints(client):
     assert temporal_data["status"] == "success"
     assert "pause" in temporal_data["message"]
 
+    # 44b. v3.1.9 Invoker Temporal Pause Mode with Scheduled Wakeup Time (until_time)
+    resp_pause_until = client.post(
+        "/api/v1/invokers/192.168.1.68/pause",
+        headers=headers,
+        json={"action": "pause", "mode": "temporal", "until_time": "18:30"},
+    )
+    assert resp_pause_until.status_code == 200, f"Expected 200, got {resp_pause_until.status_code}"
+    until_data = resp_pause_until.json()
+    assert until_data["status"] == "success"
+    assert "pause" in until_data["message"]
+
     # 45. v3.0.2 Invoker Perpetual Pause Mode (Indefinite until Operator Resumes)
     resp_pause_perpetual = client.post(
         "/api/v1/invokers/192.168.1.68/pause",
