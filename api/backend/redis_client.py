@@ -342,6 +342,7 @@ class ClusterRepository:
         action: str,
         mode: str = "temporal",
         hours: float = 4.0,
+        until_time: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Pauses or resumes an invoker node and sends Celery signals."""
         state_key = f"invoker:{worker_ip}:pause_state"
@@ -352,12 +353,25 @@ class ClusterRepository:
             user="wisrovi",
             action="SET_PAUSE" if action == "pause" else "RESUME",
             target=worker_ip,
-            details=f"Action: {action}, Mode: {mode}, Hours: {hours}",
+            details=f"Action: {action}, Mode: {mode}, Hours: {hours}, Until: {until_time}",
         )
 
         if action == "pause":
             if mode == "temporal":
-                pause_until = time.time() + (hours * 3600)
+                if until_time:
+                    try:
+                        from datetime import datetime as dt_pause, timedelta as td_pause
+                        parts = until_time.strip().split(":")
+                        th, tm = int(parts[0]), int(parts[1])
+                        now_dt = dt_pause.now()
+                        target_dt = now_dt.replace(hour=th, minute=tm, second=0, microsecond=0)
+                        if target_dt <= now_dt:
+                            target_dt += td_pause(days=1)
+                        pause_until = target_dt.timestamp()
+                    except Exception:
+                        pause_until = time.time() + (hours * 3600)
+                else:
+                    pause_until = time.time() + (hours * 3600)
                 self.client.set(state_key, "paused_temporal")
                 self.client.set(until_key, str(pause_until))
                 self.client.hset(res_key, mapping={"pause_state": "paused_temporal", "pause_until": str(pause_until)})
