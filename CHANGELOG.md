@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.9] - 2026-10-28
+
+### Added
+- **Invoker Temporal Pause with Scheduled Wakeup (`until_time`):**
+  - Added support for pausing an invoker until a specific wall-clock time (`until_time: "HH:MM"`), automatically computing target epoch timestamp for exact schedule resumption.
+  - Extended `InvokerPauseRequest` schema, `invokers_router.py`, and `redis_client.py`.
+  - Added unit test validation in `tests/api/test_api.py`.
+
+### Fixed
+- **GPU Process Info Schema Flexibility (`schemas.py`):**
+  - Made `elapsed` in `GpuProcessInfo` optional (`Optional[str] = None`) to prevent response validation errors when monitoring newly spawned or transient GPU processes.
+
 ## [3.1.8] - 2026-10-22
 
 ### Fixed
