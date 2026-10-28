@@ -40,6 +40,7 @@ class InvokerPauseRequest(BaseModel):
     action: str = Field(..., pattern="^(pause|resume)$", description="'pause' or 'resume'")
     mode: str = Field("temporal", pattern="^(temporal|perpetual)$", description="'temporal' or 'perpetual'")
     hours: float = Field(4.0, ge=0.5, le=168.0, description="Hours for temporal pause")
+    until_time: Optional[str] = Field(None, pattern=r"^([01]?[0-9]|2[0-3]):[0-5][0-9]$", description="Optional HH:MM time to wake up (e.g. 18:30)")
 
 
 class BatchLimitsUpdate(BaseModel):
@@ -345,7 +346,7 @@ class GpuProcessInfo(BaseModel):
     pid: int
     name: str
     vram_used_mb: float
-    elapsed: str
+    elapsed: Optional[str] = None
     is_zombie: bool = False
     zombie_reason: Optional[str] = None
 
