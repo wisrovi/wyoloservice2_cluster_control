@@ -167,46 +167,95 @@ window.ViewNodes = {
       </div>
 
       <!-- Resource Limits Modal Overlay -->
-      <div id="limits-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 6000; justify-content: center; align-items: center;">
-        <div style="width: 480px; max-width: 90vw; background: var(--vscode-bg-sidebar); border: 1px solid var(--vscode-border-light); border-radius: 6px; padding: 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.8);">
-          <div style="font-size: 14px; font-weight: 600; color: var(--vscode-fg-bright); margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
-            <span id="limits-modal-title">⚙️ Configure Compute Limits</span>
-            <span style="cursor: pointer; color: var(--vscode-fg-muted);" onclick="document.getElementById('limits-modal').style.display='none'">✕</span>
+      <div id="limits-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.7); z-index: 6000; justify-content: center; align-items: center;">
+        <div style="width: 520px; max-width: 92vw; background: var(--vscode-bg-sidebar); border: 1px solid var(--vscode-border-light); border-radius: 8px; padding: 22px; box-shadow: 0 12px 40px rgba(0,0,0,0.85);">
+          <div style="font-size: 15px; font-weight: 600; color: var(--vscode-fg-bright); margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+            <span id="limits-modal-title">⚙️ Ajustar Límites de Cómputo</span>
+            <span style="cursor: pointer; color: var(--vscode-fg-muted); font-size: 18px;" onclick="document.getElementById('limits-modal').style.display='none'">✕</span>
           </div>
           <input type="hidden" id="limits-node-ip">
 
-          <div class="form-group">
-            <div style="display: flex; justify-content: space-between;">
-              <label class="form-label">VRAM Sharing Cap (MAX_GPU %):</label>
-              <span id="limits-gpu-pct-val" style="font-weight: 600; color: #38BDF8;">50%</span>
+          <!-- Hardware Physical Capacity Card -->
+          <div id="limits-physical-card" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 6px; padding: 10px 14px; margin-bottom: 14px;">
+            <div style="font-size: 12px; font-weight: 600; color: var(--vscode-fg-bright); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+              <span>Capacidad Física Real del Nodo (Hardware + Swap)</span>
+              <span id="limits-hostname-badge" class="badge badge-blue"></span>
             </div>
-            <input type="range" id="limits-max-gpu" class="form-control" min="10" max="100" step="5" value="50" oninput="document.getElementById('limits-gpu-pct-val').textContent = this.value + '%'">
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Container RAM Limit (e.g. 12g, 16g, 24g):</label>
-            <input type="text" id="limits-max-ram" class="form-control" placeholder="12g">
-          </div>
-
-          <div class="form-group">
-            <div style="display: flex; justify-content: space-between;">
-              <label class="form-label">CPU Cores Allocated:</label>
-              <span id="limits-cpu-val" style="font-weight: 600; color: #38BDF8;">8.0 cores</span>
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; font-size: 11px; color: var(--vscode-fg-muted);">
+              <div>🖥️ CPU: <b id="limits-phys-cpu" style="color: #38BDF8;">-</b></div>
+              <div>💾 RAM: <b id="limits-phys-ram" style="color: #38BDF8;">-</b></div>
+              <div>🔄 SWAP: <b id="limits-phys-swap" style="color: #38BDF8;">-</b></div>
+              <div>🎮 GPU: <b id="limits-phys-gpu" style="color: #38BDF8;">-</b></div>
             </div>
-            <input type="range" id="limits-max-cpu" class="form-control" min="1" max="32" step="0.5" value="8" oninput="document.getElementById('limits-cpu-val').textContent = this.value + ' cores'">
           </div>
 
-          <div class="form-group">
-            <div style="display: flex; justify-content: space-between;">
-              <label class="form-label">PyTorch Shared Memory (/dev/shm GiB):</label>
+          <!-- Quick Presets -->
+          <div style="margin-bottom: 14px;">
+            <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--vscode-fg-muted); margin-bottom: 6px; font-weight: 600;">Perfiles Rápidos Sugeridos:</div>
+            <div style="display: flex; gap: 6px;">
+              <button type="button" class="btn btn-secondary btn-sm" style="flex: 1; font-size: 11px; padding: 5px 4px;" onclick="window.ViewNodes.applyLimitPreset('safe')" title="Ideal si trabajas en este PC: deja CPU y RAM libres">🛡️ Protegido (PC)</button>
+              <button type="button" class="btn btn-secondary btn-sm" style="flex: 1; font-size: 11px; padding: 5px 4px;" onclick="window.ViewNodes.applyLimitPreset('balanced')" title="50% de recursos asignados al entrenamiento">⚖️ Equilibrado (50%)</button>
+              <button type="button" class="btn btn-secondary btn-sm" style="flex: 1; font-size: 11px; padding: 5px 4px;" onclick="window.ViewNodes.applyLimitPreset('max')" title="Máximo seguro reservando recursos mínimos para el SO">🚀 Máximo Seguro</button>
+            </div>
+          </div>
+
+          <!-- VRAM Limit Slider -->
+          <div class="form-group" style="margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <label class="form-label" style="margin-bottom: 0;">Límite VRAM GPU (Autobatch %):</label>
+              <span id="limits-gpu-pct-val" style="font-weight: 600; color: #38BDF8;">30%</span>
+            </div>
+            <input type="range" id="limits-max-gpu" class="form-control" min="10" max="100" step="5" value="30" oninput="window.ViewNodes.updateLimitDisplays()">
+            <div style="font-size: 11px; color: var(--vscode-fg-muted); margin-top: 2px;">Determina la fracción de VRAM para PyTorch y el cálculo de batch size.</div>
+          </div>
+
+          <!-- RAM Limit Slider -->
+          <div class="form-group" style="margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <label class="form-label" style="margin-bottom: 0;">Límite de RAM para el Entrenamiento:</label>
+              <span id="limits-ram-val" style="font-weight: 600; color: #38BDF8;">6 GB</span>
+            </div>
+            <input type="range" id="limits-max-ram-slider" class="form-control" min="2" max="32" step="1" value="6" oninput="window.ViewNodes.updateLimitDisplays()">
+            <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--vscode-fg-muted); margin-top: 2px;">
+              <span id="limits-ram-host-free">Reserva para el Escritorio: -</span>
+              <span id="limits-ram-max-label">Tope físico: -</span>
+            </div>
+          </div>
+
+          <!-- CPU Cores Slider -->
+          <div class="form-group" style="margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <label class="form-label" style="margin-bottom: 0;">Cores de CPU Asignados:</label>
+              <span id="limits-cpu-val" style="font-weight: 600; color: #38BDF8;">2.0 cores</span>
+            </div>
+            <input type="range" id="limits-max-cpu" class="form-control" min="1" max="16" step="0.5" value="2" oninput="window.ViewNodes.updateLimitDisplays()">
+            <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--vscode-fg-muted); margin-top: 2px;">
+              <span id="limits-cpu-host-free">Cores para el Escritorio: -</span>
+              <span id="limits-cpu-max-label">Tope físico: -</span>
+            </div>
+          </div>
+
+          <!-- SHM Limit Slider -->
+          <div class="form-group" style="margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <label class="form-label" style="margin-bottom: 0;">Memoria Compartida (/dev/shm):</label>
               <span id="limits-shm-val" style="font-weight: 600; color: #38BDF8;">8.0 GiB</span>
             </div>
-            <input type="range" id="limits-shm" class="form-control" min="2" max="64" step="2" value="8" oninput="document.getElementById('limits-shm-val').textContent = this.value + ' GiB'">
+            <input type="range" id="limits-shm" class="form-control" min="2" max="64" step="2" value="8" oninput="window.ViewNodes.updateLimitDisplays()">
+            <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--vscode-fg-muted); margin-top: 2px;">
+              <span>Para workers de PyTorch DataLoader</span>
+              <span id="limits-shm-max-label">Respaldado por RAM + Swap</span>
+            </div>
+          </div>
+
+          <!-- Interactive Warning Banner -->
+          <div id="limits-warning-box" style="display: none; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 6px; padding: 8px 12px; margin-top: 10px; font-size: 11px; color: #FCA5A5;">
+            ⚠️ <b>Riesgo de Cuelgue:</b> Has asignado casi la totalidad de CPU o RAM. Si estás usando este equipo interactivamente, el escritorio podría congelarse.
           </div>
 
           <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px;">
-            <button class="btn btn-secondary btn-sm" onclick="document.getElementById('limits-modal').style.display='none'">Cancel</button>
-            <button class="btn btn-primary btn-sm" onclick="window.ViewNodes.saveLimits()">Save Limits to Redis</button>
+            <button class="btn btn-secondary btn-sm" onclick="document.getElementById('limits-modal').style.display='none'">Cancelar</button>
+            <button class="btn btn-primary btn-sm" onclick="window.ViewNodes.saveLimits()">💾 Guardar Límites en Redis</button>
           </div>
         </div>
       </div>
@@ -412,7 +461,7 @@ window.ViewNodes = {
             <div style="display: flex; flex-wrap: wrap; gap: 4px;">
               ${pauseActionsHtml}
               ${drainBtn}
-              <button class="btn btn-secondary btn-sm" onclick="window.ViewNodes.openLimitsModal('${ip}', ${maxGpuPct}, '${maxRam}', ${typeof maxCpu === 'number' ? maxCpu : 8}, ${shmGb})">
+              <button class="btn btn-secondary btn-sm" onclick="window.ViewNodes.openLimitsModal('${ip}')">
                 Limits
               </button>
               <button class="btn btn-secondary btn-sm" onclick="window.ViewNodes.openProcessesModal('${ip}', '${escapeHtml(hostname)}')">
@@ -615,40 +664,181 @@ window.ViewNodes = {
     }
   },
 
-  openLimitsModal(ip, maxGpuPct, maxRam, maxCpu, shmGb) {
+  openLimitsModal(ip) {
+    const node = (this.invokersData || []).find(n => (n.worker_ip || n.ip) === ip) || {};
+    const physical = node.physical || {};
+    const limits = node.limits || {};
+    const hostname = node.hostname || ip;
+
+    // Physical limits detection
+    const physCores = parseInt(physical.cpu_cores) || 8;
+    let physRamGb = 16;
+    if (physical.ram_total) {
+      const m = String(physical.ram_total).match(/(\d+)/);
+      if (m) physRamGb = parseInt(m[1]);
+    }
+    let physSwapGb = 32;
+    if (physical.swap_total) {
+      const sm = String(physical.swap_total).match(/(\d+)/);
+      if (sm) physSwapGb = parseInt(sm[1]);
+    }
+    const gpuModel = physical.gpu_model || "NVIDIA GPU";
+    const gpuVram = physical.gpu_memory_total || "N/A";
+
+    this.currentEditingNode = {
+      ip,
+      hostname,
+      physCores,
+      physRamGb,
+      physSwapGb,
+      gpuModel,
+      gpuVram,
+    };
+
     document.getElementById("limits-node-ip").value = ip;
-    document.getElementById("limits-modal-title").textContent = `⚙️ Configure Compute Limits: ${ip}`;
-    document.getElementById("limits-max-gpu").value = maxGpuPct || 50;
-    document.getElementById("limits-gpu-pct-val").textContent = `${maxGpuPct || 50}%`;
-    document.getElementById("limits-max-ram").value = maxRam || "12g";
-    document.getElementById("limits-max-cpu").value = maxCpu || 8;
-    document.getElementById("limits-cpu-val").textContent = `${maxCpu || 8} cores`;
-    document.getElementById("limits-shm").value = shmGb || 8;
-    document.getElementById("limits-shm-val").textContent = `${shmGb || 8} GiB`;
+    document.getElementById("limits-modal-title").textContent = `⚙️ Ajustar Límites: ${hostname} (${ip})`;
+    document.getElementById("limits-hostname-badge").textContent = hostname;
+    document.getElementById("limits-phys-cpu").textContent = `${physCores} Cores`;
+    document.getElementById("limits-phys-ram").textContent = `${physRamGb} GB`;
+    document.getElementById("limits-phys-swap").textContent = `${physSwapGb} GB`;
+    document.getElementById("limits-phys-gpu").textContent = `${gpuModel.replace("NVIDIA GeForce ", "")} (${gpuVram.split(" ")[0]} MiB)`;
+
+    // Configure CPU slider boundaries based strictly on physical hardware
+    const cpuSlider = document.getElementById("limits-max-cpu");
+    cpuSlider.min = 1;
+    cpuSlider.max = physCores;
+    cpuSlider.step = physCores <= 8 ? 0.5 : 1;
+    const currentCpu = limits.max_cpu_cores !== undefined ? parseFloat(limits.max_cpu_cores) : Math.min(2, physCores);
+    cpuSlider.value = Math.min(currentCpu, physCores);
+    document.getElementById("limits-cpu-max-label").textContent = `Tope físico: ${physCores} cores`;
+
+    // Configure RAM slider boundaries based strictly on physical hardware
+    const ramSlider = document.getElementById("limits-max-ram-slider");
+    ramSlider.min = 2;
+    ramSlider.max = physRamGb;
+    ramSlider.step = 1;
+    let currentRam = 6;
+    if (limits.max_ram) {
+      const rm = String(limits.max_ram).match(/(\d+)/);
+      if (rm) currentRam = parseInt(rm[1]);
+    }
+    ramSlider.value = Math.min(currentRam, physRamGb);
+    document.getElementById("limits-ram-max-label").textContent = `Tope físico: ${physRamGb} GB`;
+
+    // Configure GPU slider
+    const currentGpu = limits.max_gpu_percent !== undefined ? parseFloat(limits.max_gpu_percent) : 30;
+    document.getElementById("limits-max-gpu").value = Math.max(10, Math.min(100, currentGpu));
+
+    // Configure SHM slider (backed by RAM + Swap, up to 64 GB)
+    const shmSlider = document.getElementById("limits-shm");
+    shmSlider.min = 2;
+    const maxSafeShm = Math.min(64, Math.max(32, physRamGb + physSwapGb));
+    shmSlider.max = maxSafeShm;
+    shmSlider.step = 2;
+    const currentShm = limits.shm_size_gb !== undefined ? parseFloat(limits.shm_size_gb) : 8;
+    shmSlider.value = Math.min(currentShm, maxSafeShm);
+    document.getElementById("limits-shm-max-label").textContent = `RAM+Swap: ${physRamGb + physSwapGb} GB`;
+
+    this.updateLimitDisplays();
     document.getElementById("limits-modal").style.display = "flex";
+  },
+
+  updateLimitDisplays() {
+    if (!this.currentEditingNode) return;
+    const { physCores, physRamGb } = this.currentEditingNode;
+
+    const gpuVal = document.getElementById("limits-max-gpu").value;
+    const ramVal = parseInt(document.getElementById("limits-max-ram-slider").value);
+    const cpuVal = parseFloat(document.getElementById("limits-max-cpu").value);
+    const shmVal = parseFloat(document.getElementById("limits-shm").value);
+
+    document.getElementById("limits-gpu-pct-val").textContent = `${gpuVal}%`;
+    document.getElementById("limits-ram-val").textContent = `${ramVal} GB`;
+    document.getElementById("limits-cpu-val").textContent = `${cpuVal} cores`;
+    document.getElementById("limits-shm-val").textContent = `${shmVal} GiB`;
+
+    // Remaining host calculation
+    const freeCores = Math.max(0, physCores - cpuVal);
+    const freeRam = Math.max(0, physRamGb - ramVal);
+
+    const cpuHostFreeEl = document.getElementById("limits-cpu-host-free");
+    cpuHostFreeEl.textContent = `Libre para SO: ${freeCores} cores`;
+    cpuHostFreeEl.style.color = freeCores < 2 ? "#EF4444" : "#10B981";
+
+    const ramHostFreeEl = document.getElementById("limits-ram-host-free");
+    ramHostFreeEl.textContent = `Libre para SO: ${freeRam} GB`;
+    ramHostFreeEl.style.color = freeRam < 4 ? "#EF4444" : "#10B981";
+
+    // Warning trigger
+    const warningBox = document.getElementById("limits-warning-box");
+    if (freeCores < 1.5 || freeRam < 3) {
+      warningBox.style.display = "block";
+    } else {
+      warningBox.style.display = "none";
+    }
+  },
+
+  applyLimitPreset(type) {
+    if (!this.currentEditingNode) return;
+    const { physCores, physRamGb } = this.currentEditingNode;
+
+    if (type === "safe") {
+      // Safe Workstation profile: Keep computer fluid for desktop dev
+      document.getElementById("limits-max-gpu").value = 30;
+      document.getElementById("limits-max-cpu").value = Math.min(2, Math.max(1, physCores - 4));
+      document.getElementById("limits-max-ram-slider").value = Math.min(6, Math.max(4, Math.floor(physRamGb * 0.4)));
+      document.getElementById("limits-shm").value = Math.min(8, Math.max(2, Math.floor(physRamGb * 0.25)));
+    } else if (type === "balanced") {
+      // 50% Balanced profile
+      document.getElementById("limits-max-gpu").value = 50;
+      document.getElementById("limits-max-cpu").value = Math.max(1, Math.floor(physCores * 0.5));
+      document.getElementById("limits-max-ram-slider").value = Math.max(4, Math.floor(physRamGb * 0.5));
+      document.getElementById("limits-shm").value = Math.min(16, Math.max(4, Math.floor(physRamGb * 0.25)));
+    } else if (type === "max") {
+      // Safe Maximum (Night / Dedicated mode): Reserve 2 cores & 4GB for host
+      document.getElementById("limits-max-gpu").value = 90;
+      document.getElementById("limits-max-cpu").value = Math.max(1, physCores - 2);
+      document.getElementById("limits-max-ram-slider").value = Math.max(4, physRamGb - 4);
+      document.getElementById("limits-shm").value = Math.min(32, Math.max(4, Math.floor(physRamGb * 0.4)));
+    }
+    this.updateLimitDisplays();
   },
 
   async saveLimits() {
     const ip = document.getElementById("limits-node-ip").value;
     const maxGpuPct = parseFloat(document.getElementById("limits-max-gpu").value);
-    const maxRam = document.getElementById("limits-max-ram").value.trim();
+    const maxRamGb = parseInt(document.getElementById("limits-max-ram-slider").value);
     const maxCpu = parseFloat(document.getElementById("limits-max-cpu").value);
     const shmGb = parseFloat(document.getElementById("limits-shm").value);
 
+    if (this.currentEditingNode) {
+      const { physCores, physRamGb } = this.currentEditingNode;
+      if (maxCpu > physCores) {
+        alert(`Error: No puedes asignar ${maxCpu} cores porque el equipo solo cuenta con ${physCores} cores físicos.`);
+        return;
+      }
+      if (maxRamGb > physRamGb) {
+        alert(`Error: No puedes asignar ${maxRamGb} GB de RAM porque el equipo solo tiene ${physRamGb} GB físicos.`);
+        return;
+      }
+    }
+
+    const maxRamStr = `${maxRamGb}g`;
+
     try {
-      window.workbench.logTerminal("INFO", `Saving resource limits for ${ip}: GPU=${maxGpuPct}%, RAM=${maxRam}, CPU=${maxCpu}, SHM=${shmGb}GiB...`);
+      window.workbench.logTerminal("INFO", `Guardando límites de recursos para ${ip}: GPU=${maxGpuPct}%, RAM=${maxRamStr}, CPU=${maxCpu} Cores, SHM=${shmGb}GiB...`);
       await window.apiClient.updateInvokerLimits(ip, {
         max_gpu_percent: maxGpuPct,
-        max_ram: maxRam,
+        max_ram: maxRamStr,
         max_cpu_cores: maxCpu,
         shm_size_gb: shmGb,
       });
-      window.workbench.logTerminal("SUCCESS", `Limits saved to Redis for ${ip}.`);
+      window.workbench.logTerminal("SUCCESS", `Límites guardados en Redis para ${ip}.`);
       document.getElementById("limits-modal").style.display = "none";
       await this.load();
     } catch (e) {
-      window.workbench.logTerminal("ERROR", `Failed to save limits for ${ip}: ${e.message}`);
-      alert(`Failed to save limits: ${e.message}`);
+      window.workbench.logTerminal("ERROR", `Fallo al guardar límites para ${ip}: ${e.message}`);
+      alert(`Error al guardar límites: ${e.message}`);
     }
   },
 
