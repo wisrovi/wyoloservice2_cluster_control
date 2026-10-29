@@ -159,10 +159,10 @@ class ClusterRepository:
         status = res.get("status") or ver_data.get("status") or "online"
         last_seen = res.get("last_seen") or ver_data.get("startup_time") or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        # Limits
+        # Limits (Natural defaults: 30% GPU, 6GB RAM, 2 cores, 8GB SHM)
         max_gpu = float(res.get("max_gpu_percent", 30.0))
-        max_ram = res.get("max_ram", ram_total)
-        max_cpu_cores = float(res.get("max_cpu_cores", 4.0))
+        max_ram = res.get("max_ram", "6g")
+        max_cpu_cores = float(res.get("max_cpu_cores", 2.0))
         shm_size_gb = float(res.get("shm_size_gb", 8.0))
 
         # Runtime detection (Docker vs Kubernetes)
