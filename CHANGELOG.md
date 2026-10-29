@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [3.2.0] - 2026-10-29
 
 ### Added
+- **Modern Cloud SaaS Dashboard Redesign:**
+  - Migrated UI away from clunky retro desktop styles to a high-end enterprise dark glassmorphic dashboard (Inter + JetBrains Mono).
+  - Modern SaaS topbar with live pulse indicator, compute fabric badges, and command search (`Ctrl+P` / `Ctrl+K`).
+  - Sleek horizontal navigation pill bar for instant access to all 11 views.
+  - Collapsible slide-up drawer for diagnostic and output logs (`Ctrl+J`).
+- **Deferred Training Workload Scheduling (`start_not_before` / ETA):**
+  - Added support for scheduling quick launch training workloads not to start before a given wall-clock time (`start_not_before: "HH:MM"`).
+  - Automatically calculates next Celery `eta` timestamp and dispatches to Celery delayed queue.
+  - Added visual deferred start checkbox and time picker in `dispatch.js`.
 - **Visual Scheduled Pause Control (`until_time`) in Streamlit & Workbench UI:**
   - Added dedicated time input and action button (`⏰ Pausar hasta hora`) in Streamlit invokers view (`ui/frontend/views/invokers_view.py`) and API client (`ui/frontend/api_client.py`).
   - Added target time field in Workbench modal (`ui/static/js/views/nodes.js`) and client (`ui/static/js/api.js`) for pausing invokers until fixed wall-clock times (e.g. `18:30`).
