@@ -63,7 +63,44 @@ window.ViewOverview = {
         </div>
       </div>
 
-      <!-- Live Active Workloads Table -->
+      <!-- Quick Actions / Intentions Deck -->
+      <div class="quick-intentions-grid">
+        <div class="intention-card" onclick="window.workbench.switchView('dispatch')">
+          <div class="intention-icon-wrap" style="background: rgba(59, 130, 246, 0.15); color: #60A5FA;">🚀</div>
+          <div class="intention-body">
+            <div class="intention-title">Lanzar Entrenamiento</div>
+            <div class="intention-desc">Entrenar modelo YOLO con dataset y horario diferido</div>
+          </div>
+          <div class="intention-arrow">→</div>
+        </div>
+
+        <div class="intention-card" onclick="window.workbench.switchView('nodes')">
+          <div class="intention-icon-wrap" style="background: rgba(16, 185, 129, 0.15); color: #34D399;">⚙️</div>
+          <div class="intention-body">
+            <div class="intention-title">Nodos & Límites GPU</div>
+            <div class="intention-desc">Ajustar VRAM %, RAM, CPU, SHM y pausar invokers</div>
+          </div>
+          <div class="intention-arrow">→</div>
+        </div>
+
+        <div class="intention-card" onclick="window.workbench.switchView('tasks')">
+          <div class="intention-icon-wrap" style="background: rgba(245, 158, 11, 0.15); color: #FBBF24;">📋</div>
+          <div class="intention-body">
+            <div class="intention-title">Gestión de Trabajos</div>
+            <div class="intention-desc">Supervisar trials, cancelar y ver logs en tiempo real</div>
+          </div>
+          <div class="intention-arrow">→</div>
+        </div>
+
+        <div class="intention-card" onclick="window.workbench.switchView('storage')">
+          <div class="intention-icon-wrap" style="background: rgba(168, 85, 247, 0.15); color: #C084FC;">💾</div>
+          <div class="intention-body">
+            <div class="intention-title">Almacenamiento & Datasets</div>
+            <div class="intention-desc">Verificar montajes Samba CIFS y buckets MinIO S3</div>
+          </div>
+          <div class="intention-arrow">→</div>
+        </div>
+      </div>
       <div class="card-section" style="margin-bottom: 20px;">
         <div class="card-title">
           <span>🚀 Live Active Training Workloads</span>
