@@ -1,0 +1,47 @@
+# -------------------------------------------------------------
+# Service and Ingress for Cluster Admin UI
+# -------------------------------------------------------------
+apiVersion: v1
+kind: Service
+metadata:
+  name: cluster-admin-ui-svc
+  namespace: train-service
+  labels:
+    app.kubernetes.io/name: cluster-admin-ui
+    app.kubernetes.io/part-of: train-service2
+    app.kubernetes.io/component: frontend
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: cluster-admin-ui
+  ports:
+    - name: http-ui
+      port: 8501
+      targetPort: 8501
+      protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cluster-admin-ui-ingress
+  namespace: train-service
+  labels:
+    app.kubernetes.io/name: cluster-admin-ui
+    app.kubernetes.io/part-of: train-service2
+    app.kubernetes.io/component: frontend
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "300"
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: cluster-admin-ui-svc
+                port:
+                  number: 8501
