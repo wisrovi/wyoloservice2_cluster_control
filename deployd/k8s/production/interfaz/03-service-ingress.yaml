@@ -11,13 +11,14 @@ metadata:
     app.kubernetes.io/part-of: train-service2
     app.kubernetes.io/component: frontend
 spec:
-  type: ClusterIP
+  type: NodePort
   selector:
     app.kubernetes.io/name: cluster-admin-ui
   ports:
     - name: http-ui
       port: 8501
       targetPort: 8501
+      nodePort: 30851
       protocol: TCP
 ---
 apiVersion: networking.k8s.io/v1
@@ -30,11 +31,11 @@ metadata:
     app.kubernetes.io/part-of: train-service2
     app.kubernetes.io/component: frontend
   annotations:
-    kubernetes.io/ingress.class: nginx
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-connect-timeout: "300"
 spec:
+  ingressClassName: nginx
   rules:
     - http:
         paths:
