@@ -30,7 +30,7 @@ spec:
       serviceAccountName: neuralforge-cluster-admin-sa
       containers:
         - name: api
-          image: wisrovi/train_service:cluster_admin_api_v3.2.3
+          image: wisrovi/train_service:cluster_admin_api_v3.2.4
           imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef:
