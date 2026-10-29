@@ -3,320 +3,166 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NeuralForge Cluster Admin — VSCode Workbench</title>
+  <title>NeuralForge Cluster Control — Enterprise AI Operations</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧠</text></svg>">
-  <link rel="stylesheet" href="/css/workbench.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/workbench.css?v=3.2.1">
   <script src="/config.js"></script>
 </head>
 <body>
-  <div id="workbench">
+  <div id="workbench" class="app-layout">
     <!-- ======================================================================
-         1. TITLEBAR (.part.titlebar) - 35px
+         1. MODERN ENTERPRISE SIDEBAR (Left - 250px)
          ====================================================================== -->
-    <header class="part-titlebar">
-      <div class="titlebar-left">
-        <div class="titlebar-brand" title="NeuralForge Cluster Control v3.1.8">
+    <aside class="app-sidebar">
+      <!-- Brand & Version -->
+      <div class="sidebar-brand" onclick="window.workbench.switchView('overview')" title="NeuralForge AI Cluster Control">
+        <div class="brand-gem">
           <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-          <span>NeuralForge</span>
         </div>
-
-        <nav class="menubar" id="top-menubar">
-          <!-- Archivo -->
-          <div class="menubar-menu-button" data-menu="menu-file"
-               onclick="window.workbench.toggleMenu('menu-file')"
-               onmouseenter="window.workbench.handleMenuHover('menu-file')">
-            Archivo
-            <div class="dropdown-menu" id="menu-file">
-              <div class="menu-item" onclick="window.workbench.refreshCurrentView()">
-                <span>Guardar Estado / Recargar</span><span class="menu-item-shortcut">Ctrl+S</span>
-              </div>
-              <div class="menu-item" onclick="window.workbench.openTab('settings')">
-                <span>Configuración del Cluster</span><span class="menu-item-shortcut">Ctrl+,</span>
-              </div>
-              <div class="menu-separator"></div>
-              <div class="menu-item" onclick="window.workbench.clearTerminal()">
-                <span>Limpiar Buffer de Terminal</span>
-              </div>
-              <div class="menu-separator"></div>
-              <div class="menu-item" onclick="window.workbench.logout()">
-                <span>Cerrar Sesión</span><span class="menu-item-shortcut">Alt+F4</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Editar -->
-          <div class="menubar-menu-button" data-menu="menu-edit"
-               onclick="window.workbench.toggleMenu('menu-edit')"
-               onmouseenter="window.workbench.handleMenuHover('menu-edit')">
-            Editar
-            <div class="dropdown-menu" id="menu-edit">
-              <div class="menu-item" onclick="window.workbench.toggleCommandPalette()">
-                <span>Buscar Vistas y Acciones...</span><span class="menu-item-shortcut">Ctrl+P</span>
-              </div>
-              <div class="menu-separator"></div>
-              <div class="menu-item" onclick="document.execCommand('copy')">
-                <span>Copiar</span><span class="menu-item-shortcut">Ctrl+C</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Ver -->
-          <div class="menubar-menu-button" data-menu="menu-view"
-               onclick="window.workbench.toggleMenu('menu-view')"
-               onmouseenter="window.workbench.handleMenuHover('menu-view')">
-            Ver
-            <div class="dropdown-menu" id="menu-view">
-              <div class="menu-item" onclick="window.workbench.switchView('overview')">
-                <span>📊 Operations Center</span><span class="menu-item-shortcut">Ctrl+1</span>
-              </div>
-              <div class="menu-item" onclick="window.workbench.switchView('nodes')">
-                <span>⚙️ Nodes & Invokers</span><span class="menu-item-shortcut">Ctrl+2</span>
-              </div>
-              <div class="menu-item" onclick="window.workbench.switchView('storage')">
-                <span>📁 Storage & Volumes</span><span class="menu-item-shortcut">Ctrl+3</span>
-              </div>
-              <div class="menu-item" onclick="window.workbench.switchView('dispatch')">
-                <span>🚀 Dispatch & Scheduler</span><span class="menu-item-shortcut">Ctrl+4</span>
-              </div>
-              <div class="menu-item" onclick="window.workbench.switchView('tasks')">
-                <span>📋 Tasks & Queues</span><span class="menu-item-shortcut">Ctrl+5</span>
-              </div>
-              <div class="menu-item" onclick="window.workbench.switchView('history')">
-                <span>📈 Job History</span><span class="menu-item-shortcut">Ctrl+6</span>
-              </div>
-              <div class="menu-item" onclick="window.workbench.switchView('benchmarks')">
-                <span>🏆 GPU Benchmarks</span><span class="menu-item-shortcut">Ctrl+7</span>
-              </div>
-              <div class="menu-item" onclick="window.workbench.switchView('finops')">
-                <span>🌿 FinOps & Energy</span><span class="menu-item-shortcut">Ctrl+8</span>
-              </div>
-              <div class="menu-item" onclick="window.workbench.switchView('capabilities')">
-                <span>🔬 Cluster Capabilities</span>
-              </div>
-              <div class="menu-item" onclick="window.workbench.switchView('audit')">
-                <span>📜 Audit & Security</span>
-              </div>
-              <div class="menu-item" onclick="window.workbench.switchView('settings')">
-                <span>🛠️ Settings</span>
-              </div>
-              <div class="menu-separator"></div>
-              <div class="menu-item" onclick="window.workbench.toggleBottomPanel()">
-                <span>Alternar Terminal / Output</span><span class="menu-item-shortcut">Ctrl+J</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Ir -->
-          <div class="menubar-menu-button" data-menu="menu-go"
-               onclick="window.workbench.toggleMenu('menu-go')"
-               onmouseenter="window.workbench.handleMenuHover('menu-go')">
-            Ir
-            <div class="dropdown-menu" id="menu-go">
-              <div class="menu-item" onclick="window.workbench.toggleCommandPalette()">
-                <span>Ir a Vista / Archivo...</span><span class="menu-item-shortcut">Ctrl+P</span>
-              </div>
-              <div class="menu-item" onclick="window.workbench.switchView('nodes')">
-                <span>Ir a Gestión de Nodos</span>
-              </div>
-              <div class="menu-item" onclick="window.workbench.switchView('dispatch')">
-                <span>Ir a Despacho de Trabajos</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Ejecutar -->
-          <div class="menubar-menu-button" data-menu="menu-run"
-               onclick="window.workbench.toggleMenu('menu-run')"
-               onmouseenter="window.workbench.handleMenuHover('menu-run')">
-            Ejecutar
-            <div class="dropdown-menu" id="menu-run">
-              <div class="menu-item" onclick="window.workbench.switchView('dispatch')">
-                <span>Iniciar Entrenamiento Rápido...</span><span class="menu-item-shortcut">F5</span>
-              </div>
-              <div class="menu-item" onclick="window.workbench.broadcastDockerPullPrompt()">
-                <span>Broadcast Docker Pull en Cluster...</span><span class="menu-item-shortcut">F6</span>
-              </div>
-              <div class="menu-separator"></div>
-              <div class="menu-item" onclick="window.workbench.refreshCurrentView()">
-                <span>Ejecutar Sondeo de Telemetría</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Terminal -->
-          <div class="menubar-menu-button" data-menu="menu-terminal"
-               onclick="window.workbench.toggleMenu('menu-terminal')"
-               onmouseenter="window.workbench.handleMenuHover('menu-terminal')">
-            Terminal
-            <div class="dropdown-menu" id="menu-terminal">
-              <div class="menu-item" onclick="window.workbench.toggleBottomPanel()">
-                <span>Alternar Terminal Inferior</span><span class="menu-item-shortcut">Ctrl+J</span>
-              </div>
-              <div class="menu-item" onclick="window.workbench.clearTerminal()">
-                <span>Limpiar Salida de Terminal</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Ayuda -->
-          <div class="menubar-menu-button" data-menu="menu-help"
-               onclick="window.workbench.toggleMenu('menu-help')"
-               onmouseenter="window.workbench.handleMenuHover('menu-help')">
-            Ayuda
-            <div class="dropdown-menu" id="menu-help">
-              <div class="menu-item" onclick="window.workbench.switchView('capabilities')">
-                <span>Arquitectura del Cluster & GPUs</span>
-              </div>
-              <div class="menu-item" onclick="window.workbench.toggleCommandPalette()">
-                <span>Referencia de Atajos de Teclado</span><span class="menu-item-shortcut">Ctrl+K Ctrl+S</span>
-              </div>
-              <div class="menu-separator"></div>
-              <div class="menu-item" onclick="alert('NeuralForge Cluster Admin v3.1.8\nAuthor: wisrovi rodriguez\nFastAPI Backend (:8001) + Static Monaco Workbench SPA (:8501)')">
-                <span>Acerca de NeuralForge Cluster Admin</span>
-              </div>
-            </div>
-          </div>
-        </nav>
+        <div class="brand-meta">
+          <span class="brand-title">NeuralForge</span>
+          <span class="brand-subtitle">AI Cluster Control</span>
+        </div>
+        <span class="brand-pill">v3.2.0</span>
       </div>
 
-      <!-- Center: VSCode Command Center -->
-      <div class="titlebar-center">
-        <div class="command-center" onclick="window.workbench.toggleCommandPalette()" title="Buscar vistas y acciones rápidas (Ctrl+P)">
-          <span>🔍</span>
-          <span>neuralforge-cluster &gt; Buscar vistas y acciones...</span>
-          <kbd>Ctrl+P</kbd>
-        </div>
-      </div>
+      <!-- Grouped Sidebar Navigation -->
+      <nav class="sidebar-nav" id="tabs-container">
+        <!-- Injected dynamically by app.js (grouped by Core, Intel, Governance) -->
+      </nav>
 
-      <!-- Right: Status & User & Window controls -->
-      <div class="titlebar-right">
-        <div class="status-indicator">
-          <span class="status-dot"></span>
-          <span>22 GPUs Online</span>
+      <!-- Sidebar Bottom: Cluster Status Card -->
+      <div class="sidebar-footer">
+        <div class="cluster-status-box">
+          <div class="status-box-header">
+            <span class="pulse-dot"></span>
+            <span class="status-box-title" id="status-health">Cluster Healthy</span>
+          </div>
+          <div class="status-box-metrics">
+            <span>⚡ 22 GPUs</span>
+            <span>•</span>
+            <span>12 Invokers</span>
+          </div>
         </div>
-        <div class="user-badge">
-          <span>👤 wisrovi (admin)</span>
-        </div>
-        <div class="window-controls">
-          <div class="window-btn" title="Minimizar panel" onclick="window.workbench.toggleBottomPanel()">🗕</div>
-          <div class="window-btn" title="Pantalla completa" onclick="document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()">🗖</div>
-          <div class="window-btn close" title="Cerrar sesión" onclick="window.workbench.logout()">✕</div>
-        </div>
-      </div>
-    </header>
-
-    <!-- ======================================================================
-         2. TABS & ACTIONS BAR (.part.editor .tabs-and-actions-container) - 35px
-         ====================================================================== -->
-    <div class="part-tabs-bar">
-      <div class="tabs-scroll-container" id="tabs-container">
-        <!-- Rendered dynamically by app.js -->
-      </div>
-      <div class="tabs-actions">
-        <button class="tab-action-btn" onclick="window.workbench.refreshCurrentView()" title="Recargar vista actual">
-          <span>🔄</span> Recargar
-        </button>
-        <button class="tab-action-btn" onclick="window.workbench.toggleBottomPanel()" title="Alternar panel terminal (Ctrl+J)">
-          <span>💻</span> Terminal
-        </button>
-      </div>
-    </div>
-
-    <!-- ======================================================================
-         3. BREADCRUMBS BAR (.breadcrumbs) - 22px
-         ====================================================================== -->
-    <div class="breadcrumbs">
-      <span>neuralforge-cluster</span>
-      <span>›</span>
-      <span>cluster_control</span>
-      <span>›</span>
-      <span id="breadcrumb-category">cluster</span>
-      <span>›</span>
-      <span id="breadcrumb-file">overview.cluster</span>
-      <span>›</span>
-      <span class="current" id="breadcrumb-current">📊 Operations Center</span>
-    </div>
-
-    <!-- ======================================================================
-         4. MAIN CONTENT VIEWPORT (100% Full-Width)
-         ====================================================================== -->
-    <main class="part-content" id="views-container">
-      <!-- 11 dynamic views mounted here by app.js -->
-    </main>
-
-    <!-- ======================================================================
-         5. COLLAPSIBLE BOTTOM PANEL (.part.panel)
-         ====================================================================== -->
-    <aside class="part-panel" id="part-panel">
-      <div class="panel-header">
-        <div class="panel-tabs">
-          <div class="panel-tab">PROBLEMS (0)</div>
-          <div class="panel-tab active">OUTPUT</div>
-          <div class="panel-tab">DEBUG CONSOLE</div>
-          <div class="panel-tab">TERMINAL</div>
-        </div>
-        <div class="panel-actions">
-          <button class="tab-action-btn" onclick="window.workbench.clearTerminal()" title="Limpiar salida">
-            <span>🗑️</span>
-          </button>
-          <button class="tab-action-btn" onclick="window.workbench.toggleBottomPanel()" title="Cerrar panel">
-            <span>✕</span>
-          </button>
-        </div>
-      </div>
-      <div class="panel-body" id="terminal-body">
-        <!-- Live ANSI / Diagnostic log stream appended here -->
       </div>
     </aside>
 
     <!-- ======================================================================
-         6. STATUS BAR (.part.statusbar) - 24px
+         2. MAIN WORKSPACE AREA (Header + Content + Drawer + Statusbar)
          ====================================================================== -->
-    <footer class="part-statusbar">
-      <div class="statusbar-left">
-        <div class="statusbar-item" title="Git Branch">
-          <span>⑂</span>
-          <span>main*</span>
+    <div class="app-main-area">
+      <!-- Top Header (56px) -->
+      <header class="app-header">
+        <div class="header-left">
+          <div class="header-breadcrumbs">
+            <span class="crumb-root">Cluster</span>
+            <span class="crumb-sep">/</span>
+            <span class="crumb-active" id="breadcrumb-current">Operations Center</span>
+            <span id="breadcrumb-category" style="display:none">cluster</span>
+            <span id="breadcrumb-file" style="display:none">overview.cluster</span>
+          </div>
         </div>
-        <div class="statusbar-item" id="status-latency" title="WebSocket / REST Latency">
-          <span>🔄</span>
-          <span>0ms Latency</span>
-        </div>
-        <div class="statusbar-item" title="Problems">
-          <span>⨂ 0  ⚠ 0</span>
-        </div>
-        <div class="statusbar-item" title="Compute Nodes">
-          <span>⚡</span>
-          <span>22 GPUs</span>
-        </div>
-        <div class="statusbar-item" id="status-health" title="Cluster Health">
-          <span>🟢</span>
-          <span>Healthy</span>
-        </div>
-      </div>
 
-      <div class="statusbar-right">
-        <div class="statusbar-item" title="Connected Backend API">
-          <span>🔗</span>
-          <span>API :8001</span>
+        <div class="header-center">
+          <div class="command-search-bar" onclick="window.workbench.toggleCommandPalette()" title="Buscar vistas, comandos y nodos (Ctrl+P / Ctrl+K)">
+            <svg class="search-svg" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+            </svg>
+            <span class="search-text">Buscar vistas, comandos, nodos...</span>
+            <span class="search-shortcut"><kbd>Ctrl</kbd><kbd>P</kbd></span>
+          </div>
         </div>
-        <div class="statusbar-item" title="NeuralForge Version">
-          <span>v3.1.8 (Static SPA)</span>
+
+        <div class="header-right">
+          <button class="action-btn primary" onclick="window.workbench.switchView('dispatch')" title="Iniciar nuevo entrenamiento rápido">
+            <span>🚀</span> Quick Launch
+          </button>
+
+          <button class="action-btn secondary" onclick="window.workbench.toggleBottomPanel()" title="Alternar panel de Terminal / Logs (Ctrl+J)">
+            <svg viewBox="0 0 20 20" fill="currentColor" style="width: 14px; height: 14px;">
+              <path fill-rule="evenodd" d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm3.293 1.293a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 01-1.414-1.414L7.586 10 5.293 7.707a1 1 0 010-1.414zM11 12a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd" />
+            </svg>
+            <span>Logs</span>
+          </button>
+
+          <div class="user-pill" title="Operador Autenticado">
+            <div class="user-avatar-circle">W</div>
+            <span class="user-name-text">wisrovi</span>
+          </div>
+
+          <button class="action-btn icon-only" onclick="window.workbench.logout()" title="Cerrar Sesión Segura">
+            <svg viewBox="0 0 20 20" fill="currentColor" style="width: 16px; height: 16px;">
+              <path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clip-rule="evenodd" />
+            </svg>
+          </button>
         </div>
-        <div class="statusbar-item">UTF-8</div>
-        <div class="statusbar-item">Vanilla JS (0ms)</div>
-        <div class="statusbar-item" title="Notifications">🔔</div>
-      </div>
-    </footer>
+      </header>
+
+      <!-- Main Content Viewport -->
+      <main class="part-content" id="views-container">
+        <!-- 11 dynamic views mounted here by app.js -->
+      </main>
+
+      <!-- Slide-Up Diagnostic Drawer -->
+      <aside class="part-panel collapsed" id="part-panel">
+        <div class="panel-header">
+          <div class="panel-tabs">
+            <div class="panel-tab"><span>⚠️</span> PROBLEMAS (0)</div>
+            <div class="panel-tab active"><span>⚡</span> REGISTRO EN TIEMPO REAL (OUTPUT)</div>
+            <div class="panel-tab"><span>🐛</span> CONSOLA DE DIAGNÓSTICO</div>
+            <div class="panel-tab"><span>💻</span> TERMINAL</div>
+          </div>
+          <div class="panel-actions">
+            <button class="panel-tool-btn" onclick="window.workbench.clearTerminal()" title="Limpiar salida">
+              <span>🗑️</span> Limpiar
+            </button>
+            <button class="panel-tool-btn close-panel" onclick="window.workbench.toggleBottomPanel()" title="Cerrar">
+              <span>✕</span>
+            </button>
+          </div>
+        </div>
+        <div class="panel-body" id="terminal-body">
+          <!-- Live log stream -->
+        </div>
+      </aside>
+
+      <!-- Statusbar -->
+      <footer class="part-statusbar">
+        <div class="statusbar-left">
+          <div class="statusbar-item" id="status-latency" title="Latencia WebSocket / API">
+            <span>⚡</span>
+            <span>0ms Latency</span>
+          </div>
+          <div class="statusbar-item" title="Infraestructura K8s & Redis">
+            <span>🌐</span>
+            <span>K8s train-service / Redis :23437</span>
+          </div>
+        </div>
+        <div class="statusbar-right">
+          <div class="statusbar-item" title="Backend API">
+            <span>🔗</span>
+            <span>API :8001</span>
+          </div>
+          <div class="statusbar-item" title="Versión de Arquitectura">
+            <span>NeuralForge OS v3.2.0</span>
+          </div>
+        </div>
+      </footer>
+    </div>
   </div>
 
-  <!-- ======================================================================
-       7. COMMAND PALETTE MODAL (Ctrl+P / F1)
-       ====================================================================== -->
+  <!-- Command Palette Modal (Ctrl+P) -->
   <div class="palette-overlay" id="palette-overlay">
     <div class="palette-modal">
       <div class="palette-input-wrapper">
-        <input type="text" id="palette-search" class="palette-input" placeholder="> Escribe el nombre de una vista o comando..." autocomplete="off">
+        <svg class="palette-icon" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+        </svg>
+        <input type="text" id="palette-search" class="palette-input" placeholder="Escribe el nombre de una vista, comando o nodo..." autocomplete="off">
+        <span class="palette-esc-hint">ESC</span>
       </div>
       <ul class="palette-list" id="palette-list">
         <!-- Rendered dynamically -->
@@ -324,48 +170,51 @@
     </div>
   </div>
 
-  <!-- ======================================================================
-       8. AUTHENTICATION OVERLAY (Login)
-       ====================================================================== -->
+  <!-- Authentication Overlay -->
   <div class="auth-overlay" id="auth-overlay">
     <div class="auth-card">
       <div class="auth-header">
-        <svg style="width: 32px; height: 32px; fill: #007ACC;" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-        <h2>NeuralForge Cluster Admin</h2>
-        <p>Autenticación de Operador de Cluster (v3.1.8)</p>
+        <div class="auth-logo-badge">
+          <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        </div>
+        <h2>NeuralForge AI</h2>
+        <p>Enterprise Cluster Operations Console</p>
       </div>
 
       <div class="auth-error" id="auth-error-box"></div>
 
       <form onsubmit="event.preventDefault(); window.workbench.handleLogin(document.getElementById('auth-username').value, document.getElementById('auth-password').value);">
         <div class="form-group">
-          <label class="form-label">Usuario:</label>
-          <input type="text" id="auth-username" class="form-control" value="wisrovi" required autofocus>
+          <label class="form-label">Usuario Operador:</label>
+          <input type="text" id="auth-username" class="form-control" value="wisrovi" required autofocus placeholder="Nombre de usuario">
         </div>
         <div class="form-group">
           <label class="form-label">Contraseña:</label>
-          <input type="password" id="auth-password" class="form-control" value="wyoloservice" required>
+          <input type="password" id="auth-password" class="form-control" value="wyoloservice" required placeholder="Contraseña de acceso">
         </div>
-        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 8px;">
-          Iniciar Sesión
+        <button type="submit" class="btn btn-primary auth-submit-btn">
+          <span>Acceder a la Consola</span>
+          <svg viewBox="0 0 20 20" fill="currentColor" style="width: 16px; height: 16px;">
+            <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+          </svg>
         </button>
       </form>
     </div>
   </div>
 
   <!-- Scripts -->
-  <script src="/js/api.js?v=3.1.8"></script>
-  <script src="/js/views/overview.js?v=3.1.8"></script>
-  <script src="/js/views/nodes.js?v=3.1.8"></script>
-  <script src="/js/views/storage.js?v=3.1.8"></script>
-  <script src="/js/views/dispatch.js?v=3.1.8"></script>
-  <script src="/js/views/tasks.js?v=3.1.8"></script>
-  <script src="/js/views/history.js?v=3.1.8"></script>
-  <script src="/js/views/benchmarks.js?v=3.1.8"></script>
-  <script src="/js/views/finops.js?v=3.1.8"></script>
-  <script src="/js/views/capabilities.js?v=3.1.8"></script>
-  <script src="/js/views/audit.js?v=3.1.8"></script>
-  <script src="/js/views/settings.js?v=3.1.8"></script>
-  <script src="/js/app.js?v=3.1.8"></script>
+  <script src="/js/api.js?v=3.2.0"></script>
+  <script src="/js/views/overview.js?v=3.2.0"></script>
+  <script src="/js/views/nodes.js?v=3.2.0"></script>
+  <script src="/js/views/storage.js?v=3.2.0"></script>
+  <script src="/js/views/dispatch.js?v=3.2.0"></script>
+  <script src="/js/views/tasks.js?v=3.2.0"></script>
+  <script src="/js/views/history.js?v=3.2.0"></script>
+  <script src="/js/views/benchmarks.js?v=3.2.0"></script>
+  <script src="/js/views/finops.js?v=3.2.0"></script>
+  <script src="/js/views/capabilities.js?v=3.2.0"></script>
+  <script src="/js/views/audit.js?v=3.2.0"></script>
+  <script src="/js/views/settings.js?v=3.2.0"></script>
+  <script src="/js/app.js?v=3.2.0"></script>
 </body>
 </html>
