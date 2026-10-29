@@ -90,13 +90,17 @@ class ClusterApiClient:
         action: str,
         mode: str = "temporal",
         hours: float = 4.0,
+        until_time: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Pauses or resumes an invoker."""
         url = f"{self.base_url}/api/v1/invokers/{worker_ip}/pause"
+        payload = {"action": action, "mode": mode, "hours": hours}
+        if until_time:
+            payload["until_time"] = until_time
         resp = requests.post(
             url,
             headers=self._headers(token),
-            json={"action": action, "mode": mode, "hours": hours},
+            json=payload,
             timeout=5,
         )
         if resp.status_code == 200:
