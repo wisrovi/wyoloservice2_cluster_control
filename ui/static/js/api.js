@@ -224,10 +224,13 @@ class ClusterApiClient {
     }
   }
 
-  async pauseInvoker(ip, pause = true, mode = "perpetual", hours = 4.0) {
+  async pauseInvoker(ip, pause = true, mode = "perpetual", hours = 4.0, until_time = null) {
     const payload = pause
       ? { action: "pause", mode: mode, hours: hours }
       : { action: "resume" };
+    if (pause && until_time) {
+      payload.until_time = until_time;
+    }
     return this.request(`/api/v1/invokers/${encodeURIComponent(ip)}/pause`, {
       method: "POST",
       body: JSON.stringify(payload),
