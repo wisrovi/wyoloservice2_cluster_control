@@ -314,6 +314,15 @@ class ClusterApiClient {
     return this.request("/api/v1/tasks/queues");
   }
 
+  async getQueuedTasks() {
+    try {
+      const data = await this.getQueues();
+      return Array.isArray(data?.tasks) ? data.tasks : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
   async promoteQueuedTask(taskId, targetQueue = "gpus_high") {
     return this.request(`/api/v1/tasks/queues/${encodeURIComponent(taskId)}/promote`, {
       method: "POST",
