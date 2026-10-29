@@ -401,32 +401,10 @@ class VSCodeWorkbench {
       },
       {
         category: "⚡ ACCIONES RÁPIDAS",
-        title: "⏸️ Pausar temporalmente todos los nodos por 4 horas",
-        subtitle: "Detiene el consumo de colas públicas en todo el clúster",
-        action: () => {
-          if (confirm("¿Pausar todos los nodos por 4 horas?")) {
-            window.ViewNodes?.batchPause(true, 'temporal', 4.0);
-          }
-        },
-        keywords: ["pausar", "pausa", "pause", "parar", "frenar", "temporal"],
-      },
-      {
-        category: "⚡ ACCIONES RÁPIDAS",
-        title: "⏰ Pausar todos los nodos hasta una hora fija (ej. 18:30)",
-        subtitle: "Configurar reanudación programada a la hora fijada",
-        action: () => window.ViewNodes?.batchPauseUntilPrompt(),
-        keywords: ["pausa hasta", "pausar hora", "horario", "until", "tiempo"],
-      },
-      {
-        category: "⚡ ACCIONES RÁPIDAS",
-        title: "▶️ Reanudar todos los nodos del clúster (Resume All)",
-        subtitle: "Vuelve a conectar todos los invokers a las colas de Celery",
-        action: () => {
-          if (confirm("¿Reanudar el consumo en todos los nodos?")) {
-            window.ViewNodes?.batchPause(false);
-          }
-        },
-        keywords: ["reanudar", "resume", "continuar", "activar", "play"],
+        title: "⏸️ Gestionar Pausas y Recursos de Invokers (Vista de Nodos)",
+        subtitle: "Configurar pausas temporales (horas/hora fija) o perpetuas por cada nodo",
+        action: () => this.switchView("nodes"),
+        keywords: ["pausar", "pausa", "pause", "reanudar", "resume", "invoker", "nodos"],
       },
       {
         category: "⚡ ACCIONES RÁPIDAS",
