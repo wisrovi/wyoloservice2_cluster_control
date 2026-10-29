@@ -132,6 +132,7 @@ class QuickLaunchRequest(BaseModel):
     imgsz: Optional[int] = Field(None, description="Image resolution (e.g. 224, 640, 1024)")
     batch_size: Optional[int] = Field(None, description="Batch size (-1 for auto, or integer)")
     priority: str = Field("NORMAL", description="Task priority: URGENT, NORMAL, or BATCH")
+    start_not_before: Optional[str] = Field(None, description="Schedule execution: start not before HH:MM (e.g. 20:00)")
 
 
 class DrainRequest(BaseModel):
