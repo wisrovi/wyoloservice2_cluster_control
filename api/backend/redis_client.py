@@ -1127,6 +1127,13 @@ class ClusterRepository:
                             author = None
                             model = None
                             dataset = None
+                            epochs = None
+                            batch_size = None
+                            imgsz = None
+                            task_type = None
+                            fitness = None
+                            n_trials = None
+                            created_at = None
                             body_raw = msg_dict.get("body")
                             if body_raw:
                                 try:
@@ -1141,9 +1148,21 @@ class ClusterRepository:
                                         else:
                                             cfg = {}
                                         model = cfg.get("model")
-                                        dataset = cfg.get("train", {}).get("data")
-                                        author = cfg.get("metadata", {}).get("author") or cfg.get("user_id")
-                                        study_name = cfg.get("sweeper", {}).get("study_name") or cfg.get("study_name")
+                                        task_type = cfg.get("task") or cfg.get("type")
+                                        train_cfg = cfg.get("train", {})
+                                        dataset = train_cfg.get("data")
+                                        epochs = train_cfg.get("epochs")
+                                        batch_size = train_cfg.get("batch")
+                                        imgsz = train_cfg.get("imgsz")
+                                        
+                                        meta_cfg = cfg.get("metadata", {})
+                                        author = meta_cfg.get("author") or meta_cfg.get("user") or cfg.get("user") or cfg.get("user_id")
+                                        study_name = meta_cfg.get("study_name") or cfg.get("sweeper", {}).get("study_name") or cfg.get("study_name")
+                                        created_at = meta_cfg.get("created_at") or meta_cfg.get("timestamp")
+
+                                        sweeper_cfg = cfg.get("sweeper", {})
+                                        fitness = sweeper_cfg.get("fitness")
+                                        n_trials = sweeper_cfg.get("n_trials")
                                 except Exception:
                                     pass
 
@@ -1160,9 +1179,15 @@ class ClusterRepository:
                                 "author": author or "Unknown",
                                 "model": model or "yolo",
                                 "dataset": dataset or "N/A",
+                                "task_type": task_type or "train",
+                                "epochs": epochs,
+                                "batch_size": batch_size,
+                                "imgsz": imgsz,
+                                "fitness": fitness,
+                                "n_trials": n_trials,
                                 "priority": prio,
                                 "queue_name": q_name,
-                                "queued_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                "queued_at": created_at or datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                             })
                         except Exception:
                             continue
