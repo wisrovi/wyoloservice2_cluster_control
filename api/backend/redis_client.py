@@ -718,6 +718,7 @@ class ClusterRepository:
         task: Optional[str] = None,
         imgsz: Optional[int] = None,
         batch_size: Optional[int] = None,
+        start_not_before: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Dispatches a quick test/training job to verify node/cluster execution across CV tasks."""
         study_id = str(uuid.uuid4())
@@ -804,11 +805,32 @@ class ClusterRepository:
         self.client.set(f"study:{study_id}:config", json.dumps(config_payload), ex=86400)
         self.client.set(f"study:{study_id}:start_time", str(time.time()), ex=86400)
 
+        # Optional scheduled start: not before HH:MM (Celery ETA)
+        eta_datetime = None
+        if start_not_before and ":" in start_not_before:
+            try:
+                from datetime import datetime as dt_eta, timedelta as td_eta
+                now_dt = dt_eta.now()
+                parts = start_not_before.strip().split(":")
+                hour = int(parts[0])
+                minute = int(parts[1])
+                target_dt = now_dt.replace(hour=hour, minute=minute, second=0, microsecond=0)
+                if target_dt <= now_dt:
+                    target_dt += td_eta(days=1)
+                eta_datetime = target_dt
+                config_payload["metadata"]["start_not_before"] = start_not_before
+                config_payload["metadata"]["eta_scheduled"] = target_dt.strftime("%Y-%m-%d %H:%M:%S")
+            except Exception as exc:
+                print(f"[QUICK LAUNCH] Error resolving start_not_before ETA: {exc}")
+
         # Dispatch via Celery
         task_sent = False
         try:
             app = get_celery_app()
-            app.send_task("tasks.run_training", args=[config_payload], queue=target_queue)
+            send_kwargs = {"args": [config_payload], "queue": target_queue}
+            if eta_datetime:
+                send_kwargs["eta"] = eta_datetime
+            app.send_task("tasks.run_training", **send_kwargs)
             task_sent = True
         except Exception as e:
             print(f"[QUICK LAUNCH] Celery send error: {e}")
