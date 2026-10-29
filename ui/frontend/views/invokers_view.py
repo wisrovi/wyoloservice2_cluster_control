@@ -121,11 +121,11 @@ def render_invokers(api_client: ClusterApiClient, token: str):
     filtered = sorted(filtered, key=get_sort_key)
 
     # Header and Batch Actions
-    col_cnt, col_b1, col_b2 = st.columns([2, 1, 1])
+    col_cnt, col_b1, col_b2, col_b3, col_b4 = st.columns([2, 1, 1, 0.8, 1.2])
     with col_cnt:
         st.write(f"Showing **{len(filtered)}** of **{len(invokers)}** invoker nodes.")
     with col_b1:
-        if st.button("⏸️ Pause Visible (4h)", help="Temporarily pause all currently listed nodes"):
+        if st.button("⏸️ Pause 4h", help="Temporarily pause all currently listed nodes for 4 hours"):
             for f_inv in filtered:
                 try:
                     api_client.set_pause(token, f_inv["worker_ip"], action="pause", mode="temporal", hours=4.0)
@@ -134,13 +134,24 @@ def render_invokers(api_client: ClusterApiClient, token: str):
             st.success(f"Paused {len(filtered)} nodes.")
             st.rerun()
     with col_b2:
-        if st.button("▶️ Resume Visible", help="Resume task consumption on all listed nodes"):
+        if st.button("▶️ Resume All", help="Resume task consumption on all listed nodes"):
             for f_inv in filtered:
                 try:
                     api_client.set_pause(token, f_inv["worker_ip"], action="resume")
                 except Exception:
                     pass
             st.success(f"Resumed {len(filtered)} nodes.")
+            st.rerun()
+    with col_b3:
+        batch_until_t = st.text_input("Hora lote", value="18:30", key="batch_until_time", label_visibility="collapsed", placeholder="18:30")
+    with col_b4:
+        if st.button("⏰ Pausa Lote", help="Pausar todos los nodos visibles hasta la hora indicada"):
+            for f_inv in filtered:
+                try:
+                    api_client.set_pause(token, f_inv["worker_ip"], action="pause", mode="temporal", until_time=batch_until_t.strip())
+                except Exception:
+                    pass
+            st.success(f"Pausados {len(filtered)} nodos hasta las {batch_until_t.strip()}.")
             st.rerun()
 
     # --- Image Synchronization & Broadcast Pull (v2.0.0) ---
@@ -195,7 +206,8 @@ def render_invokers(api_client: ClusterApiClient, token: str):
         # Color-coded icon and runtime badge
         status_icon = "🟢" if pause_state == "active" else ("🟡" if "paused" in pause_state else "🛡️")
         runtime_badge = "☸️ K8s" if "Kubernetes" in inv.get("orchestration_runtime", "") else "🐳 Docker"
-        expander_title = f"{status_icon} {hostname} ({worker_ip}) [{runtime_badge}] — {physical.get('gpu_model', 'N/A')}"
+        pause_suffix = f" [⏰ Hasta {inv.get('pause_until')}]" if inv.get("pause_until") and "paused" in pause_state else ""
+        expander_title = f"{status_icon} {hostname} ({worker_ip}) [{runtime_badge}] — {physical.get('gpu_model', 'N/A')}{pause_suffix}"
 
         with st.expander(expander_title, expanded=(len(filtered) == 1 or idx == 0)):
             col_info, col_controls = st.columns([1, 1], gap="medium")
@@ -303,6 +315,26 @@ def render_invokers(api_client: ClusterApiClient, token: str):
                             st.rerun()
                         except Exception as dge:
                             st.error(f"Diagnostics failed: {dge}")
+
+                # Pause until specific time (HH:MM)
+                col_u_in, col_u_btn = st.columns([3, 2])
+                with col_u_in:
+                    u_time_val = st.text_input(
+                        "Pausar hasta HH:MM",
+                        value="18:30",
+                        key=f"input_until_{worker_ip}",
+                        placeholder="HH:MM (e.g. 18:30)",
+                        label_visibility="collapsed",
+                        help="Hora a la que el nodo volverá a estar disponible automáticamente (ej. 18:30)",
+                    )
+                with col_u_btn:
+                    if st.button("⏰ Pausar hasta hora", key=f"btn_until_{worker_ip}", use_container_width=True):
+                        try:
+                            api_client.set_pause(token, worker_ip, action="pause", mode="temporal", until_time=u_time_val.strip())
+                            st.warning(f"Node {worker_ip} pausado hasta las {u_time_val.strip()}.")
+                            st.rerun()
+                        except Exception as pe:
+                            st.error(f"Error: {pe}")
 
                 if f"diag_res_{worker_ip}" in st.session_state:
                     diag = st.session_state[f"diag_res_{worker_ip}"]
