@@ -1,6 +1,6 @@
 # 🎛️ NeuralForge Cluster Admin (`wyoloservice2_cluster_control`)
 
-![Version](https://img.shields.io/badge/version-3.2.1-blue.svg)
+![Version](https://img.shields.io/badge/version-3.2.2-blue.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 ![Python](https://img.shields.io/badge/python-3.10-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker)
@@ -222,6 +222,17 @@ make coverage  # Runs coverage analysis inside Docker container
 ---
 
 ## 📝 Changelog
+
+### v3.2.2 (2026-10-29)
+*   **Decoupled Per-Invoker Pause Lifecycle & Removed Global Batch Buttons:**
+    *   Removed global batch pause controls (`Pause 4h (All)`, `Pausa Hasta... (All)`, `Pause Indef. (All)`, and `Resume All`) from the UI toolbar and Command Palette.
+    *   Enhanced individual node pause configuration modal with quick duration presets (`1h`, `2h`, `4h`, `8h`, `24h`), scheduled resumption shortcuts (`18:00`, `18:30`, `19:00`, `20:00`, `Mañana 08:00`), and perpetual pause mode.
+    *   Added dedicated `▶️ Reanudar` and `✏️ Pausa` modification buttons in invoker table rows for granular per-node management.
+
+### v3.2.1 (2026-10-29)
+*   **Physical Hardware Capacity Guard & Smart Limits Modal:**
+    *   Added physical hardware telemetry display to the compute limits modal showing real physical CPU cores, total host RAM, SWAP capacity, and GPU/VRAM for each node.
+    *   Bounded slider limits strictly to physical capacity, added live remaining host resources reserved for the OS, and validated limits in backend with HTTP 400 rejection.
 
 ### v3.2.0 (2026-10-29)
 *   **Modern Cloud SaaS Dashboard Redesign:**
