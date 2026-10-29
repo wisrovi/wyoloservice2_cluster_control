@@ -400,6 +400,26 @@ window.ViewDispatch = {
             </div>
             <div id="dispatch-rec-info" style="display: none; padding: 8px 12px; background: rgba(16, 185, 129, 0.15); border-left: 3px solid #10B981; border-radius: 4px; font-size: 11px; margin-bottom: 12px;"></div>
 
+            <!-- Start Not Before (Scheduled / Deferred Start) -->
+            <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 6px; padding: 10px 14px; margin-bottom: 14px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600; font-size: 12px; color: #93C5FD;">
+                  <input type="checkbox" id="ql-schedule-check" onchange="document.getElementById('ql-schedule-group').style.display = this.checked ? 'grid' : 'none';">
+                  <span>🕒 Programar Inicio Diferido (No empezar antes de las HH:MM)</span>
+                </label>
+                <span style="font-size: 11px; color: var(--vscode-fg-muted);">Opcional</span>
+              </div>
+              <div id="ql-schedule-group" style="display: none; grid-template-columns: 1fr 1.5fr; gap: 10px; align-items: center; margin-top: 8px;">
+                <div>
+                  <label class="form-label" style="font-size: 11px; margin-bottom: 2px;">Hora permitida (HH:MM):</label>
+                  <input type="time" id="ql-start-not-before-time" class="form-control" value="20:00">
+                </div>
+                <div style="font-size: 11px; color: #94A3B8;">
+                  El trabajo se encola en Celery y espera a la hora indicada sin consumir GPU.
+                </div>
+              </div>
+            </div>
+
             <button type="submit" class="btn btn-primary" style="width: 100%;">
               <span>🚀</span> Dispatch Workload to Cluster
             </button>
@@ -703,6 +723,15 @@ window.ViewDispatch = {
     const targetNode = document.getElementById("ql-target-node").value;
     const priority = document.getElementById("ql-priority").value;
 
+    const scheduleCheck = document.getElementById("ql-schedule-check");
+    let startNotBefore = null;
+    if (scheduleCheck && scheduleCheck.checked) {
+      const timeVal = document.getElementById("ql-start-not-before-time")?.value;
+      if (timeVal) {
+        startNotBefore = timeVal.trim();
+      }
+    }
+
     const payload = {
       study_name: studyName,
       task: task,
@@ -713,6 +742,7 @@ window.ViewDispatch = {
       imgsz: imgsz,
       worker_ip: targetNode || null,
       priority: priority,
+      start_not_before: startNotBefore,
     };
 
     window.workbench.logTerminal("INFO", `Dispatching ${task.toUpperCase()} training workload: ${studyName} (${model}) [${priority}]...`);
