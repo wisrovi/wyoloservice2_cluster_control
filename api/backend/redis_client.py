@@ -153,6 +153,7 @@ class ClusterRepository:
                 pass
 
         ram_total = res.get("physical_ram_total") or ver_data.get("executor_allocated_ram") or "unknown"
+        swap_total = res.get("physical_swap_total") or "32g"
         cpu_cores = res.get("physical_cpu_cores") or ver_data.get("worker_cpu_cores") or "unknown"
 
         # Check last seen or status
@@ -224,6 +225,7 @@ class ClusterRepository:
                 "gpu_count": gpu_count,
                 "gpu_memory_total": gpu_mem,
                 "ram_total": ram_total,
+                "swap_total": swap_total,
                 "cpu_cores": cpu_cores,
                 "gpu_temp_c": gpu_temp,
                 "gpu_power_watts": gpu_pwr,
