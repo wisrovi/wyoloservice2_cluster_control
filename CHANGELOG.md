@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.3] - 2026-10-29
+
+### Fixed
+- **Celery Task Dispatch Routing:** Corrected `quick_launch_test` Celery task dispatch from unregistered `tasks.run_training` to `tasks.train_on_gpu_simple`.
+- **Ghost Active Workload Remediation:** Enhanced `get_study_details` to verify Celery task completion status (`SUCCESS`, `FAILURE`, `REVOKED`) and cancellation keys (`study:{id}:cancel` / `study:{id}:cancelled`), auto-purging stale `study:{id}:active_trial` keys and preventing zombie tasks from remaining permanently in "Running" state.
+- **Accurate Active Tasks Filtering:** Updated `list_active_tasks` to strictly filter out tasks whose computed status is not `"running"`.
+- **Kubernetes Pod Phase Reflection:** Replaced hardcoded "Running" pod phase with true execution state (`Running`, `Cancelled`, `Failed`, or `Succeeded`).
+
 ## [3.2.2] - 2026-10-29
 
 ### Changed
