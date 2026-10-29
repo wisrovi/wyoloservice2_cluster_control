@@ -29,7 +29,7 @@ spec:
     spec:
       containers:
         - name: ui
-          image: wisrovi/train_service:cluster_admin_ui_v3.2.3
+          image: wisrovi/train_service:cluster_admin_ui_v3.2.4
           imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef:
