@@ -60,6 +60,9 @@ window.ViewNodes = {
             <button class="btn btn-secondary btn-sm" onclick="window.ViewNodes.batchPause(true, 'temporal', 4.0)" title="Temporarily pause all nodes for 4 hours">
               ⏸️ Pause 4h (All)
             </button>
+            <button class="btn btn-secondary btn-sm" onclick="window.ViewNodes.batchPauseUntilPrompt()" title="Pausar todos los nodos hasta una hora fija (ej. 18:30)">
+              ⏰ Pausa Hasta... (All)
+            </button>
             <button class="btn btn-secondary btn-sm" onclick="window.ViewNodes.batchPause(true, 'perpetual')" title="Pause all nodes indefinitely">
               ⏹️ Pause Indef. (All)
             </button>
@@ -146,6 +149,13 @@ window.ViewNodes = {
             <div style="display: flex; align-items: center; gap: 8px;">
               <input type="number" id="pause-hours-input" class="form-control" min="0.5" max="168" step="0.5" value="4.0" style="width: 100px;" oninput="window.ViewNodes.onHoursChange()">
               <span style="font-size: 12px; color: var(--vscode-fg-muted);">horas</span>
+            </div>
+            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--vscode-border-light);">
+              <label class="form-label" style="font-size: 12px;">O pausar hasta hora fija (HH:MM):</label>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <input type="text" id="pause-until-time-input" class="form-control" placeholder="18:30" style="width: 100px;">
+                <span style="font-size: 11px; color: var(--vscode-fg-muted);">(ej. 18:30 — reanuda automáticamente a esa hora)</span>
+              </div>
             </div>
           </div>
 
@@ -339,14 +349,16 @@ window.ViewNodes = {
         pauseActionsHtml = `<button class="btn btn-sm" style="background: #10B981; color: white;" onclick="window.ViewNodes.toggleDrain('${ip}', false)">✅ Undrain</button>`;
       } else if (pauseState === "paused_temporal") {
         const remainingStr = formatRemainingTime(pauseUntil);
-        statusBadge = `<span class="badge badge-amber" title="Pausa Temporal hasta: ${pauseUntil}">⏱️ Pausa Temp (${remainingStr})</span>`;
+        const timePart = pauseUntil.includes("T") ? pauseUntil.split("T")[1].substring(0, 5) : pauseUntil;
+        statusBadge = `<span class="badge badge-amber" title="Pausa Temporal hasta: ${pauseUntil}">⏱️ Pausa (${timePart || remainingStr})</span>`;
         pauseActionsHtml = `<button class="btn btn-sm" style="background: #10B981; color: white;" onclick="window.ViewNodes.resumeNode('${ip}')">▶️ Reanudar</button>`;
       } else if (pauseState === "paused_perpetual") {
         statusBadge = `<span class="badge badge-red" style="background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.4);" title="Pausado indefinidamente">⏹️ Pausa Indef.</span>`;
         pauseActionsHtml = `<button class="btn btn-sm" style="background: #10B981; color: white;" onclick="window.ViewNodes.resumeNode('${ip}')">▶️ Reanudar</button>`;
       } else if (pauseState.includes("pause")) {
         const remainingStr = formatRemainingTime(pauseUntil);
-        statusBadge = `<span class="badge badge-amber" title="Pausa Temporal hasta: ${pauseUntil}">⏱️ Pausa Temp (${remainingStr})</span>`;
+        const timePart = pauseUntil.includes("T") ? pauseUntil.split("T")[1].substring(0, 5) : pauseUntil;
+        statusBadge = `<span class="badge badge-amber" title="Pausa Temporal hasta: ${pauseUntil}">⏱️ Pausa (${timePart || remainingStr})</span>`;
         pauseActionsHtml = `<button class="btn btn-sm" style="background: #10B981; color: white;" onclick="window.ViewNodes.resumeNode('${ip}')">▶️ Reanudar</button>`;
       } else if (node.status === "offline") {
         statusBadge = `<span class="badge badge-red">Offline</span>`;
@@ -393,7 +405,7 @@ window.ViewNodes = {
             </div>
           </td>
           <td>
-            <div><code style="font-size: 11px;">Container: ${escapeHtml(maxRam)}</code></div>
+            <div><code style="font-size: 11px;">RAM: ${escapeHtml(maxRam)} | SHM: ${shmGb}G</code></div>
             <div style="font-size: 11px; color: var(--vscode-fg-muted);">Host: ${escapeHtml(ramTotalStr)} | ${maxCpu} Cores</div>
           </td>
           <td>
@@ -486,6 +498,8 @@ window.ViewNodes = {
     document.getElementById("pause-modal-title").textContent = `⏸️ Configurar Pausa: ${hostname} (${ip})`;
     const hoursInput = document.getElementById("pause-hours-input");
     if (hoursInput) hoursInput.value = "4.0";
+    const untilInput = document.getElementById("pause-until-time-input");
+    if (untilInput) untilInput.value = "";
     this.selectPauseMode("temporal");
     document.getElementById("pause-modal").style.display = "flex";
   },
@@ -495,12 +509,22 @@ window.ViewNodes = {
     const isPerpetual = document.getElementById("radio-pause-perpetual")?.checked;
     const mode = isPerpetual ? "perpetual" : "temporal";
     const hours = parseFloat(document.getElementById("pause-hours-input")?.value) || 4.0;
+    const untilTimeVal = document.getElementById("pause-until-time-input")?.value?.trim() || null;
 
-    const desc = mode === "perpetual" ? "Perpetua (Indefinida)" : `Temporal (${hours}h)`;
+    if (mode === "temporal" && untilTimeVal) {
+      if (!/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(untilTimeVal)) {
+        alert("El formato de hora debe ser HH:MM (por ejemplo, 18:30)");
+        return;
+      }
+    }
+
+    const desc = mode === "perpetual" 
+      ? "Perpetua (Indefinida)" 
+      : (untilTimeVal ? `Temporal (hasta las ${untilTimeVal})` : `Temporal (${hours}h)`);
     window.workbench.logTerminal("WARN", `Aplicando pausa ${desc} al nodo ${ip}...`);
 
     try {
-      await window.apiClient.pauseInvoker(ip, true, mode, hours);
+      await window.apiClient.pauseInvoker(ip, true, mode, hours, untilTimeVal);
       window.workbench.logTerminal("SUCCESS", `Pausa ${desc} configurada exitosamente en ${ip}.`);
       document.getElementById("pause-modal").style.display = "none";
       await this.load();
@@ -560,6 +584,33 @@ window.ViewNodes = {
       await this.load();
     } catch (e) {
       window.workbench.logTerminal("ERROR", `Error en pausa por lote: ${e.message}`);
+      alert(`Error en pausa por lote: ${e.message}`);
+    }
+  },
+
+  async batchPauseUntilPrompt() {
+    const defaultTime = "18:30";
+    const untilTime = prompt("Introduce la hora de reanudación automática (HH:MM):", defaultTime);
+    if (!untilTime) return;
+    const trimmed = untilTime.trim();
+    if (!/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(trimmed)) {
+      alert("El formato debe ser HH:MM (por ejemplo, 18:30)");
+      return;
+    }
+    if (!confirm(`¿Confirmas pausar TODOS los nodos invoker hasta las ${trimmed}?`)) return;
+
+    window.workbench.logTerminal("WARN", `Pausando todos los nodos hasta las ${trimmed}...`);
+    try {
+      for (const node of this.invokersData) {
+        const ip = node.worker_ip || node.ip;
+        if (ip) {
+          await window.apiClient.pauseInvoker(ip, true, "temporal", 4.0, trimmed);
+        }
+      }
+      window.workbench.logTerminal("SUCCESS", `Completada pausa hasta las ${trimmed} en todos los nodos.`);
+      await this.load();
+    } catch (e) {
+      window.workbench.logTerminal("ERROR", `Error en pausa por lote hasta hora: ${e.message}`);
       alert(`Error en pausa por lote: ${e.message}`);
     }
   },
