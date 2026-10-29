@@ -1,6 +1,6 @@
 # 🎛️ NeuralForge Cluster Admin (`wyoloservice2_cluster_control`)
 
-![Version](https://img.shields.io/badge/version-3.1.9-blue.svg)
+![Version](https://img.shields.io/badge/version-3.2.0-blue.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 ![Python](https://img.shields.io/badge/python-3.10-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker)
@@ -275,6 +275,12 @@ make coverage  # o ./coverage.sh
 
 ## 📝 Changelog
 
+*   **v3.2.0 (2026-10-29):**
+    *   **Visual Controls for Fixed-Time Pause (`until_time`):**
+        *   Added UI time selector and direct action button (`⏰ Pausar hasta hora`) in Streamlit nodes management view (`ui/frontend/views/invokers_view.py`) and API client (`ui/frontend/api_client.py`).
+        *   Added fixed wall-clock time input to VSCode Workbench modal (`ui/static/js/views/nodes.js`) and API client (`ui/static/js/api.js`) allowing operators to pause an invoker until a scheduled time (e.g., `18:30`).
+        *   Added batch schedule pause action (`⏰ Pausa Lote` / `⏰ Pausa Hasta...`) across all cluster nodes.
+        *   Enhanced node cards with live scheduled resumption badges and direct `/dev/shm` indicators.
 *   **v3.1.9 (2026-10-28):**
     *   **Scheduled Invoker Pause Wakeup & Process Schema Hardening:**
         *   Added support for pausing invokers until a specific wall-clock time (`until_time: "HH:MM"`), automatically computing target epoch timestamp for exact schedule resumption.
