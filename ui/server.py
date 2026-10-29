@@ -46,21 +46,24 @@ class WorkbenchHttpHandler(SimpleHTTPRequestHandler):
             self.send_header("Cache-Control", "no-cache")
             self.end_headers()
 
-            # If CLUSTER_API_URL is the internal docker network name (e.g. cluster_admin_api:8001),
-            # the browser on the host machine won't resolve it. In that case, use window.location.hostname:8001.
+            # If CLUSTER_API_URL is the internal docker or k8s service name (e.g. cluster_admin_api:8001 or cluster-admin-api-svc:8001),
+            # the browser on the client machine won't resolve it directly. In that case, use relative / or window.location.hostname:8001.
             js_content = f"""
 (function() {{
   var envUrl = "{cluster_api_env}".trim();
   var defaultHost = (window.location && window.location.hostname) ? window.location.hostname : "localhost";
   var resolvedUrl = "http://" + defaultHost + ":8001";
 
-  if (envUrl && !envUrl.includes("cluster_admin_api")) {{
+  if (envUrl && !envUrl.includes("cluster_admin_api") && !envUrl.includes("cluster-admin-api-svc")) {{
     resolvedUrl = envUrl.replace(/\\/$/, "");
+  }} else if (window.location && (window.location.port === "" || window.location.port === "80" || window.location.port === "443")) {{
+    // Served behind Kubernetes Ingress on standard HTTP/HTTPS ports: use relative path
+    resolvedUrl = window.location.origin;
   }}
 
   window.__CLUSTER_CONFIG__ = {{
     apiUrl: resolvedUrl,
-    version: "3.0.1"
+    version: "3.2.3"
   }};
 }})();
 """
