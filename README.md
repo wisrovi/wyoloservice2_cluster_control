@@ -1,6 +1,6 @@
 # 🎛️ NeuralForge Cluster Admin (`wyoloservice2_cluster_control`)
 
-![Version](https://img.shields.io/badge/version-3.2.3-blue.svg)
+![Version](https://img.shields.io/badge/version-3.2.4-blue.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 ![Python](https://img.shields.io/badge/python-3.10-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker)
@@ -222,6 +222,9 @@ make coverage  # Runs coverage analysis inside Docker container
 ---
 
 ## 📝 Changelog
+
+### v3.2.4 (2026-10-29)
+*   **Detailed Waiting Celery Queue Metadata:** Enhanced the queue backlog inspector to display sender/author (`👤 author`), experiment/study name, target task type, training specifications (epochs, batch size, image resolution), dataset path, and fitness optimization metric.
 
 ### v3.2.3 (2026-10-29)
 *   **Celery Task Dispatch Routing:** Corrected `quick_launch_test` Celery task dispatch from unregistered `tasks.run_training` to `tasks.train_on_gpu_simple`.
