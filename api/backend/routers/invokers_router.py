@@ -57,6 +57,34 @@ async def update_limits(
             detail=f"Invoker {worker_ip} not found",
         )
 
+    # Validate against physical capacity if reported
+    physical = existing.get("physical", {})
+    if payload.max_cpu_cores is not None:
+        try:
+            phys_cores = float(physical.get("cpu_cores", 0))
+            if phys_cores > 0 and payload.max_cpu_cores > phys_cores:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Requested {payload.max_cpu_cores} CPU cores exceeds physical node capacity of {int(phys_cores)} cores.",
+                )
+        except (ValueError, TypeError):
+            pass
+
+    if payload.max_ram is not None:
+        try:
+            phys_ram_str = str(physical.get("ram_total", "")).lower().replace("g", "").replace("gi", "").strip()
+            req_ram_str = str(payload.max_ram).lower().replace("g", "").replace("gi", "").strip()
+            if phys_ram_str and req_ram_str:
+                phys_ram_gb = float(phys_ram_str)
+                req_ram_gb = float(req_ram_str)
+                if phys_ram_gb > 0 and req_ram_gb > phys_ram_gb:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Requested {payload.max_ram} RAM exceeds physical node capacity of {physical.get('ram_total')}.",
+                    )
+        except (ValueError, TypeError):
+            pass
+
     updated = repo.update_invoker_limits(
         worker_ip=worker_ip,
         max_gpu_percent=payload.max_gpu_percent,
