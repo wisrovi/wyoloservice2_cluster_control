@@ -34,7 +34,7 @@ class WorkbenchHttpHandler(SimpleHTTPRequestHandler):
             self.send_header("Content-Type", "application/json")
             self.send_header("Cache-Control", "no-cache")
             self.end_headers()
-            payload = json.dumps({"status": "healthy", "service": "cluster_admin_ui", "version": "3.2.3"})
+            payload = json.dumps({"status": "healthy", "service": "cluster_admin_ui", "version": "3.2.4"})
             self.wfile.write(payload.encode("utf-8"))
             return
 
@@ -63,7 +63,7 @@ class WorkbenchHttpHandler(SimpleHTTPRequestHandler):
 
   window.__CLUSTER_CONFIG__ = {{
     apiUrl: resolvedUrl,
-    version: "3.2.3"
+    version: "3.2.4"
   }};
 }})();
 """
