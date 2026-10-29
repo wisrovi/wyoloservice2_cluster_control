@@ -104,6 +104,7 @@ async def quick_launch_task(
         task=payload.task,
         imgsz=payload.imgsz,
         batch_size=payload.batch_size,
+        start_not_before=payload.start_not_before,
     )
     return {
         "status": "success",
