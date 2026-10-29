@@ -1,6 +1,6 @@
 # 🎛️ NeuralForge Cluster Admin (`wyoloservice2_cluster_control`)
 
-![Version](https://img.shields.io/badge/version-3.2.2-blue.svg)
+![Version](https://img.shields.io/badge/version-3.2.3-blue.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 ![Python](https://img.shields.io/badge/python-3.10-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker)
@@ -222,6 +222,12 @@ make coverage  # Runs coverage analysis inside Docker container
 ---
 
 ## 📝 Changelog
+
+### v3.2.3 (2026-10-29)
+*   **Celery Task Dispatch Routing:** Corrected `quick_launch_test` Celery task dispatch from unregistered `tasks.run_training` to `tasks.train_on_gpu_simple`.
+*   **Ghost Active Workload Remediation:** Enhanced `get_study_details` to verify Celery task completion status (`SUCCESS`, `FAILURE`, `REVOKED`) and cancellation keys, automatically purging stale `study:{id}:active_trial` keys and preventing zombie tasks.
+*   **Accurate Active Tasks Filtering:** Updated `list_active_tasks` to strictly filter out tasks whose computed status is not `"running"`.
+*   **Kubernetes Pod Phase Reflection:** Replaced hardcoded "Running" pod phase with true execution state (`Running`, `Cancelled`, `Failed`, or `Succeeded`).
 
 ### v3.2.2 (2026-10-29)
 *   **Decoupled Per-Invoker Pause Lifecycle & Removed Global Batch Buttons:**
