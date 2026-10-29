@@ -1,0 +1,42 @@
+# -------------------------------------------------------------
+# ServiceAccount & RBAC for Cluster Admin API
+# Grants read/list/delete on Pods for container inspection & kill signals
+# -------------------------------------------------------------
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: neuralforge-cluster-admin-sa
+  namespace: train-service
+  labels:
+    app.kubernetes.io/name: cluster-admin-api
+    app.kubernetes.io/part-of: train-service2
+    app.kubernetes.io/component: backend
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: neuralforge-cluster-admin-role
+  namespace: train-service
+rules:
+  # Pod inspection, logs streaming, status and kill operations
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "pods/status"]
+    verbs: ["get", "list", "watch", "delete"]
+  # Config access
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: neuralforge-cluster-admin-rolebinding
+  namespace: train-service
+subjects:
+  - kind: ServiceAccount
+    name: neuralforge-cluster-admin-sa
+    namespace: train-service
+roleRef:
+  kind: Role
+  name: neuralforge-cluster-admin-role
+  apiGroup: rbac.authorization.k8s.io
