@@ -1,0 +1,19 @@
+# -------------------------------------------------------------
+# ConfigMap for Cluster Admin API
+# -------------------------------------------------------------
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-admin-api-config
+  namespace: train-service
+  labels:
+    app.kubernetes.io/name: cluster-admin-api
+    app.kubernetes.io/part-of: train-service2
+    app.kubernetes.io/component: backend
+data:
+  API_HOST: "0.0.0.0"
+  API_PORT: "8001"
+  CONTROL_HOST: "192.168.10.252"
+  REDIS_PORT: "23437"
+  REDIS_DB: "0"
+  ACCESS_TOKEN_EXPIRE_MINUTES: "1440"
