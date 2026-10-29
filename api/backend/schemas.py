@@ -377,6 +377,12 @@ class QueuedTaskInfo(BaseModel):
     author: Optional[str] = None
     model: Optional[str] = None
     dataset: Optional[str] = None
+    task_type: Optional[str] = None
+    epochs: Optional[Any] = None
+    batch_size: Optional[Any] = None
+    imgsz: Optional[Any] = None
+    fitness: Optional[str] = None
+    n_trials: Optional[int] = None
     priority: str = "low"
     queue_name: str
     queued_at: Optional[str] = None
