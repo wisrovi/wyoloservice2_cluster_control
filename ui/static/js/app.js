@@ -19,11 +19,26 @@ class VSCodeWorkbench {
       settings: window.ViewSettings,
     };
 
-    this.openTabs = ["overview", "nodes", "dispatch"];
+    this.openTabs = [
+      "overview",
+      "nodes",
+      "dispatch",
+      "tasks",
+      "storage",
+      "capabilities",
+      "benchmarks",
+      "finops",
+      "audit",
+      "history",
+      "settings",
+    ];
     this.activeViewId = "overview";
     this.activeMenu = null;
-    this.panelCollapsed = false;
+    this.panelCollapsed = true;
     this.pollInterval = null;
+    this.cachedInvokers = [];
+    this.cachedActiveTasks = [];
+    this.cachedQueuedTasks = [];
 
     this.init();
   }
@@ -169,18 +184,74 @@ class VSCodeWorkbench {
   // --- Tab Management ---
   renderTabs() {
     const container = document.getElementById("tabs-container");
-    container.innerHTML = this.openTabs.map(viewId => {
-      const view = this.views[viewId];
-      if (!view) return "";
-      const isActive = viewId === this.activeViewId;
-      return `
-        <div class="editor-tab ${isActive ? 'active' : ''}" onclick="window.workbench.switchView('${viewId}')">
-          <span class="tab-icon">${view.icon}</span>
-          <span class="tab-label">${view.label}</span>
-          <span class="tab-close" onclick="event.stopPropagation(); window.workbench.closeTab('${viewId}')" title="Cerrar pestaña">✕</span>
-        </div>
-      `;
-    }).join("");
+    if (!container) return;
+
+    const activeCount = this.cachedActiveTasks?.length || 0;
+    const queuedCount = this.cachedQueuedTasks?.length || 0;
+    const totalJobs = activeCount + queuedCount;
+
+    const totalNodes = this.cachedInvokers?.length || 0;
+    const onlineNodes = this.cachedInvokers?.filter(n => n.state === 'active').length || 0;
+
+    const sections = [
+      {
+        title: "Centro de Control",
+        views: [
+          { id: "overview", label: "Operations Hub", icon: "📊", hint: "KPIs, Topología y Estado en vivo" },
+        ],
+      },
+      {
+        title: "Entrenamientos & Trabajos",
+        views: [
+          { id: "dispatch", label: "Lanzar Entrenamiento", icon: "🚀", hint: "Smart Launcher (YOLO, Datasets, Horarios)" },
+          { id: "tasks", label: "Gestión de Trabajos", icon: "📋", hint: "Activos, Cola & Historial", badge: totalJobs > 0 ? `${activeCount} activos` : null, badgeClass: activeCount > 0 ? "badge-blue" : "badge-amber" },
+        ],
+      },
+      {
+        title: "Infraestructura Física",
+        views: [
+          { id: "nodes", label: "Nodos & GPUs", icon: "⚙️", hint: "Límites VRAM/RAM/CPU, Pausas & NVML", badge: totalNodes > 0 ? `${onlineNodes}/${totalNodes}` : null, badgeClass: "badge-green" },
+          { id: "storage", label: "Almacenamiento & Datasets", icon: "💾", hint: "Montajes Samba CIFS & MinIO S3" },
+        ],
+      },
+      {
+        title: "Inteligencia & Rendimiento",
+        views: [
+          { id: "benchmarks", label: "GPU Benchmarks", icon: "🏆", hint: "Throughput Leaderboard (img/s)" },
+          { id: "finops", label: "FinOps & Energía", icon: "🌿", hint: "Consumo kWh, Costes (€) & CO2e" },
+          { id: "capabilities", label: "Capacidades I+D", icon: "⚡", hint: "12 Módulos de Investigación (XAI, CVPR)" },
+        ],
+      },
+      {
+        title: "Gobernanza & Sistema",
+        views: [
+          { id: "audit", label: "Auditoría & Seguridad", icon: "📜", hint: "Registro inmutable de operaciones" },
+          { id: "history", label: "Historial de Estudios", icon: "📈", hint: "Analítica Optuna & Comparador" },
+          { id: "settings", label: "Ajustes del Sistema", icon: "🛠️", hint: "Webhooks, Mantenimiento & Contraseña" },
+        ],
+      },
+    ];
+
+    container.innerHTML = sections.map(sec => `
+      <div class="nav-section-title">${sec.title}</div>
+      <div class="nav-group">
+        ${sec.views.map(v => {
+          const isActive = v.id === this.activeViewId;
+          return `
+            <div class="nav-item ${isActive ? 'active' : ''}" onclick="window.workbench.switchView('${v.id}')">
+              <span class="nav-icon">${v.icon}</span>
+              <div class="nav-content">
+                <div class="nav-row">
+                  <span class="nav-label">${v.label}</span>
+                  ${v.badge ? `<span class="nav-badge ${v.badgeClass || 'badge-blue'}">${v.badge}</span>` : ''}
+                </div>
+                <div class="nav-hint">${v.hint}</div>
+              </div>
+            </div>
+          `;
+        }).join("")}
+      </div>
+    `).join("");
   }
 
   openTab(viewId) {
@@ -284,7 +355,7 @@ class VSCodeWorkbench {
   }
 
   // --- Command Palette (Ctrl+P / F1) ---
-  toggleCommandPalette() {
+  async toggleCommandPalette() {
     const overlay = document.getElementById("palette-overlay");
     const isShowing = overlay.classList.contains("show");
     if (isShowing) {
@@ -294,6 +365,9 @@ class VSCodeWorkbench {
       const input = document.getElementById("palette-search");
       input.value = "";
       input.focus();
+      if (!this.cachedInvokers.length) {
+        await this.fetchLiveTelemetryData();
+      }
       this.filterCommandPalette("");
     }
   }
@@ -307,66 +381,218 @@ class VSCodeWorkbench {
     const list = document.getElementById("palette-list");
     const q = query.toLowerCase().trim();
 
-    const items = [
-      // Views
-      ...Object.keys(this.views).map(id => {
-        const v = this.views[id];
-        return {
-          type: "view",
-          id: id,
-          title: `${v.icon} Ir a Vista: ${v.label}`,
-          subtitle: `cluster_control / ${v.category} / ${v.file}`,
-          action: () => this.switchView(id),
-        };
-      }),
-      // Actions
+    let items = [];
+
+    // 1. Quick Actions & Intent Shortcuts
+    const quickActions = [
       {
-        type: "action",
-        title: "📥 Acción: Broadcast Docker Pull",
-        subtitle: "Triggers docker pull across all invoker nodes in cluster",
-        action: () => this.broadcastDockerPullPrompt(),
-      },
-      {
-        type: "action",
-        title: "💻 Acción: Alternar Terminal / Output Panel",
-        subtitle: "Shortcut: Ctrl+J",
-        action: () => this.toggleBottomPanel(),
-      },
-      {
-        type: "action",
-        title: "🔄 Acción: Recargar Telemetría del Cluster",
-        subtitle: "Fetch latest metrics from FastAPI backend",
-        action: () => this.refreshCurrentView(),
-      },
-      {
-        type: "action",
-        title: "⚡ Acción: Quick Launch Training Workload",
-        subtitle: "Dispatch YOLO training job to Celery",
+        category: "⚡ ACCIONES RÁPIDAS",
+        title: "🚀 Lanzar nuevo entrenamiento (Quick Launch)",
+        subtitle: "Configurar modelo YOLO, dataset, horario diferido y despachar a Celery",
         action: () => this.switchView("dispatch"),
+        keywords: ["lanzar", "entrenar", "launch", "dispatch", "nuevo", "yolo", "train", "start"],
       },
       {
-        type: "action",
-        title: "🚪 Acción: Cerrar Sesión (Logout)",
-        subtitle: "Clear JWT authorization token",
-        action: () => this.logout(),
+        category: "⚡ ACCIONES RÁPIDAS",
+        title: "⚙️ Ajustar límites de hardware de los nodos (VRAM, RAM, CPU, SHM)",
+        subtitle: "Configurar topes de recursos para evitar colapsos",
+        action: () => this.switchView("nodes"),
+        keywords: ["limites", "hardware", "ram", "cpu", "gpu", "vram", "shm", "memoria", "recursos"],
+      },
+      {
+        category: "⚡ ACCIONES RÁPIDAS",
+        title: "⏸️ Pausar temporalmente todos los nodos por 4 horas",
+        subtitle: "Detiene el consumo de colas públicas en todo el clúster",
+        action: () => {
+          if (confirm("¿Pausar todos los nodos por 4 horas?")) {
+            window.ViewNodes?.batchPause(true, 'temporal', 4.0);
+          }
+        },
+        keywords: ["pausar", "pausa", "pause", "parar", "frenar", "temporal"],
+      },
+      {
+        category: "⚡ ACCIONES RÁPIDAS",
+        title: "⏰ Pausar todos los nodos hasta una hora fija (ej. 18:30)",
+        subtitle: "Configurar reanudación programada a la hora fijada",
+        action: () => window.ViewNodes?.batchPauseUntilPrompt(),
+        keywords: ["pausa hasta", "pausar hora", "horario", "until", "tiempo"],
+      },
+      {
+        category: "⚡ ACCIONES RÁPIDAS",
+        title: "▶️ Reanudar todos los nodos del clúster (Resume All)",
+        subtitle: "Vuelve a conectar todos los invokers a las colas de Celery",
+        action: () => {
+          if (confirm("¿Reanudar el consumo en todos los nodos?")) {
+            window.ViewNodes?.batchPause(false);
+          }
+        },
+        keywords: ["reanudar", "resume", "continuar", "activar", "play"],
+      },
+      {
+        category: "⚡ ACCIONES RÁPIDAS",
+        title: "📥 Broadcast Docker Pull en todo el clúster",
+        subtitle: "Descargar la última imagen Docker en todos los invokers en paralelo",
+        action: () => this.broadcastDockerPullPrompt(),
+        keywords: ["broadcast", "pull", "docker", "actualizar", "imagen", "descargar"],
+      },
+      {
+        category: "⚡ ACCIONES RÁPIDAS",
+        title: "💻 Abrir panel de Logs y Terminal en vivo (Ctrl+J)",
+        subtitle: "Consola ANSI en tiempo real con diagnóstico de eventos",
+        action: () => this.toggleBottomPanel(),
+        keywords: ["terminal", "logs", "output", "consola", "registro"],
+      },
+      {
+        category: "⚡ ACCIONES RÁPIDAS",
+        title: "💾 Inspeccionar almacenamiento Samba CIFS y MinIO S3",
+        subtitle: "Verificar latencia I/O y disponibilidad de volúmenes de datasets",
+        action: () => this.switchView("storage"),
+        keywords: ["storage", "almacenamiento", "samba", "cifs", "minio", "s3", "disco", "dataset", "datasets"],
+      },
+      {
+        category: "⚡ ACCIONES RÁPIDAS",
+        title: "🌿 Ver costes de energía, consumo kWh y FinOps",
+        subtitle: "Monitor de gasto eléctrico en euros y huella de carbono CO2e",
+        action: () => this.switchView("finops"),
+        keywords: ["finops", "energia", "coste", "costes", "luz", "electricidad", "kwh", "dinero", "precio"],
+      },
+      {
+        category: "⚡ ACCIONES RÁPIDAS",
+        title: "🏆 Ver Leaderboard de rendimiento de GPUs (Benchmarks)",
+        subtitle: "Throughput empírico en img/s y ranking de tarjetas gráficas",
+        action: () => this.switchView("benchmarks"),
+        keywords: ["benchmark", "benchmarks", "ranking", "rendimiento", "throughput", "fps", "velocidad"],
+      },
+      {
+        category: "⚡ ACCIONES RÁPIDAS",
+        title: "🔑 Cambiar contraseña de operador",
+        subtitle: "Actualizar credenciales de acceso seguras en Redis",
+        action: () => this.switchView("settings"),
+        keywords: ["password", "contraseña", "clave", "seguridad", "cambiar", "usuario"],
+      },
+      {
+        category: "⚡ ACCIONES RÁPIDAS",
+        title: "🔔 Configurar webhooks y alertas (Discord / Slack)",
+        subtitle: "Recibir avisos ante fallos o finalización de entrenamientos",
+        action: () => this.switchView("settings"),
+        keywords: ["webhook", "alertas", "notificaciones", "discord", "slack", "telegram"],
       },
     ];
 
-    const filtered = items.filter(it =>
-      it.title.toLowerCase().includes(q) || it.subtitle.toLowerCase().includes(q)
-    );
+    const matchedActions = quickActions.filter(a => {
+      if (!q) return true;
+      const text = (a.title + " " + a.subtitle + " " + (a.keywords || []).join(" ")).toLowerCase();
+      return text.includes(q);
+    });
+    items.push(...matchedActions);
 
-    list.innerHTML = filtered.map((it, idx) => `
+    // 2. Search Live Hardware Nodes
+    if (Array.isArray(this.cachedInvokers) && this.cachedInvokers.length) {
+      const nodeItems = this.cachedInvokers.filter(n => {
+        if (!q) return false;
+        const ip = n.worker_ip || n.ip || '';
+        const host = n.hostname || '';
+        const gpu = n.physical?.gpu_model || n.gpu_model || '';
+        const state = n.pause_state || n.status || '';
+        const text = `${ip} ${host} ${gpu} ${state}`.toLowerCase();
+        return text.includes(q);
+      }).map(n => {
+        const ip = n.worker_ip || n.ip || '';
+        const host = n.hostname || ip;
+        const gpu = n.physical?.gpu_model || n.gpu_model || 'GPU';
+        const vramCap = n.limits?.max_gpu_percent || n.max_gpu_percent || 30;
+        const ram = n.limits?.max_ram || n.max_ram || '6g';
+        const cores = n.limits?.max_cpu_cores || n.max_cpu_cores || 2;
+        const isPaused = (n.pause_state === 'paused');
+        return {
+          category: "🖥️ NODOS & GPUS",
+          title: `Nodo: ${host} (${ip}) — ${gpu}`,
+          subtitle: `Estado: ${isPaused ? '⏸️ Pausado' : '🟢 Activo'} • VRAM: ${vramCap}% • RAM: ${ram} • Cores: ${cores}`,
+          action: () => {
+            this.switchView("nodes");
+            setTimeout(() => {
+              const input = document.getElementById("inv-search-input");
+              if (input) {
+                input.value = ip;
+                window.ViewNodes?.onSearch(ip);
+              }
+            }, 150);
+          },
+        };
+      });
+      items.push(...nodeItems);
+    }
+
+    // 3. Search Live Active Training Tasks
+    if (Array.isArray(this.cachedActiveTasks) && this.cachedActiveTasks.length) {
+      const taskItems = this.cachedActiveTasks.filter(t => {
+        if (!q) return false;
+        const text = `${t.study_name || ''} ${t.model || ''} ${t.author || ''} ${t.worker_ip || ''}`.toLowerCase();
+        return text.includes(q);
+      }).map(t => {
+        const ep = t.epoch_progress;
+        const progressStr = ep && ep.total_epochs > 0 
+          ? `Epoch ${ep.current_epoch}/${ep.total_epochs} (${ep.percent || 0}%)`
+          : (t.progress?.total_trials ? `Trial ${t.progress.completed_trials || 0}/${t.progress.total_trials}` : 'En ejecución');
+        return {
+          category: "🔥 TRABAJOS EN EJECUCIÓN",
+          title: `Trabajo: ${t.study_name} (${t.model || 'YOLO'})`,
+          subtitle: `Nodo: ${t.worker_ip || t.assigned_node || 'N/A'} • Autor: ${t.author || 'N/A'} • ${progressStr}`,
+          action: () => {
+            this.switchView("tasks");
+          },
+        };
+      });
+      items.push(...taskItems);
+    }
+
+    // 3b. Search Queued Tasks
+    if (Array.isArray(this.cachedQueuedTasks) && this.cachedQueuedTasks.length) {
+      const queuedItems = this.cachedQueuedTasks.filter(t => {
+        if (!q) return false;
+        const text = `${t.study_name || ''} ${t.model || ''} ${t.author || ''} ${t.queue || ''}`.toLowerCase();
+        return text.includes(q);
+      }).map(t => ({
+        category: "⏳ COLA DE ESPERA",
+        title: `En Cola: ${t.study_name || t.id} (${t.model || 'YOLO'})`,
+        subtitle: `Cola: ${t.queue || 'wyolo_gpu_queue'} • Autor: ${t.author || 'N/A'}`,
+        action: () => {
+          this.switchView("tasks");
+        },
+      }));
+      items.push(...queuedItems);
+    }
+
+    // 4. Primary Views
+    const viewItems = Object.keys(this.views).map(id => {
+      const v = this.views[id];
+      return {
+        category: "🧭 VISTAS DEL SISTEMA",
+        title: `${v.icon} Ir a: ${v.label}`,
+        subtitle: `Sección principal: ${v.category || 'cluster'} / ${id}`,
+        action: () => this.switchView(id),
+        keywords: [v.label.toLowerCase(), id, v.category || ""],
+      };
+    }).filter(v => {
+      if (!q) return true;
+      return v.title.toLowerCase().includes(q) || v.keywords.some(k => k.includes(q));
+    });
+    items.push(...viewItems);
+
+    list.innerHTML = items.map((it, idx) => `
       <li class="palette-item ${idx === 0 ? 'active' : ''}" data-idx="${idx}" onclick="window.workbench.runPaletteAction(${idx})">
-        <div>
-          <div style="font-weight: 500;">${it.title}</div>
-          <div class="palette-item-desc">${it.subtitle}</div>
+        <div style="flex: 1;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
+            <span style="font-weight: 600; color: #F8FAFC;">${it.title}</span>
+            ${it.category ? `<span class="palette-category-badge">${it.category}</span>` : ''}
+          </div>
+          <div class="palette-item-desc" style="font-size: 11px; color: #94A3B8;">${it.subtitle}</div>
         </div>
-        <kbd style="font-size: 10px; color: var(--vscode-fg-muted);">Enter</kbd>
+        <kbd style="font-size: 10px; color: #64748B; margin-left: 12px;">↵</kbd>
       </li>
     `).join("");
 
-    this.paletteActions = filtered;
+    this.paletteActions = items;
   }
 
   runPaletteAction(idx) {
@@ -427,24 +653,49 @@ class VSCodeWorkbench {
   }
 
   // --- Telemetry Polling ---
+  async fetchLiveTelemetryData() {
+    try {
+      const [nodes, tasks, queued] = await Promise.allSettled([
+        window.apiClient.getInvokers(),
+        window.apiClient.getActiveTasks(),
+        window.apiClient.getQueuedTasks(),
+      ]);
+
+      if (nodes.status === "fulfilled" && Array.isArray(nodes.value)) {
+        this.cachedInvokers = nodes.value;
+      }
+      if (tasks.status === "fulfilled" && Array.isArray(tasks.value)) {
+        this.cachedActiveTasks = tasks.value;
+      }
+      if (queued.status === "fulfilled" && Array.isArray(queued.value)) {
+        this.cachedQueuedTasks = queued.value;
+      }
+
+      // Update sidebar nav badges dynamically without disrupting UI
+      this.renderTabs();
+    } catch (_) {}
+  }
+
   startBackgroundTelemetry() {
+    this.fetchLiveTelemetryData();
     if (this.pollInterval) clearInterval(this.pollInterval);
     this.pollInterval = setInterval(async () => {
       try {
         const start = performance.now();
+        await this.fetchLiveTelemetryData();
         const health = await window.apiClient.getHealth();
         const latency = Math.round(performance.now() - start);
 
         const latencyEl = document.getElementById("status-latency");
-        if (latencyEl) latencyEl.textContent = `🔄 ${latency}ms`;
+        if (latencyEl) latencyEl.textContent = `⚡ ${latency}ms`;
 
         const healthEl = document.getElementById("status-health");
-        if (healthEl) healthEl.textContent = `🟢 Healthy`;
+        if (healthEl) healthEl.textContent = `Cluster Healthy`;
       } catch (_) {
         const healthEl = document.getElementById("status-health");
-        if (healthEl) healthEl.textContent = `🔴 API Offline`;
+        if (healthEl) healthEl.textContent = `API Offline`;
       }
-    }, 12000);
+    }, 10000);
   }
 }
 
