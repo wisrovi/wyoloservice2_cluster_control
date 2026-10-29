@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.1] - 2026-10-29
+
+### Added
+- **Physical Hardware Capacity Guard & Smart Limits Modal:**
+  - Added physical hardware telemetry display to the compute limits modal showing real physical CPU cores, total host RAM, and GPU/VRAM for each node.
+  - Implemented dynamic slider boundary limits bounded strictly by physical hardware (`max = physical.cpu_cores`, `max = physical.ram_total`), preventing operators from assigning non-existent resources.
+  - Added live indicators displaying remaining host resources reserved for the desktop operating system (`Libre para SO`), preventing developer PC freeze.
+  - Added real-time hazard warning banner when CPU or RAM allocations approach 100% of host capacity.
+  - Added 3 one-click Quick Presets:
+    * 🛡️ **Protegido (PC):** 30% GPU, 2 cores, 6GB RAM (ideal for desktop development machines).
+    * ⚖️ **Equilibrado (50%):** 50% GPU, 50% CPU, 50% RAM.
+    * 🚀 **Máximo Seguro:** 90% GPU, reserving at least 2 cores and 4GB RAM strictly for the OS.
+  - Added backend validation in `PUT /api/v1/invokers/{worker_ip}/limits` rejecting allocations exceeding detected physical capacity with HTTP 400.
+
 ## [3.2.0] - 2026-10-29
 
 ### Added
