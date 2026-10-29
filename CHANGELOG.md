@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.0] - 2026-10-29
+
+### Added
+- **Visual Scheduled Pause Control (`until_time`) in Streamlit & Workbench UI:**
+  - Added dedicated time input and action button (`⏰ Pausar hasta hora`) in Streamlit invokers view (`ui/frontend/views/invokers_view.py`) and API client (`ui/frontend/api_client.py`).
+  - Added target time field in Workbench modal (`ui/static/js/views/nodes.js`) and client (`ui/static/js/api.js`) for pausing invokers until fixed wall-clock times (e.g. `18:30`).
+  - Added batch pause by schedule (`⏰ Pausa Hasta...`) across all nodes in both Streamlit and VSCode Workbench SPA.
+  - Enhanced node cards with explicit scheduled resumption time badges and visible PyTorch shared memory allocations (`/dev/shm`).
+
 ## [3.1.9] - 2026-10-28
 
 ### Added
