@@ -386,13 +386,21 @@ def test_authenticated_cluster_endpoints(client):
     resp_shm_update = client.put(
         "/api/v1/invokers/192.168.1.68/limits",
         headers=headers,
-        json={"max_gpu_percent": 85.0, "max_ram": "24g", "max_cpu_cores": 8.0, "shm_size_gb": 16.0},
+        json={"max_gpu_percent": 85.0, "max_ram": "16g", "max_cpu_cores": 8.0, "shm_size_gb": 16.0},
     )
     assert resp_shm_update.status_code == 200, f"Expected 200, got {resp_shm_update.status_code}"
     node_detail = resp_shm_update.json()["data"]
     assert node_detail["limits"]["shm_size_gb"] == 16.0
     assert "k8s_conditions" in node_detail
     assert "k8s_gpu_plugin" in node_detail
+
+    # 35b. Validate Physical Capacity Rejection (exceeding physical limits returns 400 Bad Request)
+    resp_over_ram = client.put(
+        "/api/v1/invokers/192.168.1.68/limits",
+        headers=headers,
+        json={"max_ram": "50g"},
+    )
+    assert resp_over_ram.status_code == 400, "Should reject RAM exceeding physical capacity"
 
     # 36. v2.0.0 Optuna Sweeps List & Cancel
     resp_sweeps = client.get("/api/v1/tasks/sweeps", headers=headers)
