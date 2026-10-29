@@ -509,7 +509,7 @@ class ClusterRepository:
             if len(parts) >= 3:
                 study_id = parts[1]
                 task_data = self.get_study_details(study_id)
-                if task_data:
+                if task_data and task_data.get("status") == "running":
                     tasks.append(task_data)
         return tasks
 
@@ -599,7 +599,58 @@ class ClusterRepository:
         raw_error = self.client.get(f"study:{study_id}:error")
         error = json.loads(raw_error.decode("utf-8")) if raw_error else None
 
-        status = "running" if active_trial else ("failed" if error else "completed")
+        raw_cancel = self.client.get(f"study:{study_id}:cancel")
+        raw_cancelled = self.client.get(f"study:{study_id}:cancelled")
+        is_cancelled = bool(raw_cancel or raw_cancelled)
+
+        # Check if the active trial task has actually finished in Celery
+        if active_trial:
+            trial_id = active_trial.get("trial_id")
+            if trial_id:
+                raw_meta = self.client.get(f"celery-task-meta-{trial_id}")
+                if raw_meta:
+                    try:
+                        meta_dict = json.loads(raw_meta.decode("utf-8"))
+                        task_state = meta_dict.get("status")
+                        if task_state in ("SUCCESS", "FAILURE", "REVOKED"):
+                            active_trial = None
+                            try:
+                                self.client.delete(f"study:{study_id}:active_trial")
+                            except Exception:
+                                pass
+                    except Exception:
+                        pass
+
+        # Also check study-level Celery task if trial is not set
+        raw_study_meta = self.client.get(f"celery-task-meta-{study_id}")
+        study_meta_state = None
+        if raw_study_meta:
+            try:
+                study_meta_dict = json.loads(raw_study_meta.decode("utf-8"))
+                study_meta_state = study_meta_dict.get("status")
+                if study_meta_state in ("SUCCESS", "FAILURE", "REVOKED") and active_trial:
+                    active_trial = None
+                    try:
+                        self.client.delete(f"study:{study_id}:active_trial")
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
+        if is_cancelled:
+            status = "cancelled"
+            if active_trial:
+                active_trial = None
+                try:
+                    self.client.delete(f"study:{study_id}:active_trial")
+                except Exception:
+                    pass
+        elif active_trial:
+            status = "running"
+        elif error or study_meta_state == "FAILURE":
+            status = "failed"
+        else:
+            status = "completed"
 
         # Extract study_name, author, and dataset
         sweeper_cfg = config.get("sweeper", {})
@@ -684,7 +735,14 @@ class ClusterRepository:
         trial_id = active_trial.get("trial_id", "trial-01") if active_trial else "trial-01"
         safe_host = worker_hostname.lower().replace("_", "-").replace(".", "-") if worker_hostname else (worker_ip.replace(".", "-") if worker_ip else "node")
         k8s_pod_name = f"executor-{safe_host}-{trial_id[:8]}"
-        k8s_pod_phase = "Running" if active_trial else ("Failed" if error else "Succeeded")
+        if status == "running":
+            k8s_pod_phase = "Running"
+        elif status == "cancelled":
+            k8s_pod_phase = "Cancelled"
+        elif status == "failed":
+            k8s_pod_phase = "Failed"
+        else:
+            k8s_pod_phase = "Succeeded"
         dozzle_url = f"http://{worker_ip}:8888" if worker_ip else "http://localhost:8888"
 
         return {
@@ -832,7 +890,7 @@ class ClusterRepository:
             send_kwargs = {"args": [config_payload], "queue": target_queue}
             if eta_datetime:
                 send_kwargs["eta"] = eta_datetime
-            app.send_task("tasks.run_training", **send_kwargs)
+            app.send_task("tasks.train_on_gpu_simple", **send_kwargs)
             task_sent = True
         except Exception as e:
             print(f"[QUICK LAUNCH] Celery send error: {e}")
