@@ -1,0 +1,15 @@
+# -------------------------------------------------------------
+# ConfigMap for Cluster Admin UI (VSCode Workbench SPA)
+# -------------------------------------------------------------
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-admin-ui-config
+  namespace: train-service
+  labels:
+    app.kubernetes.io/name: cluster-admin-ui
+    app.kubernetes.io/part-of: train-service2
+    app.kubernetes.io/component: frontend
+data:
+  CLUSTER_API_URL: "http://cluster-admin-api-svc:8001"
+  STREAMLIT_PORT: "8501"
