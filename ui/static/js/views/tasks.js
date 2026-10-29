@@ -115,7 +115,8 @@ window.ViewTasks = {
                 <th>Study / Workload Name</th>
                 <th>Author</th>
                 <th>Target Queue / Node</th>
-                <th>Model</th>
+                <th>Model & Task</th>
+                <th>Training Specs</th>
                 <th>Dataset Path</th>
                 <th>Priority</th>
                 <th>Queued At</th>
@@ -123,7 +124,7 @@ window.ViewTasks = {
               </tr>
             </thead>
             <tbody id="queued-tasks-tbody">
-              <tr><td colspan="8" style="text-align: center; color: var(--vscode-fg-muted); padding: 16px;">Loading queued tasks...</td></tr>
+              <tr><td colspan="9" style="text-align: center; color: var(--vscode-fg-muted); padding: 16px;">Loading queued tasks...</td></tr>
             </tbody>
           </table>
         </div>
@@ -614,7 +615,7 @@ window.ViewTasks = {
     }
 
     if (!filteredCount) {
-      tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--vscode-fg-muted); padding: 16px;">
+      tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--vscode-fg-muted); padding: 16px;">
         ${totalCount === 0 ? "No workloads currently waiting in queues." : "No hay tareas en espera que coincidan con los filtros aplicados."}
       </td></tr>`;
       if (pageInfo) pageInfo.textContent = `Mostrando 0 de ${totalCount} tareas`;
@@ -649,7 +650,12 @@ window.ViewTasks = {
         ? `<span class="badge badge-green" title="Direct Node Queue">${escapeHtml(qName)}</span>`
         : `<span class="badge badge-blue" title="Public Celery Queue">${escapeHtml(qName)}</span>`;
       const model = t.model || "yolo";
+      const taskType = t.task_type ? `<div style="font-size: 10px; color: var(--vscode-fg-muted); text-transform: uppercase;">${escapeHtml(t.task_type)}</div>` : "";
       const dataset = t.dataset || "N/A";
+      const epochs = t.epochs !== undefined && t.epochs !== null ? `${t.epochs} eps` : "N/A eps";
+      const batchSize = t.batch_size !== undefined && t.batch_size !== null ? (t.batch_size === -1 ? "auto batch" : `b:${t.batch_size}`) : "";
+      const imgsz = t.imgsz ? `sz:${t.imgsz}` : "";
+      const specsSummary = [epochs, batchSize, imgsz].filter(Boolean).join(" • ");
       const prio = (t.priority || "NORMAL").toUpperCase();
       const prioBadge = prio === "HIGH"
         ? `<span class="badge badge-amber">${prio}</span>`
@@ -662,9 +668,18 @@ window.ViewTasks = {
             <div><strong>${escapeHtml(studyName)}</strong></div>
             <div style="font-size: 10px; color: var(--vscode-fg-muted); font-family: var(--vscode-mono-family);">${escapeHtml(t.task_id || '')}</div>
           </td>
-          <td><span style="color: var(--vscode-fg-muted); font-size: 12px;">${escapeHtml(author)}</span></td>
+          <td>
+            <div style="font-weight: 500; color: var(--vscode-fg-bright); font-size: 12px;">👤 ${escapeHtml(author)}</div>
+          </td>
           <td>${targetBadge}</td>
-          <td><span class="badge badge-blue">${escapeHtml(model)}</span></td>
+          <td>
+            <span class="badge badge-blue">${escapeHtml(model)}</span>
+            ${taskType}
+          </td>
+          <td>
+            <div style="font-size: 11px; font-weight: 600; color: #4EC9B0;">${escapeHtml(specsSummary)}</div>
+            ${t.fitness ? `<div style="font-size: 10px; color: var(--vscode-fg-muted);">${escapeHtml(t.fitness)}</div>` : ''}
+          </td>
           <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(dataset)}">
             <code>${escapeHtml(dataset)}</code>
           </td>
