@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.2] - 2026-10-29
+
+### Changed
+- **Removed Global Batch Pause and Resume Controls:**
+  - Removed cluster-wide batch action buttons (`Pause 4h (All)`, `Pausa Hasta... (All)`, `Pause Indef. (All)`, and `Resume All`) from the Nodes toolbar and Command Palette.
+  - Pausing is strictly decoupled to the individual invoker lifecycle level so developers and operators control task consumption node-by-node without impacting the rest of the cluster.
+
+### Added
+- **Enhanced Per-Invoker Pause Configuration Modal:**
+  - Upgraded individual node pause modal with clear identification of the target invoker (`hostname` and `ip`).
+  - Added one-click duration presets (`1h`, `2h`, `4h (Estándar)`, `8h`, `24h`) with live confirmation feedback.
+  - Added fixed-time pause buttons (`18:00`, `18:30`, `19:00`, `20:00`, `Mañana 08:00`) and validated `HH:MM` input for scheduled auto-resume.
+  - Added quick `✏️ Pausa` edit button alongside `▶️ Reanudar` in node rows for paused invokers.
+
 ## [3.2.1] - 2026-10-29
 
 ### Added
